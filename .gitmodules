@@ -4,3 +4,6 @@
 [submodule "modules/Ryu"]
 	path = modules/Ryu
 	url = https://github.com/ostef/jai-ryu
+[submodule "modules/Linalg"]
+	path = modules/Linalg
+	url = https://github.com/ostef/linalg
