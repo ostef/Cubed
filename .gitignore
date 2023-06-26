@@ -1,0 +1,10 @@
+obj/
+.build/
+*.obj
+*.o
+*.pdb
+*.exe
+.vscode/
+minecraft
+imgui.ini
+data/faithless/

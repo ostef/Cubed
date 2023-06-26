@@ -1,0 +1,6 @@
+[submodule "modules/Fmt"]
+	path = modules/Fmt
+	url = https://github.com/ostef/jai-fmt
+[submodule "modules/Ryu"]
+	path = modules/Ryu
+	url = https://github.com/ostef/jai-ryu
