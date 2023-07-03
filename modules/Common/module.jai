@@ -66,6 +66,29 @@ Initialize :: inline (item : *$T, count : s64)
     }
 }
 
+OffsetOf :: ($T : Type, $member : string) -> s64 #expand
+{
+    #insert -> string
+    {
+        info := type_info (T);
+        Assert (info.type == .STRUCT);
+
+        result := -1;
+        for info.members
+        {
+            if it.name == member
+            {
+                result = it.offset_in_bytes;
+                break;
+            }
+        }
+
+        Assert (result >= 0, "Struct % does not have a member named %", T, member);
+
+        return FormatString ("return %;", result);
+    }
+}
+
 DefaultValue :: ($T : Type) #expand
 {
     val : T;
