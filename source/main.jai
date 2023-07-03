@@ -9,7 +9,7 @@ g_player_aabb : AABB;
 
 main :: ()
 {
-    context.logger = ConsoleLogger;
+    context.logger = ConsoleLoggerProc;
 
     if SDL_Init (SDL_INIT_VIDEO) != 0
     {

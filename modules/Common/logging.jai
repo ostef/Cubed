@@ -1,6 +1,12 @@
 #import "String_Builder";
 
-ConsoleLogger :: (message : string, data : *void, info : Log_Info)
+SetContextLogger :: inline (data : *void, proc : Logger)
+{
+    context.logger_data = data;
+    context.logger = proc;
+}
+
+ConsoleLoggerProc :: (message : string, data : *void, info : Log_Info)
 {
     if !message
         return;
