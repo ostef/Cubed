@@ -143,7 +143,7 @@ StringJoin :: (allocator : Allocator, args : ..string) -> string #must
     for args
     {
         memcpy (data + i, it.data, it.count);
-        it += it.count;
+        i += it.count;
     }
 
     return MakeString (total_size, data);
