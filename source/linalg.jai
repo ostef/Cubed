@@ -1,5 +1,15 @@
 Linalg :: #import "Linalg";
 
+ToRadians :: inline (angle_in_degrees : $T) -> T #must
+{
+	return angle_in_degrees * PI / 180.0;
+}
+
+ToDegrees :: inline (angle_in_radians : $T) -> T #must
+{
+	return angle_in_degrees * 180.0 / PI;
+}
+
 Vector :: Linalg.Vector;
 Vec2f :: Linalg.Vec2f;
 Vec3f :: Linalg.Vec3f;
@@ -21,7 +31,7 @@ Length :: Linalg.length;
 Normalized :: Linalg.normalized;
 Min :: Linalg.min;
 Max :: Linalg.max;
-Clamp :: Linalg.clamp;
+// Clamp :: Linalg.clamp;
 Round :: Linalg.round;
 Floor :: Linalg.floor;
 Ceil :: Linalg.ceil;
@@ -104,3 +114,5 @@ QuatfFromMatrix :: Linalg.quatf_from_matrix;
 ToAxisAngle :: Linalg.to_axis_angle;
 Conjugate :: Linalg.conjugate;
 NLerp :: Linalg.nlerp;
+
+EulerAngles :: Linalg.Euler_Angles;
