@@ -73,22 +73,37 @@ DefaultValue :: ($T : Type) #expand
     return val;
 }
 
+#scope_file
+
+IsNumeric :: inline (type : Type) -> bool
+{
+    info := cast (*Type_Info) type;
+
+    return info.type == .INTEGER || info.type == .FLOAT;
+}
+
+#scope_export
+
 Min :: (a : $T, b : T) -> T #must #expand
+#modify { return IsNumeric (T); }
 {
     return ifx a < b then a else b;
 }
 
 Max :: (a : $T, b : T) -> T #must #expand
+#modify { return IsNumeric (T); }
 {
     return ifx a > b then a else b;
 }
 
 Clamp :: (x : $T, min : T, max : T) -> T #must #expand
+#modify { return IsNumeric (T); }
 {
     return Min (Max (x, min), max);
 }
 
 Saturate :: (x : $T) -> T #must #expand
+#modify { return IsNumeric (T); }
 {
     return Clamp (x, 0, 1);
 }
