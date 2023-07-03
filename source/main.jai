@@ -1,6 +1,9 @@
 #import "Common";
 #import "SDL";
 #import "GL";
+#import "GL_Utils";
+Im3d :: #import "Im3d";
+Im3dImpl :: #import "Im3d/Impl/GL";
 
 Math :: #import "Math";
 PI :: Math.PI;
@@ -25,6 +28,37 @@ IsKeyDown :: inline (key : SDL_Keycode) -> bool #must
     keyboard := SDL_GetKeyboardState (null);
 
     return xx keyboard[cast (s32) SDL_GetScancodeFromKey (key)];
+}
+
+IsMouseButtonDown :: inline (button : int) -> bool #must
+{
+    state := SDL_GetMouseState (null, null);
+
+    return SDL_BUTTON (button) != 0;
+}
+
+UpdateIm3dKeys :: ()
+{
+    app := Im3d.GetAppData ();
+    app.keyDown[Im3d.Key.Mouse_Left] = IsMouseButtonDown (SDL_BUTTON_LEFT);
+
+    app.keyDown[Im3d.Key.L] = IsKeyDown (SDLK_l);
+    app.keyDown[Im3d.Key.T] = IsKeyDown (SDLK_t);
+    app.keyDown[Im3d.Key.R] = IsKeyDown (SDLK_r);
+    app.keyDown[Im3d.Key.S] = IsKeyDown (SDLK_s);
+
+    if IsKeyDown (SDLK_LCTRL)
+    {
+        app.snapTranslation = 0.5;
+        app.snapRotation    = ToRadians (30.0);
+        app.snapScale       = 0.5;
+    }
+    else
+    {
+        app.snapTranslation = 0;
+        app.snapRotation    = 0;
+        app.snapScale       = 0;
+    }
 }
 
 main :: ()
@@ -63,6 +97,12 @@ main :: ()
 
     LogMessage ("GL version: %", MakeString (glGetString (GL_VERSION)));
 
+    if !Im3dImpl.Init (g_window)
+    {
+        LogError ("Could not initialize Im3d");
+        return;
+    }
+
     SDL_CaptureMouse (SDL_TRUE);
     SDL_SetRelativeMouseMode (SDL_TRUE);
 
@@ -90,17 +130,27 @@ main :: ()
         SDL_GetWindowSize (g_window, *window_w, *window_h);
 
         UpdateFlyingCamera (*g_camera, 1.0 / 60.0);
+        UpdateIm3dKeys ();
+
+        Im3dImpl.NewFrame (g_camera.fov_in_degrees, g_camera.transform_matrix, g_camera.projection_matrix, 1 / 60.0);
+        Im3d.NewFrame ();
+        Im3d.DrawPoint (.{}, 10, Im3d.Color_White);
+        Im3d.DrawXyzAxes ();
+        Im3d.EndFrame ();
 
         glViewport (0, 0, xx window_w, xx window_h);
         glClearColor (0.1, 0.1, 0.1, 1.0);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        DebugDrawLine (.{}, .{1, 0, 0}, .{1, 0, 0, 1});
-        DebugDrawLine (.{}, .{0, 1, 0}, .{0, 1, 0, 1});
-        DebugDrawLine (.{}, .{0, 0, 1}, .{0, 0, 1, 1});
-        DebugDrawWireframeAABB (.{-1, -1, -1}, .{1, 1, 1}, .{1, 0, 0, 1});
+        //DebugDrawLine (.{}, .{1, 0, 0}, .{1, 0, 0, 1});
+        //DebugDrawLine (.{}, .{0, 1, 0}, .{0, 1, 0, 1});
+        //DebugDrawLine (.{}, .{0, 0, 1}, .{0, 0, 1, 1});
+        //DebugDrawWireframeAABB (.{-1, -1, -1}, .{1, 1, 1}, .{1, 0, 0, 1});
 
-        DebugDrawFlush ();
+        //DebugDrawFlush ();
+
+        Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
+
         SDL_GL_SwapWindow (g_window);
     }
 }
