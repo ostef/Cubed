@@ -39,7 +39,8 @@ UpdateFlyingCamera :: (using cam : *Camera, delta_time : float)
         ForwardVector (transform_matrix) * movement_input.z
     );
 
-    mouse_input = Lerp (mouse_input, g_mouse_delta, rotation_smoothing);
+    mouse_delta := ifx g_should_capture_mouse then g_mouse_delta else .{};
+    mouse_input = Lerp (mouse_input, mouse_delta, rotation_smoothing);
     rotation_delta := mouse_input * rotation_speed;
     euler_angles.yaw   += ToRadians (rotation_delta.x);
     euler_angles.pitch += ToRadians (rotation_delta.y);

@@ -22,6 +22,7 @@ Atan2 :: Math.atan2;
 g_window : *SDL_Window;
 g_camera : Camera;
 g_mouse_delta : Vec2f;
+g_should_capture_mouse : bool;
 
 IsKeyDown :: inline (key : SDL_Keycode) -> bool #must
 {
@@ -104,7 +105,6 @@ main :: ()
     }
 
     SDL_CaptureMouse (SDL_TRUE);
-    SDL_SetRelativeMouseMode (SDL_TRUE);
 
     quit := false;
     while !quit
@@ -119,6 +119,13 @@ main :: ()
             {
             case SDL_QUIT;
                 quit = true;
+
+            case SDL_KEYDOWN;
+                if event.key.state == SDL_PRESSED && event.key.keysym.sym == SDLK_ESCAPE
+                {
+                    g_should_capture_mouse = !g_should_capture_mouse;
+                    SDL_SetRelativeMouseMode (xx g_should_capture_mouse);
+                }
 
             case SDL_MOUSEMOTION;
                 g_mouse_delta.x = cast (float) event.motion.xrel;
@@ -141,13 +148,6 @@ main :: ()
         glViewport (0, 0, xx window_w, xx window_h);
         glClearColor (0.1, 0.1, 0.1, 1.0);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        //DebugDrawLine (.{}, .{1, 0, 0}, .{1, 0, 0, 1});
-        //DebugDrawLine (.{}, .{0, 1, 0}, .{0, 1, 0, 1});
-        //DebugDrawLine (.{}, .{0, 0, 1}, .{0, 0, 1, 1});
-        //DebugDrawWireframeAABB (.{-1, -1, -1}, .{1, 1, 1}, .{1, 0, 0, 1});
-
-        //DebugDrawFlush ();
 
         Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
 
