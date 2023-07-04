@@ -130,3 +130,15 @@ Saturate :: (x : $T) -> T #must #expand
 {
     return Clamp (x, 0, 1);
 }
+
+Abs :: (x : $T) -> T #must #expand
+#modify { return IsNumeric (T); }
+{
+    return ifx x < 0 then -x else x;
+}
+
+Sign :: (x : $T) -> T #must #expand
+#modify { return IsNumeric (T); }
+{
+    return cast (T) ifx x < 0 then -1 else ifx x > 0 then 1 else 0;
+}
