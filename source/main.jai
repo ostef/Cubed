@@ -34,7 +34,7 @@ IsMouseButtonDown :: inline (button : int) -> bool #must
 {
     state := SDL_GetMouseState (null, null);
 
-    return SDL_BUTTON (button) != 0;
+    return state & SDL_BUTTON (button) != 0;
 }
 
 UpdateIm3dKeys :: ()
