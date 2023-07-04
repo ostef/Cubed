@@ -1,3 +1,6 @@
+Basic :: #import "Basic";
+using, only (.["+", "-", "*", "/"]) Basic;
+
 #import "Common";
 #import "SDL";
 #import "GL";
@@ -18,6 +21,7 @@ Atan2 :: Math.atan2;
 #load "linalg.jai";
 #load "camera.jai";
 #load "debug_draw.jai";
+#load "physics.jai";
 
 g_window : *SDL_Window;
 g_camera : Camera;
@@ -48,7 +52,7 @@ UpdateIm3dKeys :: ()
     app.keyDown[Im3d.Key.R] = IsKeyDown (SDLK_r);
     app.keyDown[Im3d.Key.S] = IsKeyDown (SDLK_s);
 
-    if IsKeyDown (SDLK_LCTRL)
+    if IsKeyDown (SDLK_LALT)
     {
         app.snapTranslation = 0.5;
         app.snapRotation    = ToRadians (30.0);
@@ -106,6 +110,11 @@ main :: ()
 
     SDL_CaptureMouse (SDL_TRUE);
 
+    a_aabb := AABB.{.{-1, -1, -1}, .{1, 1, 1}};
+    b_aabb := AABB.{.{2, 2, 2}, .{3, 3, 3}};
+    point := Vec3f.{-1, 0.5, 0.7};
+
+    g_camera.position.z = -10;
     delta_time := 1 / 60.0;
     quit := false;
     while !quit
@@ -123,17 +132,21 @@ main :: ()
             case SDL_QUIT;
                 quit = true;
 
-            case SDL_KEYDOWN;
-                if event.key.state == SDL_PRESSED && event.key.keysym.sym == SDLK_ESCAPE
-                {
-                    g_should_capture_mouse = !g_should_capture_mouse;
-                    SDL_SetRelativeMouseMode (xx g_should_capture_mouse);
-                }
-
             case SDL_MOUSEMOTION;
                 g_mouse_delta.x = cast (float) event.motion.xrel;
                 g_mouse_delta.y = cast (float) event.motion.yrel;
             }
+        }
+
+        if IsMouseButtonDown (SDL_BUTTON_RIGHT)
+        {
+            g_should_capture_mouse = true;
+            SDL_SetRelativeMouseMode (SDL_TRUE);
+        }
+        else
+        {
+            g_should_capture_mouse = false;
+            SDL_SetRelativeMouseMode (SDL_FALSE);
         }
 
         window_w, window_h : s32;
@@ -142,10 +155,65 @@ main :: ()
         UpdateFlyingCamera (*g_camera, delta_time);
         UpdateIm3dKeys ();
 
-        Im3dImpl.NewFrame (g_camera.fov_in_degrees, g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
+        mouse_pos : Vec2f;
+        if !g_should_capture_mouse
+        {
+            window_x, window_y : s32;
+            SDL_GetWindowPosition (g_window, *window_x, *window_y);
+
+            mouse_x, mouse_y : s32;
+            SDL_GetGlobalMouseState (*mouse_x, *mouse_y);
+
+            mouse_x -= window_x;
+            mouse_y -= window_y;
+
+            mouse_pos = .{xx mouse_x, xx mouse_y};
+        }
+        else
+        {
+            mouse_pos = .{Math.FLOAT32_INFINITY, Math.FLOAT32_INFINITY};
+        }
+
+        Im3dImpl.NewFrame (g_camera.fov_in_degrees, mouse_pos, g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
         Im3d.NewFrame ();
+
+        Im3d.GizmoTranslation ("Point", *point.n);
+
+        a_center := AABBCenter (a_aabb);
+        Im3d.GizmoTranslation ("A_Center", *a_center.n);
+        a_aabb = MakeAABBPositionHalfSize (a_center, AABBHalfSize (a_aabb));
+
+        b_center := AABBCenter (b_aabb);
+        Im3d.GizmoTranslation ("B_Center", *b_center.n);
+        b_aabb = MakeAABBPositionHalfSize (b_center, AABBHalfSize (b_aabb));
+
         Im3d.DrawPoint (.{}, 10, Im3d.Color_White);
         Im3d.DrawXyzAxes ();
+
+        if AABBIntersectsAABB (a_aabb, b_aabb)
+            Im3d.PushColor (Im3d.Color_Red);
+        else
+            Im3d.PushColor (Im3d.Color_Green);
+
+        Im3d.DrawAlignedBox (a_aabb.min, a_aabb.max);
+        Im3d.DrawAlignedBox (b_aabb.min, b_aabb.max);
+
+        Im3d.PushColor (Im3d.Color_White);
+        Im3d.DrawAlignedBox (b_aabb.min - AABBHalfSize (a_aabb), b_aabb.max + AABBHalfSize (a_aabb));
+        Im3d.PopColor ();
+
+        Im3d.DrawPoint (point, 15, Im3d.Color_White);
+
+        Im3d.DrawLine (AABBCenter (a_aabb), point, 1, Im3d.Color_White);
+
+        hit_result := SweptAABBIntersectsAABB (a_aabb, b_aabb, Normalized (point - AABBCenter (a_aabb)), Length (point - AABBCenter (a_aabb)));
+        if hit_result.hit
+        {
+            Im3d.DrawPoint (hit_result.position, 20, Im3d.Color_Red);
+        }
+
+        Im3d.PopColor ();
+
         Im3d.EndFrame ();
 
         glViewport (0, 0, xx window_w, xx window_h);
