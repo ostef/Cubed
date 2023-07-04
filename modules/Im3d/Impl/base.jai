@@ -36,7 +36,7 @@ Terminate :: ()
     Im3d.GetAppData ().appData = null;
 }
 
-NewFrame :: (fov : float, camera_transform : Mat4f, projection : Mat4f, delta_time : float, use_orthographic_projection := false)
+NewFrame :: (fov : float, mouse_pos : Vec2f, camera_transform : Mat4f, projection : Mat4f, delta_time : float, use_orthographic_projection := false)
 {
     app := Im3d.GetAppData ();
     data := GetData ();
@@ -54,18 +54,9 @@ NewFrame :: (fov : float, camera_transform : Mat4f, projection : Mat4f, delta_ti
     app.viewDirection = forward_vector (camera_transform);
     app.projOrtho = use_orthographic_projection;
 
-    window_x, window_y : s32;
-    SDL_GetWindowPosition (data.window, *window_x, *window_y);
-
-    mouse_x, mouse_y : s32;
-    SDL_GetGlobalMouseState (*mouse_x, *mouse_y);
-
-    mouse_x -= window_x;
-    mouse_y -= window_y;
-
     cursor_pos := Vec2f.{
-        mouse_x / app.viewportSize.x - 0.5,
-        mouse_y / app.viewportSize.y - 0.5
+        mouse_pos.x / app.viewportSize.x - 0.5,
+        mouse_pos.y / app.viewportSize.y - 0.5
     } * 2;
     cursor_pos.y = -cursor_pos.y;
 
