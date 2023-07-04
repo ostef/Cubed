@@ -106,9 +106,12 @@ main :: ()
 
     SDL_CaptureMouse (SDL_TRUE);
 
+    delta_time := 1 / 60.0;
     quit := false;
     while !quit
     {
+        frame_start := Basic.current_time_monotonic ();
+
         ResetTemporaryStorage ();
 
         g_mouse_delta = .{};
@@ -136,10 +139,10 @@ main :: ()
         window_w, window_h : s32;
         SDL_GetWindowSize (g_window, *window_w, *window_h);
 
-        UpdateFlyingCamera (*g_camera, 1.0 / 60.0);
+        UpdateFlyingCamera (*g_camera, delta_time);
         UpdateIm3dKeys ();
 
-        Im3dImpl.NewFrame (g_camera.fov_in_degrees, g_camera.transform_matrix, g_camera.projection_matrix, 1 / 60.0);
+        Im3dImpl.NewFrame (g_camera.fov_in_degrees, g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
         Im3d.NewFrame ();
         Im3d.DrawPoint (.{}, 10, Im3d.Color_White);
         Im3d.DrawXyzAxes ();
@@ -152,6 +155,9 @@ main :: ()
         Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
 
         SDL_GL_SwapWindow (g_window);
+
+        frame_end := Basic.current_time_monotonic ();
+        delta_time = cast (float) Basic.to_float64_seconds (frame_end - frame_start);
     }
 }
 
