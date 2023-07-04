@@ -65,8 +65,9 @@ NewFrame :: (fov : float, camera_transform : Mat4f, projection : Mat4f, delta_ti
 
     cursor_pos := Vec2f.{
         mouse_x / app.viewportSize.x - 0.5,
-        -(mouse_y / app.viewportSize.y - 0.5)
-    };
+        mouse_y / app.viewportSize.y - 0.5
+    } * 2;
+    cursor_pos.y = -cursor_pos.y;
 
     if app.projOrtho
     {
@@ -81,7 +82,7 @@ NewFrame :: (fov : float, camera_transform : Mat4f, projection : Mat4f, delta_ti
     }
     else
     {
-        app.projScaleY = 2 * tan (fov * PI / 180.0 * 0.5);
+        app.projScaleY = 2 * tan ((fov * PI / 180.0) * 0.5);
 
         app.cursorRayOrigin = app.viewOrigin;
 
