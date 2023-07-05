@@ -140,3 +140,30 @@ DisableBlock :: (val : GLenum) #expand
     `defer if prev
         glEnable (val);
 }
+
+StateBlock :: (val : GLenum, reset_func : (val : $T)) #expand
+{
+    prev_value : T;
+    glGetIntegerv (val, cast (*GLint) *prev_value);
+    `defer reset_func (prev_value);
+}
+
+StateBlock :: (val : GLenum, $N : int, reset_func : (vals : [N]$T)) #expand
+{
+    prev_values : [N]T;
+    glGetIntegerv (val, cast (*GLint) prev_values.data);
+    `defer reset_func (prev_values);
+}
+
+BlendFuncStateBlock :: () #expand
+{
+    prev_src_rgb, prev_src_a, prev_dst_rgb, prev_dst_a, prev_equ_rgb, prev_equ_a : GLint;
+    glGetIntegerv (GL_BLEND_SRC_RGB, *prev_src_rgb);
+    glGetIntegerv (GL_BLEND_SRC_ALPHA, *prev_src_a);
+    glGetIntegerv (GL_BLEND_DST_RGB, *prev_dst_rgb);
+    glGetIntegerv (GL_BLEND_DST_ALPHA, *prev_dst_a);
+    glGetIntegerv (GL_BLEND_EQUATION_RGB, *prev_equ_rgb);
+    glGetIntegerv (GL_BLEND_EQUATION_ALPHA, *prev_equ_a);
+    `defer glBlendEquationSeparate (xx prev_equ_rgb, xx prev_equ_a);
+    `defer glBlendFuncSeparate (xx prev_src_rgb, xx prev_dst_rgb, xx prev_src_a, xx prev_dst_a);
+}
