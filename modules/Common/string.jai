@@ -75,7 +75,7 @@ StringStartsWith :: inline (str : string, with : string) -> bool #must
 
     for i : 0..with.count - 1
     {
-        if s[i] != with[i]
+        if str[i] != with[i]
             return false;
     }
 
@@ -90,21 +90,21 @@ StringEndsWith :: inline (str : string, with : string) -> bool #must
 
     for i : 0..with.count - 1
     {
-        if s[s.count - 1 - i] != with[with.count - 1 - i]
+        if str[str.count - 1 - i] != with[with.count - 1 - i]
             return false;
     }
 
     return true;
 }
 
-StringFindFirst :: inline (s : string, needle : string) -> s64 #must
+StringFindFirst :: inline (str : string, needle : string) -> s64 #must
 #no_abc
 {
-    for i : 0..s.count - 1
+    for i : 0..str.count - 1
     {
         for j : 0..needle.count - 1
         {
-            if s[i] == needle[j]
+            if str[i] == needle[j]
                 return i;
         }
     }
@@ -112,14 +112,14 @@ StringFindFirst :: inline (s : string, needle : string) -> s64 #must
     return -1;
 }
 
-StringFindLast :: inline (s : string, needle : string) -> s64 #must
+StringFindLast :: inline (str : string, needle : string) -> s64 #must
 #no_abc
 {
-    for < i : s.count - 1..0
+    for < i : str.count - 1..0
     {
         for j : 0..needle.count - 1
         {
-            if s[i] == needle[j]
+            if str[i] == needle[j]
                 return i;
         }
     }
