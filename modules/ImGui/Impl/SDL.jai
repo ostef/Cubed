@@ -47,6 +47,8 @@ Init :: (window : *SDL_Window, gl_context : SDL_GLContext)
     io.BackendFlags_ |= .HasMouseCursors;
     io.BackendFlags_ |= .HasSetMousePos;
     io.BackendFlags_ |= .PlatformHasViewports;
+    #if OS != .MACOS
+        io.BackendFlags_ |= .HasMouseHoveredViewport;
 
     io.SetClipboardTextFn = SetClipboardText;
     io.GetClipboardTextFn = GetClipboardText;
@@ -233,7 +235,10 @@ NewFrame :: ()
     display_w, display_h : s32;
     SDL_GetWindowSize (data.window, *w, *h);
     if SDL_GetWindowFlags (data.window) & SDL_WINDOW_MINIMIZED
-        w, h = 0;
+    {
+        w = 0;
+        h = 0;
+    }
 
     SDL_GL_GetDrawableSize (data.window, *display_w, *display_h);
 
@@ -348,8 +353,10 @@ UpdateMonitors :: ()
         monitor : ImGui.PlatformMonitor;
         r : SDL_Rect = ---;
         SDL_GetDisplayBounds (n, *r);
-        monitor.MainPos, monitor.WorkPos = ImVec2.{cast (float) r.x, cast (float) r.y};
-        monitor.MainSize, monitor.WorkSize = ImVec2.{cast (float) r.w, cast (float) r.h};
+        monitor.MainPos = ImVec2.{cast (float) r.x, cast (float) r.y};
+        monitor.WorkPos = monitor.MainPos;
+        monitor.MainSize = ImVec2.{cast (float) r.w, cast (float) r.h};
+        monitor.WorkSize = monitor.MainSize;
 
         dpi := 0.0;
         if !SDL_GetDisplayDPI (n, *dpi, null, null)
@@ -619,7 +626,7 @@ GetWindowSize :: (viewport : *ImGui.Viewport) -> ImVec2 #c_call #cpp_return_type
 SetWindowSize :: (viewport : *ImGui.Viewport, size : ImVec2) #c_call
 {
     vp_data := cast (*ViewportData) viewport.PlatformUserData;
-    SDL_SetWindowPosition (vp_data.window, xx size.x, xx size.y);
+    SDL_SetWindowSize (vp_data.window, xx size.x, xx size.y);
 }
 
 SetWindowTitle :: (viewport : *ImGui.Viewport, title : *u8) #c_call

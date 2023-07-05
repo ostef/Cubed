@@ -58,8 +58,8 @@ Init :: () -> bool
         data.use_buffer_sub_data = StringStartsWith (vendor, "Intel");
     }
 
-    if data.gl_version >= 320
-        io.BackendFlags_ |= .RendererHasVtxOffset;
+    // if data.gl_version >= 320
+    //     io.BackendFlags_ |= .RendererHasVtxOffset;
     io.BackendFlags_ |= .RendererHasViewports;
 
     if io.ConfigFlags_ & .ViewportsEnable
@@ -339,7 +339,7 @@ DestroyDeviceObjects :: ()
 // If you are new to dear imgui or creating a new binding for dear imgui, it is recommended that you completely ignore this section first..
 //--------------------------------------------------------------------------------------------------------
 
-RenderWindow :: (viewport : *ImGui.Viewport, *void) #c_call
+RenderWindow :: (viewport : *ImGui.Viewport, arg : *void) #c_call
 {
     if !(viewport.Flags & .NoRendererClear)
     {
