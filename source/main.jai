@@ -105,11 +105,15 @@ main :: ()
         return;
     }
 
+    defer SDL_GL_DeleteContext (gl_context);
+
     gl_load (*gl, SDL_GL_GetProcAddress);
 
     LogMessage ("GL version: %", MakeString (glGetString (GL_VERSION)));
 
     ImGui.CreateContext ();
+    defer ImGui.DestroyContext ();
+
     io := ImGui.GetIO ();
     io.ConfigFlags_ |= .NavEnableKeyboard;
     io.ConfigFlags_ |= .DockingEnable;
