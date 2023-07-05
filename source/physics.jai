@@ -53,7 +53,7 @@ PointIsInsideAABB :: inline (point : Vec3f, aabb : AABB) -> bool #must
         point.z <= aabb.max.z;
 }
 
-CalculateAABBPenetration :: inline (point_inside_aabb : Vec3f, aabb : AABB) -> Vec3f #must
+CalculateAABBPenetration :: (point_inside_aabb : Vec3f, aabb : AABB) -> Vec3f #must
 {
     center := AABBCenter (aabb);
     min := aabb.min - center;
@@ -136,7 +136,7 @@ SweptAABBIntersectsAABB :: inline (a : AABB, b : AABB, direction : Vec3f, length
     return RayIntersectsAABB (ray, b_padded);
 }
 
-RayIntersectsAABB :: inline (ray : Ray, aabb : AABB) -> HitResult #must, t_near : float, t_far : float
+RayIntersectsAABB :: (ray : Ray, aabb : AABB) -> HitResult #must, t_near : float, t_far : float
 {
     // @Todo: ensure correctness when ray.direction has zero components
 
