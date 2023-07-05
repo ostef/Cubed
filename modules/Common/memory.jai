@@ -62,10 +62,10 @@ Realloc :: inline (ptr : *void, old_size : s64, size : s64, allocator := context
 {
     Assert (allocator.proc != null);
 
-    ptr := allocator.proc (.RESIZE, size, old_size, ptr, allocator.data);
-    Assert (ptr != null, "Allocator % failed to reallocate % bytes (previous size was %)", GetAllocatorName (allocator), size, old_size);
+    new_ptr := allocator.proc (.RESIZE, size, old_size, ptr, allocator.data);
+    Assert (new_ptr != null, "Allocator % failed to reallocate % bytes (previous size was %)", GetAllocatorName (allocator), size, old_size);
 
-    return ptr;
+    return new_ptr;
 }
 
 GetAllocatorName :: inline (allocator := context.allocator) -> string #must
