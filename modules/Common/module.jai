@@ -142,3 +142,13 @@ Sign :: (x : $T) -> T #must #expand
 {
     return cast (T) ifx x < 0 then -1 else ifx x > 0 then 1 else 0;
 }
+
+Lerp :: (a : float, b : float, t : float) -> float #must #expand
+{
+    return a * (1 - t) + b * t;
+}
+
+InverseLerp :: (a : float, b : float, t : float) -> float #must #expand
+{
+    return (t - a) / (b - a);
+}
