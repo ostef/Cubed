@@ -7,6 +7,9 @@ using, only (.["+", "-", "*", "/"]) Basic;
 #import "GL_Utils";
 Im3d :: #import "Im3d";
 Im3dImpl :: #import "Im3d/Impl/GL";
+ImGui :: #import "ImGui";
+ImGuiSDL :: #import "ImGui/Impl/SDL";
+ImGuiGL :: #import "ImGui/Impl/GL";
 
 Math :: #import "Math";
 PI :: Math.PI;
@@ -89,6 +92,8 @@ main :: ()
 
     defer SDL_DestroyWindow (g_window);
 
+    SDL_CaptureMouse (SDL_TRUE);
+
     SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, xx SDL_GL_CONTEXT_PROFILE_CORE);
 
     gl_context := SDL_GL_CreateContext (g_window);
@@ -102,13 +107,47 @@ main :: ()
 
     LogMessage ("GL version: %", MakeString (glGetString (GL_VERSION)));
 
+    ImGui.CreateContext ();
+    io := ImGui.GetIO ();
+    io.ConfigFlags_ |= .NavEnableKeyboard;
+    io.ConfigFlags_ |= .DockingEnable;
+    io.ConfigFlags_ |= .ViewportsEnable;
+
+    ImGui.StyleColorsDark ();
+    {
+        style := ImGui.GetStyle ();
+        style.WindowRounding = 10;
+        style.WindowTitleAlign = .{0.5, 0.5};
+        style.ChildRounding = 3;
+        style.FrameRounding = 6;
+        style.PopupRounding = 3;
+        style.GrabRounding = 4;
+        style.TabRounding = 6;
+        style.FramePadding = .{10, 6};
+        // style.SeparatorTextBorderSize = 1;
+        style.FrameBorderSize = 1;
+        style.ItemSpacing.y = 6;
+        style.ItemInnerSpacing.x = 8;
+        style.Colors[ImGui.Col.Border].w = 0.25;
+    }
+
+    io.Fonts.AddFontFromFileTTF (io.Fonts, "data/Roboto-Regular.ttf", 18);
+
+    ImGuiSDL.Init (g_window, gl_context);
+    defer ImGuiSDL.Terminate ();
+
+    if !ImGuiGL.Init ()
+    {
+        LogError ("Could not initialize ImGui GL backend");
+        return;
+    }
+    defer ImGuiGL.Terminate ();
+
     if !Im3dImpl.Init (g_window)
     {
         LogError ("Could not initialize Im3d");
         return;
     }
-
-    SDL_CaptureMouse (SDL_TRUE);
 
     a_aabb := AABB.{.{-1, -1, -1}, .{1, 1, 1}};
     b_aabb := AABB.{.{2, 2, 2}, .{3, 3, 3}};
@@ -127,6 +166,8 @@ main :: ()
         event : SDL_Event;
         while SDL_PollEvent (*event)
         {
+            ImGuiSDL.HandleWindowEvent (event);
+
             if event.type ==
             {
             case SDL_QUIT;
@@ -152,9 +193,6 @@ main :: ()
         window_w, window_h : s32;
         SDL_GetWindowSize (g_window, *window_w, *window_h);
 
-        UpdateFlyingCamera (*g_camera, delta_time);
-        UpdateIm3dKeys ();
-
         mouse_pos : Vec2f;
         if !g_should_capture_mouse
         {
@@ -173,6 +211,15 @@ main :: ()
         {
             mouse_pos = .{Math.FLOAT32_INFINITY, Math.FLOAT32_INFINITY};
         }
+
+        UpdateFlyingCamera (*g_camera, delta_time);
+
+        ImGuiSDL.NewFrame ();
+        ImGui.NewFrame ();
+
+        ImGui.ShowDemoWindow ();
+
+        UpdateIm3dKeys ();
 
         Im3dImpl.NewFrame (g_camera.fov_in_degrees, mouse_pos, g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
         Im3d.NewFrame ();
@@ -216,11 +263,24 @@ main :: ()
 
         Im3d.EndFrame ();
 
+        ImGui.Render ();
+
         glViewport (0, 0, xx window_w, xx window_h);
         glClearColor (0.1, 0.1, 0.1, 1.0);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
+
+        ImGuiGL.RenderDrawData (ImGui.GetDrawData ());
+
+        if io.ConfigFlags_ & .ViewportsEnable
+        {
+            backup_current_window := SDL_GL_GetCurrentWindow ();
+            backup_current_context := SDL_GL_GetCurrentContext ();
+            ImGui.UpdatePlatformWindows ();
+            ImGui.RenderPlatformWindowsDefault ();
+            SDL_GL_MakeCurrent (backup_current_window, backup_current_context);
+        }
 
         SDL_GL_SwapWindow (g_window);
 
