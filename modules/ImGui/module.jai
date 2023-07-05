@@ -30,7 +30,7 @@ ImVector :: struct (T : Type)
 
     Free :: inline (using vec : *ImVector)
     {
-        Free (Data);
+        MemFree (Data);
         Data = null;
         Size = 0;
         Capacity = 0;
@@ -41,7 +41,16 @@ ImVector :: struct (T : Type)
         if new_capacity < Capacity
             return;
 
-        Data = Realloc (Data, Capacity * size_of (T), new_capacity * size_of (T));
+        new_data := MemAlloc (xx (new_capacity * size_of (T)));
+        Assert (new_data != null);
+
+        if Data
+        {
+            memcpy (new_data, Data, Size * size_of (T));
+            MemFree (Data);
+        }
+
+        Data = new_data;
         Capacity = new_capacity;
     }
 
