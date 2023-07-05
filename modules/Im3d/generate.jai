@@ -63,7 +63,7 @@ compile_cpp_source :: () -> bool
 generate_bindings :: () -> bool
 {
     #if OS == .WINDOWS
-        output_filename := "win32.jai";
+        output_filename := "windows.jai";
 
     opts : Generate_Bindings_Options;
 
