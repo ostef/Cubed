@@ -701,4 +701,23 @@ InitPlatformInterface :: inline (window : *SDL_Window, gl_context : SDL_GLContex
 TerminatePlatformInterface :: inline ()
 {
     ImGui.DestroyPlatformWindows ();
+
+    using platform_io := ImGui.GetPlatformIO ();
+    Platform_CreateWindow = null;
+    Platform_DestroyWindow = null;
+    Platform_ShowWindow = null;
+    Platform_SetWindowPos = null;
+    Platform_GetWindowPos = null;
+    Platform_SetWindowSize = null;
+    Platform_GetWindowSize = null;
+    Platform_SetWindowFocus = null;
+    Platform_GetWindowFocus = null;
+    Platform_GetWindowMinimized = null;
+    Platform_SetWindowTitle = null;
+    Platform_RenderWindow = null;
+    Platform_SwapBuffers = null;
+
+    main_viewport := ImGui.GetMainViewport ();
+    Free (main_viewport.PlatformUserData);
+    main_viewport.PlatformUserData = null;
 }
