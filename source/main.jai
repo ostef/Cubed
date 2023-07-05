@@ -20,6 +20,8 @@ Acos :: Math.acos;
 Asin :: Math.asin;
 Atan :: Math.atan;
 Atan2 :: Math.atan2;
+Floor :: Math.floor;
+Ceil :: Math.ceil;
 
 #load "linalg.jai";
 #load "camera.jai";
