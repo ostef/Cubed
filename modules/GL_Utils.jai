@@ -1,7 +1,7 @@
 #import "Common";
 #import "GL";
 
-CheckShader :: (handle : GLuint, desc : string) -> bool #must
+CheckShader :: (handle : GLuint, desc : string, location := #caller_location) -> bool #must
 {
     status, log_length : GLint;
     glGetShaderiv (handle, GL_COMPILE_STATUS, *status);
@@ -13,16 +13,16 @@ CheckShader :: (handle : GLuint, desc : string) -> bool #must
         {
             buffer := Alloc (u8, log_length + 1, Temp);
             glGetShaderInfoLog (handle, xx log_length, null, buffer);
-            LogError ("%:\n\n%", desc, MakeString (log_length, buffer));
+            LogError ("%:\n\n%", desc, MakeString (log_length, buffer), location = location);
         }
         else
-            LogError (desc);
+            LogError (desc, location = location);
     }
 
     return status != 0;
 }
 
-CheckShaderProgram :: (handle : GLuint, desc : string) -> bool #must
+CheckShaderProgram :: (handle : GLuint, desc : string, location := #caller_location) -> bool #must
 {
     status, log_length : GLint;
     glGetProgramiv (handle, GL_LINK_STATUS, *status);
@@ -34,16 +34,16 @@ CheckShaderProgram :: (handle : GLuint, desc : string) -> bool #must
         {
             buffer := Alloc (u8, log_length + 1, Temp);
             glGetProgramInfoLog (handle, xx log_length, null, buffer);
-            LogError ("%:\n\n%", desc, MakeString (log_length, buffer));
+            LogError ("%:\n\n%", desc, MakeString (log_length, buffer), location = location);
         }
         else
-            LogError (desc);
+            LogError (desc, location = location);
     }
 
     return status != 0;
 }
 
-CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$geometry_source := "") -> GLuint #must
+CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$geometry_source := "", location := #caller_location) -> GLuint #must
 {
     prev_allocator := context.allocator;
     context.allocator = Temp;
@@ -63,7 +63,7 @@ CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$
     glShaderSource (vertex_shader, 1, *cstr_vertex_source, null);
     glCompileShader (vertex_shader);
 
-    if !CheckShader (vertex_shader, "Could not compile vertex shader")
+    if !CheckShader (vertex_shader, "Could not compile vertex shader", location = location)
         return 0;
 
     geometry_shader : GLuint;
@@ -81,7 +81,7 @@ CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$
         glShaderSource (geometry_shader, 1, *cstr_geometry_source, null);
         glCompileShader (geometry_shader);
 
-        if !CheckShader (geometry_shader, "Could not compile geometry shader")
+        if !CheckShader (geometry_shader, "Could not compile geometry shader", location = location)
             return 0;
     }
 
@@ -96,7 +96,7 @@ CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$
     glShaderSource (fragment_shader, 1, *cstr_fragment_source, null);
     glCompileShader (fragment_shader);
 
-    if !CheckShader (fragment_shader, "Could not compile vertex shader")
+    if !CheckShader (fragment_shader, "Could not compile vertex shader", location = location)
         return 0;
 
     shader_program := glCreateProgram ();
@@ -107,7 +107,7 @@ CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$
     glAttachShader (shader_program, fragment_shader);
     glLinkProgram (shader_program);
 
-    if !CheckShaderProgram (shader_program, "Could not link shader program")
+    if !CheckShaderProgram (shader_program, "Could not link shader program", location = location)
     {
         glDeleteProgram (shader_program);
 
