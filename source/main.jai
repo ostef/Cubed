@@ -214,7 +214,7 @@ main :: ()
         window_w, window_h : s32;
         SDL_GetWindowSize (g_window, *window_w, *window_h);
 
-        UpdateFlyingCamera (*g_camera, delta_time);
+        UpdateFlyingCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
 
         ImGuiSDL.NewFrame ();
         ImGui.NewFrame ();

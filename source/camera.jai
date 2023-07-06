@@ -15,19 +15,23 @@ Camera :: struct
     view_projection_matrix : Mat4f;
 }
 
-UpdateFlyingCamera :: (using cam : *Camera, delta_time : float)
+UpdateFlyingCamera :: (using cam : *Camera, delta_time : float, allow_movement : bool)
 {
     defer CalculateCameraMatrices (cam);
 
     if (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) == 0
         return;
 
-    movement_input := Vec3f.{
-        xx (cast (s32) IsKeyDown (SDLK_d) - cast (s32) IsKeyDown (SDLK_a)),
-        xx (cast (s32) IsKeyDown (SDLK_SPACE) - cast (s32) IsKeyDown (SDLK_LCTRL)),
-        xx (cast (s32) IsKeyDown (SDLK_w) - cast (s32) IsKeyDown (SDLK_s))
-    };
-    movement_input = Normalized (movement_input);
+    movement_input : Vec3f;
+    if allow_movement
+    {
+        movement_input = Vec3f.{
+            xx (cast (s32) IsKeyDown (SDLK_d) - cast (s32) IsKeyDown (SDLK_a)),
+            xx (cast (s32) IsKeyDown (SDLK_SPACE) - cast (s32) IsKeyDown (SDLK_LCTRL)),
+            xx (cast (s32) IsKeyDown (SDLK_w) - cast (s32) IsKeyDown (SDLK_s))
+        };
+        movement_input = Normalized (movement_input);
+    }
 
     speed := 1.0;
     if IsKeyDown (SDLK_LSHIFT)
