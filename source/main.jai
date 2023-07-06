@@ -201,6 +201,11 @@ main :: ()
             case SDL_MOUSEMOTION;
                 g_mouse_delta.x = cast (float) event.motion.xrel;
                 g_mouse_delta.y = cast (float) event.motion.yrel;
+
+            case SDL_WINDOWEVENT;
+                window := SDL_GetWindowFromID (event.window.windowID);
+                if event.window.event == SDL_WINDOWEVENT_CLOSE && window == g_window
+                    quit = true;
             }
         }
 
