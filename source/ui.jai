@@ -127,6 +127,25 @@ UIShowPerlinTestWindow :: (opened : *bool)
         min_value, max_value = GenerateNoiseTexture (*texture_handle, texture_size, texture_size, seed, params);
 }
 
+#scope_file
+
+SurfaceColor :: struct
+{
+    min : s32;
+    max : s32;
+    color : Vec3f;
+}
+
+Deep_Ocean_Color :: Vec4f.{0.102, 0.136, 0.388, 1};
+Water_Color :: Vec4f.{0.154, 0.273, 0.878, 1};
+Beach_Color :: Vec4f.{0.947, 0.880, 0.149, 1};
+Grass_Color :: Vec4f.{0.387, 0.700, 0.250, 1};
+High_Grass_Color :: Vec4f.{0.387, 0.900, 0.350, 1};
+Mountain_Color :: Vec4f.{0.593, 0.689, 0.551, 1};
+Snow_Color :: Vec4f.{0.914, 0.958, 1.000, 1};
+
+#scope_export
+
 GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, using generator : Generator, param : TerrainParam, show_surface_colors : bool)
 {
     rng : RNG;
@@ -139,14 +158,25 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, using gener
         for x : 0..width - 1
         {
             val := cast (float) CalculateTerrainParam (generator, param, xx x, xx y);
+
             if param == .Surface_Height && show_surface_colors
             {
                 surface_level := Lerp (cast (float) surface_params.surface_range.x, cast (float) surface_params.surface_range.y, val);
                 color : u32;
-                if surface_level < cast (float) surface_params.water_level
-                    color = ImGui.GetColorU32 (.{0.1, 0.2, 0.7, 1});
+                if surface_level < surface_params.surface_range.x + (surface_params.water_level - surface_params.surface_range.x) * 0.57
+                    color = ImGui.GetColorU32 (Deep_Ocean_Color);
+                else if surface_level < cast (float) surface_params.water_level
+                    color = ImGui.GetColorU32 (Water_Color);
+                else if surface_level < surface_params.water_level + (surface_params.surface_range.y - surface_params.water_level) * 0.03
+                    color = ImGui.GetColorU32 (Beach_Color);
+                else if surface_level < surface_params.water_level + (surface_params.surface_range.y - surface_params.water_level) * 0.4
+                    color = ImGui.GetColorU32 (Grass_Color);
+                else if surface_level < surface_params.water_level + (surface_params.surface_range.y - surface_params.water_level) * 0.47
+                    color = ImGui.GetColorU32 (High_Grass_Color);
+                else if surface_level < surface_params.water_level + (surface_params.surface_range.y - surface_params.water_level) * 0.65
+                    color = ImGui.GetColorU32 (Mountain_Color);
                 else
-                    color = ImGui.GetColorU32 (.{0.2, 0.6, 0.3, 1});
+                    color = ImGui.GetColorU32 (Snow_Color);
 
                 buffer[y * height + x] = color;
             }
@@ -174,9 +204,9 @@ g_ui_terrain_generator : struct
 {
     generator : Generator;
     texture_handle : GLuint;
-    size : s32 = 256;
+    size : s32 = 1024;
     texture_size : s32 = 256;
-    selected_param : TerrainParam;
+    selected_param := TerrainParam.Surface_Height;
     show_surface_colors := true;
 };
 
@@ -258,7 +288,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
 
 g_ui_show_demo_window := false;
 g_ui_show_perlin_test_window := false;
-g_ui_show_terrain_generator_window := false;
+g_ui_show_terrain_generator_window := true;
 
 UIUpdate :: ()
 {
