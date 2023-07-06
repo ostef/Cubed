@@ -30,6 +30,7 @@ Ceil :: Math.ceil;
 #load "debug_draw.jai";
 #load "physics.jai";
 #load "noise.jai";
+#load "ui.jai";
 
 g_window : *SDL_Window;
 g_camera : Camera;
@@ -222,7 +223,8 @@ main :: ()
         ImGuiSDL.NewFrame ();
         ImGui.NewFrame ();
 
-        ImGui.ShowDemoWindow ();
+        ImGui.DockSpaceOverViewport (null, .PassthruCentralNode);
+        UIUpdate ();
 
         UpdateIm3dKeys ();
 
