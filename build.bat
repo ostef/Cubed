@@ -2,4 +2,4 @@
 
 setlocal EnableDelayedExpansion
 
-jai source/main.jai -import_dir ../modules/
+jai source/main.jai -import_dir ../modules/ %*
