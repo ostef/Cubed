@@ -33,6 +33,21 @@ g_camera : Camera;
 g_mouse_delta : Vec2f;
 g_should_capture_mouse : bool;
 
+GetMousePosition :: inline (window : *SDL_Window = null) -> Vec2f #must
+{
+    window_x, window_y : s32;
+    if window
+        SDL_GetWindowPosition (window, *window_x, *window_y);
+
+    mouse_x, mouse_y : s32;
+    SDL_GetGlobalMouseState (*mouse_x, *mouse_y);
+
+    mouse_x -= window_x;
+    mouse_y -= window_y;
+
+    return .{xx mouse_x, xx mouse_y};
+}
+
 IsKeyDown :: inline (key : SDL_Keycode) -> bool #must
 {
     keyboard := SDL_GetKeyboardState (null);
@@ -185,7 +200,7 @@ main :: ()
             }
         }
 
-        if IsMouseButtonDown (SDL_BUTTON_RIGHT)
+        if !ImGui.GetIO ().WantCaptureMouse && IsMouseButtonDown (SDL_BUTTON_RIGHT)
         {
             g_should_capture_mouse = true;
             SDL_SetRelativeMouseMode (SDL_TRUE);
@@ -199,25 +214,6 @@ main :: ()
         window_w, window_h : s32;
         SDL_GetWindowSize (g_window, *window_w, *window_h);
 
-        mouse_pos : Vec2f;
-        if !g_should_capture_mouse
-        {
-            window_x, window_y : s32;
-            SDL_GetWindowPosition (g_window, *window_x, *window_y);
-
-            mouse_x, mouse_y : s32;
-            SDL_GetGlobalMouseState (*mouse_x, *mouse_y);
-
-            mouse_x -= window_x;
-            mouse_y -= window_y;
-
-            mouse_pos = .{xx mouse_x, xx mouse_y};
-        }
-        else
-        {
-            mouse_pos = .{Math.FLOAT32_INFINITY, Math.FLOAT32_INFINITY};
-        }
-
         UpdateFlyingCamera (*g_camera, delta_time);
 
         ImGuiSDL.NewFrame ();
@@ -227,7 +223,12 @@ main :: ()
 
         UpdateIm3dKeys ();
 
-        Im3dImpl.NewFrame (g_camera.fov_in_degrees, mouse_pos, g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
+        Im3dImpl.NewFrame (
+            g_camera.fov_in_degrees,
+            ifx !ImGui.GetIO ().WantCaptureMouse && !g_should_capture_mouse && SDL_GetMouseFocus () == g_window
+                then GetMousePosition (g_window)
+                else .{-Math.FLOAT32_MAX, -Math.FLOAT32_MAX},
+            g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
         Im3d.NewFrame ();
 
         Im3d.GizmoTranslation ("Point", *point.n);
