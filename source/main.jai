@@ -5,6 +5,8 @@ using, only (.["+", "-", "*", "/"]) Basic;
 #import "SDL";
 #import "GL";
 GL_Utils :: #import "GL_Utils";
+#import "Random64";
+
 Im3d :: #import "Im3d";
 Im3dImpl :: #import "Im3d/Impl/GL";
 ImGui :: #import "ImGui";
@@ -27,6 +29,7 @@ Ceil :: Math.ceil;
 #load "camera.jai";
 #load "debug_draw.jai";
 #load "physics.jai";
+#load "noise.jai";
 
 g_window : *SDL_Window;
 g_camera : Camera;
