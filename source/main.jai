@@ -4,7 +4,7 @@ using, only (.["+", "-", "*", "/"]) Basic;
 #import "Common";
 #import "SDL";
 #import "GL";
-#import "GL_Utils";
+GL_Utils :: #import "GL_Utils";
 Im3d :: #import "Im3d";
 Im3dImpl :: #import "Im3d/Impl/GL";
 ImGui :: #import "ImGui";

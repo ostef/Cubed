@@ -44,27 +44,7 @@ EnsureInit :: ()
     if g_debug_draw_initialized
         return;
 
-    vertex_shader := glCreateShader (GL_VERTEX_SHADER);
-    defer glDeleteShader (vertex_shader);
-
-    vertex_source := Vertex_Shader;
-    glShaderSource (vertex_shader, 1, *vertex_source.data, null);
-    glCompileShader (vertex_shader);
-    HandleShaderFailure (vertex_shader, "vertex shader");
-
-    fragment_shader := glCreateShader (GL_FRAGMENT_SHADER);
-    defer glDeleteShader (fragment_shader);
-
-    fragment_source := Fragment_Shader;
-    glShaderSource (fragment_shader, 1, *fragment_source.data, null);
-    glCompileShader (fragment_shader);
-    HandleShaderFailure (fragment_shader, "fragment shader");
-
-    g_debug_draw_shader = glCreateProgram ();
-    glAttachShader (g_debug_draw_shader, vertex_shader);
-    glAttachShader (g_debug_draw_shader, fragment_shader);
-    glLinkProgram (g_debug_draw_shader);
-    HandleShaderFailure (g_debug_draw_shader, "shader program", is_shader = false);
+    g_debug_draw_shader = GL_Utils.CreateShaderProgram (Vertex_Shader, Fragment_Shader);
 
     glGenVertexArrays (1, *g_debug_draw_vao);
     glBindVertexArray (g_debug_draw_vao);
