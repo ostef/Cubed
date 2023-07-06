@@ -121,8 +121,8 @@ SurfaceParams :: struct
     water_level : s32 = 126;
     surface_range := Vec2i.{100, 300};
     noise_params : [TerrainNoise.Count]NoiseParams = .[
-        .{scale=0.05, octaves=1},
-        .{scale=0.05, octaves=1},
+        .{scale=0.00148, octaves=2, persistance=0.074, lacunarity=1.239},
+        .{scale=0.00295, octaves=2, persistance=0.054, lacunarity=1.684},
         .{scale=0.00134, octaves=3, persistance=0.250, lacunarity=3.085},
         .{scale=0.00161, octaves=3, persistance=0.268, lacunarity=2.897},
         .{scale=0.00306, octaves=4, persistance=0.322, lacunarity=2.665},
@@ -163,6 +163,7 @@ CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x :
 
         Assert (surface_params.spline != null, "Surface spline is null (did you forget to call InitDefaultSurfaceSpline?)");
         surface_level := HermiteCubicCalculate (surface_params.spline, t_values);
+        surface_level = Lerp (-0.07, 1.4, surface_level);
 
         return surface_level;
     }
