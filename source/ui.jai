@@ -28,7 +28,7 @@ GenerateNoiseTexture :: (tex : *GLuint,
                 max_non_normalized = val;
             val = InverseLerp (-max_val, max_val, val);
 
-            buffer[y * height + x] = ImGui.GetColorU32 (.{val, val, val, 1});
+            buffer[y * width + x] = ImGui.GetColorU32 (.{val, val, val, 1});
         }
     }
 
