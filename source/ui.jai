@@ -143,60 +143,153 @@ Grass_Color :: Vec4f.{0.387, 0.700, 0.250, 1};
 Mountain_Color :: Vec4f.{0.593, 0.689, 0.551, 1};
 Snow_Color :: Vec4f.{0.914, 0.958, 1.000, 1};
 
-#scope_export
-
-GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, using generator : Generator, param : TerrainParam)
+GetSurfaceColor :: inline (using params : SurfaceParams, surface_level : float) -> u32 #must
 {
-    buffer := Alloc (u32, width * height, Temp);
-
-    if param == .Surface_Height
+    if surface_level < cast (float) water_level - 20
     {
-        for y : 0..height - 1
-        {
-            for x : 0..width - 1
-            {
-                surface_level := cast (float) CalculateTerrainParam (generator, param, xx x, xx y, normalized = false);
-
-                color : u32 = ---;
-                if surface_level < cast (float) surface_params.water_level - 20
-                {
-                    color = ImGui.GetColorU32 (Deep_Ocean_Color);
-                }
-                else if surface_level < cast (float) surface_params.water_level
-                {
-                    color = ImGui.GetColorU32 (Water_Color);
-                }
-                else if surface_level < cast (float) surface_params.water_level + 5
-                {
-                    color = ImGui.GetColorU32 (Beach_Color);
-                }
-                else if surface_level < cast (float) surface_params.water_level + 60
-                {
-                    color = ImGui.GetColorU32 (Grass_Color);
-                }
-                else if surface_level < cast (float) surface_params.water_level + 110
-                {
-                    color = ImGui.GetColorU32 (Mountain_Color);
-                }
-                else
-                {
-                    color = ImGui.GetColorU32 (Snow_Color);
-                }
-
-                buffer[y * height + x] = color;
-            }
-        }
+        return ImGui.GetColorU32 (Deep_Ocean_Color);
+    }
+    else if surface_level < cast (float) water_level
+    {
+        return ImGui.GetColorU32 (Water_Color);
+    }
+    else if surface_level < cast (float) water_level + 5
+    {
+        return ImGui.GetColorU32 (Beach_Color);
+    }
+    else if surface_level < cast (float) water_level + 60
+    {
+        return ImGui.GetColorU32 (Grass_Color);
+    }
+    else if surface_level < cast (float) water_level + 110
+    {
+        return ImGui.GetColorU32 (Mountain_Color);
     }
     else
     {
-        for y : 0..height - 1
+        return ImGui.GetColorU32 (Snow_Color);
+    }
+}
+
+#scope_export
+
+Threads :: #import "Thread";
+
+GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, generator : *Generator, param : TerrainParam, use_threads := false)
+{
+    WorkerData :: struct
+    {
+        buffer : *u32;
+        width, height : s32;
+        working_x, working_y, working_w, working_h : s32;
+        using generator : *Generator;
+        param : TerrainParam;
+    }
+
+    WorkerProc :: (group : *Threads.Thread_Group, thread : *Threads.Thread, work : *void) -> Threads.Thread_Continue_Status
+    {
+        using data := cast (*WorkerData) work;
+
+        if param == .Surface_Height
         {
-            for x : 0..width - 1
+            for y : working_y..working_y + working_h - 1
             {
-                val := cast (float) CalculateTerrainParam (generator, param, xx x, xx y, normalized = false);
-                buffer[y * height + x] = ImGui.GetColorU32 (.{val, val, val, 1});
+                for x : working_x..working_x + working_w - 1
+                {
+                    surface_level := cast (float) CalculateTerrainParam (generator, param, xx x, xx y, normalized = false);
+                    buffer[y * width + x] = GetSurfaceColor (surface_params, surface_level);
+                }
             }
         }
+        else
+        {
+            for y : working_y..working_y + working_h - 1
+            {
+                for x : working_x..working_x + working_w - 1
+                {
+                    val := cast (float) CalculateTerrainParam (generator, param, xx x, xx y, normalized = false);
+                    buffer[y * width + x] = ImGui.GetColorU32 (.{val, val, val, 1});
+                }
+            }
+        }
+
+        return .CONTINUE;
+    }
+
+    System :: #import "System";
+
+    buffer := Alloc (u32, width * height, Temp);
+
+    start_time := Basic.current_time_monotonic ();
+    if !use_threads
+    {
+        data : WorkerData;
+        data.buffer = buffer;
+        data.width = width;
+        data.height = height;
+        data.generator = generator;
+        data.param = param;
+        data.working_x = 0;
+        data.working_y = 0;
+        data.working_w = width;
+        data.working_h = height;
+        WorkerProc (null, null, *data);
+    }
+    else
+    {
+        thread_count := Clamp (System.get_number_of_processors (.PERFORMANCE_PHYSICAL), 1, 200);
+
+        // With this method there might be more threads created that what the CPU can do,
+        // because we ceil the sqrt of thread_count, but it's better to have 1 more than
+        // way less than we can do
+        threads_on_x := Max (cast (s32) Ceil (Sqrt (cast (float) thread_count)), 1);
+        threads_on_y := threads_on_x;
+
+        group : Threads.Thread_Group;
+        Threads.init (*group, threads_on_x * threads_on_y, WorkerProc);
+        group.name = "GenerateTerrainTexture";
+        // GenerateTerrainTexture should not allocate, but just in case we set the allocator
+        // to null because I don't want to have to think about thread safety of allocations
+        group.allocator = .{};
+
+        Threads.start (*group);
+
+        worker_data := AllocArray (WorkerData, threads_on_x * threads_on_y, Temp, initialize = true);
+        for y : 0..threads_on_y - 1
+        {
+            for x : 0..threads_on_x - 1
+            {
+                data := *worker_data[y * threads_on_x + x];
+                data.buffer = buffer;
+                data.width = width;
+                data.height = height;
+                data.generator = generator;
+                data.param = param;
+
+                data.working_x = x * (width / threads_on_x);
+                data.working_y = y * (height / threads_on_y);
+                if x == threads_on_x - 1
+                    data.working_w = width - data.working_x;
+                else
+                    data.working_w = (width / threads_on_x);
+                if y == threads_on_y - 1
+                    data.working_h = height - data.working_y;
+                else
+                    data.working_h = (height / threads_on_y);
+
+                Threads.add_work (*group, data, FormatString (Temp, "%,%,%,%", data.working_x, data.working_y, data.working_w, data.working_h));
+            }
+        }
+
+        remaining := threads_on_y * threads_on_x;
+        while remaining > 0
+        {
+            Basic.sleep_milliseconds (5);
+            results := Threads.get_completed_work (*group);
+            remaining -= xx results.count;
+        }
+
+        Threads.shutdown (*group);
     }
 
     if !tex.*
@@ -208,6 +301,11 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, using gener
     glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, xx width, xx height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+
+    end_time := Basic.current_time_monotonic ();
+    elapsed := cast (float) (Basic.to_float64_seconds (end_time - start_time));
+
+    Println ("Generated terrain texture in % seconds", elapsed);
 }
 
 #scope_file
@@ -219,6 +317,7 @@ g_ui_terrain_generator : struct
     size : s32 = 4096;
     texture_size : s32 = 256;
     selected_param := TerrainParam.Surface_Height;
+    use_threads := true;
 };
 
 #scope_export
@@ -234,7 +333,9 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     if !ImGui.Begin ("Terrain Generator", opened)
         return;
 
-    lines := 9;
+    lines := 7;
+    if selected_param < xx TerrainNoise.Count
+        lines += 4;
     child_height := cast (float) ImGui.GetContentRegionAvail ().y - lines * ImGui.GetFrameHeightWithSpacing ();
     if child_height > 0
     {
@@ -276,6 +377,8 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
             should_generate = true;
     }
 
+    ImGui.Checkbox ("Use Threads", *use_threads);
+
     if ImGui.Button ("Generate")
         should_generate = true;
 
@@ -290,7 +393,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     if should_generate
     {
         GenerateNoiseOffsets (*generator);
-        GenerateTerrainTexture (*texture_handle, size, size, generator, selected_param);
+        GenerateTerrainTexture (*texture_handle, size, size, *generator, selected_param, use_threads);
     }
 }
 
