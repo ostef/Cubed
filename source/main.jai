@@ -22,6 +22,7 @@ Acos :: Math.acos;
 Asin :: Math.asin;
 Atan :: Math.atan;
 Atan2 :: Math.atan2;
+Sqrt :: Math.sqrt;
 Floor :: Math.floor;
 Ceil :: Math.ceil;
 
@@ -93,6 +94,13 @@ UpdateIm3dKeys :: ()
 
 main :: ()
 {
+    #if OS == .WINDOWS
+    {
+        Winmm :: #system_library "Winmm";
+        timeBeginPeriod :: (uPeriod : u32) -> u32 #foreign Winmm;
+        timeBeginPeriod (1);
+    }
+
     context.logger = ConsoleLoggerProc;
 
     if SDL_Init (SDL_INIT_VIDEO) != 0
