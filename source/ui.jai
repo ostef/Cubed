@@ -237,16 +237,13 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, generator :
     }
     else
     {
-        thread_count := Clamp (System.get_number_of_processors (.PERFORMANCE_PHYSICAL), 1, 200);
+        thread_count := Clamp (System.get_number_of_processors (.PERFORMANCE_LOGICAL), 1, 200);
 
-        // With this method there might be more threads created that what the CPU can do,
-        // because we ceil the sqrt of thread_count, but it's better to have 1 more than
-        // way less than we can do
         threads_on_x := Max (cast (s32) Ceil (Sqrt (cast (float) thread_count)), 1);
         threads_on_y := threads_on_x;
 
         group : Threads.Thread_Group;
-        Threads.init (*group, threads_on_x * threads_on_y, WorkerProc);
+        Threads.init (*group, thread_count, WorkerProc);
         group.name = "GenerateTerrainTexture";
         // GenerateTerrainTexture should not allocate, but just in case we set the allocator
         // to null because I don't want to have to think about thread safety of allocations
