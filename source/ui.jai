@@ -245,6 +245,9 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     if ImGui.SliderInt ("Size", *size, 16, 4096)
         should_generate = true;
 
+    if ImGui.SliderInt ("Water Level", *generator.surface_params.water_level, 0, 320)
+        should_generate = true;
+
     terrain_param_names := Alloc (*u8, cast (s64) TerrainParam.Count, Temp);
     for i : 0..xx TerrainParam.Count - 1
         terrain_param_names[i] = StringCloneToCString (type_info (TerrainParam).names[i], Temp);
