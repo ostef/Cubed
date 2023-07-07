@@ -7,6 +7,7 @@ fmt :: #import "Fmt";
 #scope_export
 
 FormatString :: fmt.format;
+FormatToCString :: fmt.format_to_cstring;
 Print :: fmt.print;
 Println :: fmt.println;
 
