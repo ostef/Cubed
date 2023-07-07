@@ -125,8 +125,14 @@ SurfaceParams :: struct
 {
     spline : *Spline;
     spline_y_range : Vec2f;
-    water_level : s32 = 128;
-    noise_params : [TerrainNoise.Count]NoiseParams = .[
+    water_level : s32 = 64;
+    noise_amplitudes := float.[
+        2.31,   // Temperature
+        1.76,   // Humidity
+        3.80,   // Continentalness
+        2.52,   // Erosion
+        2.97    // Weirdness
+    ];
         .{scale=0.00041, octaves=3, persistance=0.023, lacunarity=2.379},
         .{scale=0.00145, octaves=4, persistance=0.139, lacunarity=3.476},
         .{scale=0.00013, octaves=6, persistance=0.250, lacunarity=4.085},
@@ -144,22 +150,12 @@ CalculateTerrainNoise :: inline (using generator : Generator, noise : TerrainNoi
     return val / max_val;
 }
 
-CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x : float, y : float, $normalized := false) -> float #must
+CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x : float, y : float) -> float #must
 {
-    Noise_Amplitude :: float.[
-        2.31,   // Temperature
-        1.76,   // Humidity
-        3.80,   // Continentalness
-        2.52,   // Erosion
-        2.97    // Weirdness
-    ];
-
     if param < xx TerrainNoise.Count
     {
         val := CalculateTerrainNoise (generator, cast (TerrainNoise) param, x, y);
-        val *= Noise_Amplitude[xx param];
-        #if normalized
-            val = (val + 1) * 0.5;
+        val *= surface_params.noise_amplitudes[xx param];
 
         return val;
     }
@@ -167,8 +163,6 @@ CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x :
     {
         weirdness := CalculateTerrainParam (generator, .Weirdness, x, y);
         weirdness = Abs (3 * Abs (weirdness) - 2);
-        #if normalized
-            weirdness = (weirdness + 1) * 0.5;
 
         return weirdness;
     }
@@ -186,19 +180,14 @@ CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x :
         }
 
         Assert (surface_params.spline != null, "Surface spline is null (did you forget to call InitDefaultSurfaceSpline?)");
-        depth := HermiteCubicCalculate (surface_params.spline, t_values) + 0.015;
-        #if normalized
-            return InverseLerp (surface_params.spline_y_range.x, surface_params.spline_y_range.y, depth);
-        else
-            return depth;
+        depth := HermiteCubicCalculate (surface_params.spline, t_values) - 0.015;
+        return depth;
     }
     else if param == .Surface_Height
     {
-        depth := CalculateTerrainParam (generator, .Depth, x, y, normalized = normalized);
-        #if normalized
-            return depth;
-        else
-            return 128 + depth * 128;
+        depth := CalculateTerrainParam (generator, .Depth, x, y);
+        // return 128 + depth * 128;
+        return (1 - (83.0 / 160.0) + depth) * (10000.0 / 76.0);
     }
 
     return 0;

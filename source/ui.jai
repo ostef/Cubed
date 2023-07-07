@@ -175,13 +175,14 @@ GetSurfaceColor :: inline (using params : SurfaceParams, surface_level : float) 
 
 Threads :: #import "Thread";
 
-GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, generator : *Generator, param : TerrainParam, use_threads := false)
+GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, scale : float, generator : *Generator, param : TerrainParam, use_threads := false)
 {
     WorkerData :: struct
     {
         buffer : *u32;
         width, height : s32;
         working_x, working_y, working_w, working_h : s32;
+        scale : float;
         using generator : *Generator;
         param : TerrainParam;
     }
@@ -196,7 +197,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, generator :
             {
                 for x : working_x..working_x + working_w - 1
                 {
-                    surface_level := cast (float) CalculateTerrainParam (generator, param, xx x, xx y, normalized = false);
+                    surface_level := cast (float) CalculateTerrainParam (generator, param, x * scale, y * scale);
                     buffer[y * width + x] = GetSurfaceColor (surface_params, surface_level);
                 }
             }
@@ -207,7 +208,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, generator :
             {
                 for x : working_x..working_x + working_w - 1
                 {
-                    val := cast (float) CalculateTerrainParam (generator, param, xx x, xx y, normalized = false);
+                    val := cast (float) CalculateTerrainParam (generator, param, x * scale, y * scale);
                     buffer[y * width + x] = ImGui.GetColorU32 (.{val, val, val, 1});
                 }
             }
@@ -228,6 +229,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, generator :
         data.width = width;
         data.height = height;
         data.generator = generator;
+        data.scale = scale;
         data.param = param;
         data.working_x = 0;
         data.working_y = 0;
@@ -260,6 +262,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, generator :
                 data.buffer = buffer;
                 data.width = width;
                 data.height = height;
+                data.scale = scale;
                 data.generator = generator;
                 data.param = param;
 
@@ -311,9 +314,11 @@ g_ui_terrain_generator : struct
 {
     generator : Generator;
     texture_handle : GLuint;
-    size : s32 = 4096;
-    texture_size : s32 = 256;
+    size : s32 = 1024;
+    texture_size : s32 = 512;
+    scale : float = 16;
     selected_param := TerrainParam.Surface_Height;
+    show_param := TerrainParam.Surface_Height;
     use_threads := true;
 };
 
@@ -330,7 +335,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     if !ImGui.Begin ("Terrain Generator", opened)
         return;
 
-    lines := 7;
+    lines := 8;
     if selected_param < xx TerrainNoise.Count
         lines += 4;
     child_height := cast (float) ImGui.GetContentRegionAvail ().y - lines * ImGui.GetFrameHeightWithSpacing ();
@@ -351,11 +356,9 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
 
     ImGui.LabelText ("Seed", "%lld", generator.seed);
     ImGui.SliderInt ("Texture Size", *texture_size, 128, 4096);
-    if ImGui.SliderInt ("Size", *size, 16, 4096)
-        should_generate = true;
-
-    if ImGui.SliderInt ("Water Level", *generator.surface_params.water_level, 0, 320)
-        should_generate = true;
+    should_generate |= ImGui.SliderInt ("Size", *size, 16, 4096);
+    should_generate |= ImGui.SliderFloat ("Scale", *scale, 1, 4096);
+    should_generate |= ImGui.SliderInt ("Water Level", *generator.surface_params.water_level, 0, 320);
 
     terrain_param_names := Alloc (*u8, cast (s64) TerrainParam.Count, Temp);
     for i : 0..xx TerrainParam.Count - 1
@@ -368,16 +371,19 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
 
     selected_param = xx selected_param_s32;
 
+    show_param_s32 := cast (s32) show_param;
+    should_generate |= ImGui.Combo ("Show Param", *show_param_s32, terrain_param_names, xx TerrainParam.Count);
+    show_param = xx show_param_s32;
+
     if selected_param < xx TerrainNoise.Count
     {
-        if UIShowNoiseParams (0, *generator.surface_params.noise_params[xx selected_param])
-            should_generate = true;
+        should_generate |= ImGui.SliderFloat ("Amplitude", *generator.surface_params.noise_amplitudes[xx selected_param], 0.1, 5);
+        should_generate |= UIShowPerlinFractalParams (0, *generator.surface_params.noise_params[xx selected_param]);
     }
 
     ImGui.Checkbox ("Use Threads", *use_threads);
 
-    if ImGui.Button ("Generate")
-        should_generate = true;
+    should_generate |= ImGui.Button ("Generate");
 
     ImGui.SameLine ();
 
