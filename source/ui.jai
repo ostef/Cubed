@@ -70,7 +70,7 @@ UIShowNoiseParams :: (id : ImGui.ID, params : *NoiseParams) -> bool
     defer ImGui.PopID ();
 
     result := false;
-    result |= ImGui.SliderFloat ("Scale", *params.scale, 0.001, 0.2, "%.6f");
+    result |= ImGui.SliderFloat ("Scale", *params.scale, 0.0001, 0.2, "%.6f", flags = .Logarithmic);
     result |= ImGui.SliderInt ("Octaves", *params.octaves, 1, Perlin_Fractal_Max_Octaves);
     result |= ImGui.SliderFloat ("Persistance", *params.persistance, 0.001, 1);
     result |= ImGui.SliderFloat ("Lacunarity", *params.lacunarity, 1, 10);
@@ -342,9 +342,9 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
 
     should_generate := false;
 
-    lines := 8;
+    lines := 9;
     if selected_param < xx TerrainNoise.Count
-        lines += 4;
+        lines += 5;
     child_height := cast (float) ImGui.GetContentRegionAvail ().y - lines * ImGui.GetFrameHeightWithSpacing ();
     if child_height > 0
     {
