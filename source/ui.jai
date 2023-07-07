@@ -175,13 +175,14 @@ GetSurfaceColor :: inline (using params : SurfaceParams, surface_level : float) 
 
 Threads :: #import "Thread";
 
-GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, scale : float, generator : *Generator, param : TerrainParam, use_threads := false)
+GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Vec2f, scale : float, generator : *Generator, param : TerrainParam, use_threads := false)
 {
     WorkerData :: struct
     {
         buffer : *u32;
         width, height : s32;
         working_x, working_y, working_w, working_h : s32;
+        offset : Vec2f;
         scale : float;
         using generator : *Generator;
         param : TerrainParam;
@@ -197,7 +198,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, scale : flo
             {
                 for x : working_x..working_x + working_w - 1
                 {
-                    surface_level := cast (float) CalculateTerrainParam (generator, param, x * scale, y * scale);
+                    surface_level := cast (float) CalculateTerrainParam (generator, param, offset.x + x * scale, offset.y + y * scale);
                     buffer[y * width + x] = GetSurfaceColor (surface_params, surface_level);
                 }
             }
@@ -208,7 +209,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, scale : flo
             {
                 for x : working_x..working_x + working_w - 1
                 {
-                    val := cast (float) CalculateTerrainParam (generator, param, x * scale, y * scale);
+                    val := cast (float) CalculateTerrainParam (generator, param, offset.x + x * scale, offset.y + y * scale);
                     buffer[y * width + x] = ImGui.GetColorU32 (.{val, val, val, 1});
                 }
             }
@@ -229,6 +230,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, scale : flo
         data.width = width;
         data.height = height;
         data.generator = generator;
+        data.offset = offset;
         data.scale = scale;
         data.param = param;
         data.working_x = 0;
@@ -262,6 +264,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, scale : flo
                 data.buffer = buffer;
                 data.width = width;
                 data.height = height;
+                data.offset = offset;
                 data.scale = scale;
                 data.generator = generator;
                 data.param = param;
@@ -312,11 +315,13 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, scale : flo
 
 g_ui_terrain_generator : struct
 {
+    offset : Vec2f;
+    scale : float = 16;
+    dragging_map : bool;
     generator : Generator;
     texture_handle : GLuint;
     size : s32 = 1024;
     texture_size : s32 = 512;
-    scale : float = 16;
     selected_param := TerrainParam.Surface_Height;
     show_param := TerrainParam.Surface_Height;
     use_threads := true;
@@ -335,6 +340,8 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     if !ImGui.Begin ("Terrain Generator", opened)
         return;
 
+    should_generate := false;
+
     lines := 8;
     if selected_param < xx TerrainNoise.Count
         lines += 4;
@@ -344,12 +351,27 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
         if ImGui.BeginChild ("Image", .{0, child_height}, true, .HorizontalScrollbar)
         {
             if texture_handle
+            {
                 ImGui.Image (cast (ImGui.ImTextureID) texture_handle, .{xx texture_size, xx texture_size});
+
+                if ImGui.IsMouseDragging (.Left) && (dragging_map || ImGui.IsItemHovered ())
+                {
+                    drag_scale := scale * (size / cast (float) texture_size);
+                    offset -= ImGui.GetMouseDragDelta (.Left) * drag_scale;
+                    ImGui.ResetMouseDragDelta (.Left);
+                    dragging_map = true;
+
+                    should_generate = true;
+                }
+                else
+                {
+                    dragging_map = false;
+                }
+            }
         }
         ImGui.EndChild ();
     }
 
-    should_generate := false;
 
     if !texture_handle
         should_generate = true;
@@ -375,7 +397,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     if selected_param < xx TerrainNoise.Count
     {
         should_generate |= ImGui.SliderFloat ("Amplitude", *generator.surface_params.noise_amplitudes[xx selected_param], 0.1, 5);
-        should_generate |= UIShowPerlinFractalParams (0, *generator.surface_params.noise_params[xx selected_param]);
+        should_generate |= UIShowNoiseParams (0, *generator.surface_params.noise_params[xx selected_param]);
     }
 
     ImGui.Checkbox ("Use Threads", *use_threads);
@@ -393,7 +415,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     if should_generate
     {
         GenerateNoiseOffsets (*generator);
-        GenerateTerrainTexture (*texture_handle, size, size, scale, *generator, show_param, use_threads);
+        GenerateTerrainTexture (*texture_handle, size, size, offset, scale, *generator, show_param, use_threads);
     }
 }
 
