@@ -133,6 +133,7 @@ SurfaceParams :: struct
         2.52,   // Erosion
         2.97    // Weirdness
     ];
+    noise_params : [TerrainNoise.Count]NoiseParams = .[
         .{scale=0.00041, octaves=3, persistance=0.023, lacunarity=2.379},
         .{scale=0.00145, octaves=4, persistance=0.139, lacunarity=3.476},
         .{scale=0.00013, octaves=6, persistance=0.250, lacunarity=4.085},
