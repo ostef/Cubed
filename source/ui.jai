@@ -365,10 +365,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
         terrain_param_names[i] = StringCloneToCString (type_info (TerrainParam).names[i], Temp);
 
     selected_param_s32 := cast (s32) selected_param;
-
-    if ImGui.Combo ("Param", *selected_param_s32, terrain_param_names, xx TerrainParam.Count)
-        should_generate = true;
-
+    ImGui.Combo ("Edit Param", *selected_param_s32, terrain_param_names, xx TerrainParam.Count);
     selected_param = xx selected_param_s32;
 
     show_param_s32 := cast (s32) show_param;
@@ -396,7 +393,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     if should_generate
     {
         GenerateNoiseOffsets (*generator);
-        GenerateTerrainTexture (*texture_handle, size, size, *generator, selected_param, use_threads);
+        GenerateTerrainTexture (*texture_handle, size, size, scale, *generator, show_param, use_threads);
     }
 }
 
