@@ -48,6 +48,7 @@ g_settings : struct
 {
     render_distance := 6;
 }
+g_world : World;
 
 GetMousePosition :: inline (window : *SDL_Window = null) -> Vec2f #must
 {
@@ -200,7 +201,9 @@ main :: ()
     b_aabb := AABB.{.{2, 2, 2}, .{3, 3, 3}};
     point := Vec3f.{-1, 0.5, 0.7};
 
-    g_camera.position.z = -10;
+    WorldInit (*g_world, RandomGetU64 (*context.random_number_generator));
+
+    g_camera.position.y = xx g_world.surface_params.water_level + 10.0;
     delta_time := 1 / 60.0;
     quit := false;
     while !quit
@@ -264,6 +267,9 @@ main :: ()
             g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
         Im3d.NewFrame ();
 
+        WorldGenerateAroundPosition (*g_world, g_camera.position, g_settings.render_distance);
+
+        /*
         Im3d.GizmoTranslation ("Point", *point.n);
 
         a_center := AABBCenter (a_aabb);
@@ -300,6 +306,7 @@ main :: ()
         }
 
         Im3d.PopColor ();
+        */
 
         Im3d.EndFrame ();
 
@@ -309,7 +316,9 @@ main :: ()
         glClearColor (0.1, 0.1, 0.1, 1.0);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
+        DrawWorld (*g_world, *g_camera);
+
+        // Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
 
         ImGuiGL.RenderDrawData (ImGui.GetDrawData ());
 

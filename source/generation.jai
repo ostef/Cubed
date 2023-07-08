@@ -129,7 +129,7 @@ SurfaceParams :: struct
     noise_amplitudes := float.[
         2.31,   // Temperature
         1.76,   // Humidity
-        3.80,   // Continentalness
+        2.13,   // Continentalness
         2.52,   // Erosion
         2.97    // Weirdness
     ];
@@ -144,9 +144,8 @@ SurfaceParams :: struct
 
 CalculateTerrainNoise :: inline (using generator : Generator, noise : TerrainNoise, x : float, y : float) -> float #must
 {
-    noise_params := generator.surface_params.noise_params[noise];
-    max_val := cast (float) PerlinFractalMax (noise_params.octaves, noise_params.persistance);
-    val := cast (float) PerlinFractalNoise (noise_params, generator.noise_offsets[noise], x, y);
+    max_val := cast (float) PerlinFractalMax (noise_params[noise].octaves, noise_params[noise].persistance);
+    val := cast (float) PerlinFractalNoise (noise_params[noise], noise_offsets[noise], x, y);
 
     return val / max_val;
 }
@@ -198,7 +197,7 @@ Generator :: struct
 {
     seed : u64;
     noise_offsets : [TerrainNoise.Count][Perlin_Fractal_Max_Octaves]Vec2f;
-    surface_params : SurfaceParams;
+    using surface_params : SurfaceParams;
 }
 
 CreateSpline :: inline (surface_params : *SurfaceParams, t_value_index : s64, allocator := context.allocator) -> *Spline #must

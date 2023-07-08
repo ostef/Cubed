@@ -156,10 +156,10 @@ LoadTextureAtlas :: (textures_dirname : string) -> bool
     #import "stb_image";
 
     Texture_Names :: string.[
-        "dirt.png",
+        "water.png",
         "stone.png",
         "bedrock.png",
-        "water.png",
+        "dirt.png",
         "five.png",
         "six.png",
         "seven.png",
@@ -261,7 +261,7 @@ DrawWorld :: (world : *World, camera : *Camera)
         camera_horizontal_pos := Vec2f.{camera.position.x, camera.position.z};
         world_chunk_pos := Vec2f.{xx (it.x * Chunk_Size), xx (it.z * Chunk_Size)};
 
-        if Distance (world_chunk_pos, camera_horizontal_pos) < xx g_settings.render_distance
+        if Distance (world_chunk_pos, camera_horizontal_pos) < xx (g_settings.render_distance * Chunk_Size)
         {
             ChunkGenerateMeshes (it);
             ArrayPush (*chunks_to_draw, it);
@@ -269,12 +269,15 @@ DrawWorld :: (world : *World, camera : *Camera)
     }
 
     GL_Utils.EnableBlock (GL_BLEND);
+    GL_Utils.BlendFuncStateBlock ();
+    GL_Utils.EnableBlock (GL_DEPTH_TEST);
+    GL_Utils.EnableBlock (GL_CULL_FACE);
     GL_Utils.StateBlock (GL_ACTIVE_TEXTURE, (prev : GLenum) {glActiveTexture (prev);});
     GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D, prev);});
     GL_Utils.StateBlock (GL_CURRENT_PROGRAM, (prev : GLuint) {glUseProgram (prev);});
-    GL_Utils.BlendFuncStateBlock ();
 
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glFrontFace (GL_CW);
 
     glActiveTexture (0);
     glBindTexture (GL_TEXTURE_2D, g_texture_atlas);

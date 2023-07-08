@@ -153,6 +153,13 @@ ChunkCleanup :: (chunk : *Chunk)
     glDeleteBuffers (chunk.vbos.count, chunk.vbos.data);
 }
 
+ChunkPositionFromWorldPosition :: inline (x : s64, z : s64) -> x : s64, z : s64
+{
+    return
+        x / Chunk_Size - cast (s64) (x < 0),
+        z / Chunk_Size - cast (s64) (z < 0);
+}
+
 ChunkBlockIndex :: inline (x : s64, y : s64, z : s64) -> s64 #must
 {
     return y * Chunk_Size * Chunk_Size + z * Chunk_Size + x;
@@ -228,12 +235,13 @@ ChunkGenerate :: (world : *World, chunk : *Chunk)
 
                 index := ChunkBlockIndex (x, y, z);
                 surface_height := CalculateTerrainParam (world, .Surface_Height, xx sample_x, xx sample_z);
+                // Println ("% % % : %", sample_x, sample_z, y, surface_height);
 
                 if y == 0
                 {
                     chunk.blocks[index].kind = .Bedrock;
                 }
-                else if cast (float) y > surface_height
+                else if y > cast (int) surface_height
                 {
                     if y <= world.surface_params.water_level
                         chunk.blocks[index].kind = .Water;
@@ -463,7 +471,7 @@ WorldCreateChunk :: (world : *World, x : s64, z : s64) -> *Chunk #must
     if chunk
         return chunk;
 
-    chunk = Alloc (Chunk, 1);
+    chunk = Alloc (Chunk);
     ChunkInit (chunk, x, z);
     chunk.east  = WorldGetChunk (world, x + 1, z);
     chunk.west  = WorldGetChunk (world, x - 1, z);
@@ -497,4 +505,25 @@ WorldCreateChunk :: (world : *World, x : s64, z : s64) -> *Chunk #must
     HashMapInsert (*world.all_loaded_chunks, .{x, z}, chunk);
 
     return chunk;
+}
+
+WorldGenerateAroundPosition :: (world : *World, position : Vec3f, distance_in_chunks : int)
+{
+    chunk_x, chunk_z := ChunkPositionFromWorldPosition (cast (s64) position.x, cast (s64) position.z);
+
+    for z : chunk_z - distance_in_chunks..chunk_z + distance_in_chunks
+    {
+        for x : chunk_x - distance_in_chunks..chunk_x + distance_in_chunks
+        {
+            horizontal_pos := Vec2f.{position.x, position.z};
+            chunk_pos := Vec2f.{xx (x * Chunk_Size), xx (z * Chunk_Size)};
+
+            if Distance (horizontal_pos, chunk_pos) < xx (distance_in_chunks * Chunk_Size)
+            {
+                chunk := WorldCreateChunk (world, x, z);
+                if !chunk.is_generated
+                    ChunkGenerate (world, chunk);
+            }
+        }
+    }
 }
