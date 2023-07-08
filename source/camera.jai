@@ -33,9 +33,9 @@ UpdateFlyingCamera :: (using cam : *Camera, delta_time : float, allow_movement :
         movement_input = Normalized (movement_input);
     }
 
-    speed := 1.0;
+    speed := 2.0;
     if IsKeyDown (SDLK_LSHIFT)
-        speed = 10;
+        speed *= 10;
 
     position += speed * delta_time * (
         RightVector (transform_matrix)   * movement_input.x +
