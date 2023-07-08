@@ -1,7 +1,11 @@
+Enable_Chunk_Bounds_Check :: true;
+
 Basic :: #import "Basic";
 using, only (.["+", "-", "*", "/"]) Basic;
 
 #import "Common";
+#import "Array";
+#import "Hash_Map";
 #import "SDL";
 #import "GL";
 GL_Utils :: #import "GL_Utils";
@@ -28,16 +32,22 @@ Ceil :: Math.ceil;
 
 #load "linalg.jai";
 #load "camera.jai";
+#load "draw.jai";
 #load "debug_draw.jai";
 #load "physics.jai";
 #load "noise.jai";
 #load "world.jai";
+#load "generation.jai";
 #load "ui.jai";
 
 g_window : *SDL_Window;
 g_camera : Camera;
 g_mouse_delta : Vec2f;
 g_should_capture_mouse : bool;
+g_settings : struct
+{
+    render_distance := 6;
+}
 
 GetMousePosition :: inline (window : *SDL_Window = null) -> Vec2f #must
 {
@@ -139,6 +149,9 @@ main :: ()
 
     LogMessage ("GL version: %", MakeString (glGetString (GL_VERSION)));
 
+    if !DrawInit ("data/textures")
+        return;
+
     ImGui.CreateContext ();
     defer ImGui.DestroyContext ();
 
@@ -237,7 +250,8 @@ main :: ()
         ImGuiSDL.NewFrame ();
         ImGui.NewFrame ();
 
-        ImGui.DockSpaceOverViewport (null, .PassthruCentralNode);
+        // If we have a dockspace then ImGui will always ask to capture keyboard
+        // ImGui.DockSpaceOverViewport (null, .PassthruCentralNode);
         UIUpdate ();
 
         UpdateIm3dKeys ();

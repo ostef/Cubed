@@ -1,566 +1,500 @@
-// Resources:
-// Minecraft terrain generation in a nutshell, by Henrik Kniberg: https://www.youtube.com/watch?v=CSa5O6knuwI
-// Cubiomes, a C library that mimics the Minecraft biome generation: https://github.com/Cubitect/cubiomes
-// https://minecraft.fandom.com/wiki/Biome
-
-Max_Spline_Points :: 20;
-
-SplinePoint :: struct
+BlockFace :: enum u8
 {
-    location : float;
-    value : float;
-    derivative : float;
-    nested_spline : *Spline;
+    East;
+    West;
+    Above;
+    Below;
+    North;
+    South;
 }
 
-Spline :: struct
+BlockFaceFlags :: enum_flags
 {
-    next : *Spline;
-    t_value_index : int;
-    point_count : s64;
-    points : [Max_Spline_Points]SplinePoint;
+    East;
+    West;
+    Above;
+    Below;
+    North;
+    South;
 }
 
-SplinePushPoint :: inline (using spline : *Spline, derivative : float, location : float, value : float)
+BlockFaceCorner :: enum u8
 {
-    Assert (point_count < Max_Spline_Points, "Exceeded max spline points");
-    point := *points[point_count];
-    point_count += 1;
-
-    point.location = location;
-    point.value = value;
-    point.derivative = derivative;
+    Top_Left;
+    Top_Right;
+    Bottom_Left;
+    Bottom_Right;
 }
 
-SplinePushPoint :: inline (using spline : *Spline, derivative : float, location : float, nested_spline : *Spline)
+BlockKind :: enum u8
 {
-    Assert (point_count < Max_Spline_Points, "Exceeded max spline points");
-    point := *points[point_count];
-    point_count += 1;
-
-    point.location = location;
-    point.nested_spline = nested_spline;
-    point.derivative = derivative;
+    Air;
+    Water;
+    Stone;
+    Bedrock;
+    Dirt;
+    Grass;
 }
 
-HermiteCubicCalculate :: inline (x0 : float, y0 : float, der0 : float, x1 : float, y1 : float, der1 : float, t : float) -> float #must
+Block :: struct
 {
-    f8 := der0 * (x1 - x0) - (y1 - y0);
-    f9 := -der1 * (x1 - x0) + (y1 - y0);
-
-    return Lerp (y0, y1, t) + t * (1 - t) * Lerp (f8, f9, t);
+    #as kind : BlockKind;
 }
 
-HermiteCubicCalculate :: inline (point : SplinePoint, t_values : []float) -> float #must
+Chunk_Size :: 16;
+Chunk_Height :: 384;
+
+ChunkMeshType :: enum u8
 {
-    if point.nested_spline
-        return HermiteCubicCalculate (point.nested_spline, t_values);
-
-    return point.value;
-}
-
-HermiteCubicCalculate :: (using spline : Spline, t_values : []float) -> float #must
-{
-    t := t_values[t_value_index];
-
-    if point_count == 0
-        return 0;
-
-    index : int;
-    while index < point_count
-    {
-        if points[index].location >= t
-            break;
-
-        index += 1;
-    }
-
-    if index == 0 || index == point_count
-    {
-        if index != 0
-            index -= 1;
-
-        point := points[index];
-        y := HermiteCubicCalculate (point, t_values);
-
-        return y + point.derivative * (t - point.location);
-    }
-
-    p0 := points[index - 1];
-    p1 := points[index];
-
-    return HermiteCubicCalculate (
-        p0.location, HermiteCubicCalculate (p0, t_values), p0.derivative,
-        p1.location, HermiteCubicCalculate (p1, t_values), p1.derivative,
-        InverseLerp (p0.location, p1.location, t)
-    );
-}
-
-TerrainNoise :: enum
-{
-    Temperature;
-    Humidity;
-    Continentalness;
-    Erosion;
-    Weirdness;
+    Solid;
+    Water;
 
     Count;
+
+    Invisible;
 }
 
-TerrainParam :: enum
+Chunk :: struct
 {
-    Temperature;
-    Humidity;
-    Continentalness;
-    Erosion;
-    Weirdness;
-    Ridges;
-    Depth;
-    Surface_Height;
+    east, west, north, south : *Chunk;
+    x, z : s64;
+    is_dirty, is_generated : bool;
 
-    Count;
+    total_vertex_count : s64;
+    vertex_counts : [ChunkMeshType.Count]s64;
+    vaos : [ChunkMeshType.Count]GLuint;
+    vbos : [ChunkMeshType.Count]GLuint;
+    blocks : [Chunk_Size * Chunk_Size * Chunk_Height]Block;
 }
 
-SurfaceParams :: struct
+HashS64 :: inline (val : s64) -> u64 #must
 {
-    spline : *Spline;
-    spline_y_range : Vec2f;
-    water_level : s32 = 64;
-    noise_amplitudes := float.[
-        2.31,   // Temperature
-        1.76,   // Humidity
-        3.80,   // Continentalness
-        2.52,   // Erosion
-        2.97    // Weirdness
-    ];
-    noise_params : [TerrainNoise.Count]NoiseParams = .[
-        .{scale=0.00041, octaves=3, persistance=0.023, lacunarity=2.379},
-        .{scale=0.00145, octaves=4, persistance=0.139, lacunarity=3.476},
-        .{scale=0.00013, octaves=6, persistance=0.250, lacunarity=4.085},
-        .{scale=0.00161, octaves=5, persistance=0.168, lacunarity=3.897},
-        .{scale=0.00106, octaves=4, persistance=0.267, lacunarity=4.824},
-    ];
+    h := val;
+    h ^= h >>> 33;
+    h *= 0xff51afd7ed558ccd;
+    h ^= h >>> 33;
+    h *= 0xc4ceb9fe1a85ec53;
+    h ^= h >>> 33;
+
+    return cast (u64) h;
 }
 
-CalculateTerrainNoise :: inline (using generator : Generator, noise : TerrainNoise, x : float, y : float) -> float #must
+HashVec2l :: inline (vec : Vec2l) -> u64 #must
 {
-    noise_params := generator.surface_params.noise_params[noise];
-    max_val := cast (float) PerlinFractalMax (noise_params.octaves, noise_params.persistance);
-    val := cast (float) PerlinFractalNoise (noise_params, generator.noise_offsets[noise], x, y);
+    result : u64 = 0;
+    result ^= HashS64 (vec.x) + 0x9e3779b9;
+    result ^= HashS64 (vec.y) + 0x9e3779b9 + (result << 6) + (result >> 2);
 
-    return val / max_val;
+    return result;
 }
 
-CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x : float, y : float) -> float #must
+World :: struct
 {
-    if param < xx TerrainNoise.Count
+    #as using generator : Generator;
+    origin_chunk : *Chunk;
+    all_loaded_chunks : HashMap (Vec2l, *Chunk, hash_func = HashVec2l, comp_func = (a, b) => a == b);
+}
+
+Vertex :: struct
+{
+    position : Vec3f;
+    face : BlockFace;
+    corner : BlockFaceCorner;
+    block_id : u8;
+}
+
+GetBlockMeshType :: inline (block : BlockKind) -> ChunkMeshType #must
+{
+    if block ==
     {
-        val := CalculateTerrainNoise (generator, cast (TerrainNoise) param, x, y);
-        val *= surface_params.noise_amplitudes[xx param];
-
-        return val;
+    case .Air;
+        return .Invisible;
+    case .Water;
+        return .Water;
+    case;
+        return .Solid;
     }
-    else if param == .Ridges
-    {
-        weirdness := CalculateTerrainParam (generator, .Weirdness, x, y);
-        weirdness = Abs (3 * Abs (weirdness) - 2);
+}
 
-        return weirdness;
+ChunkInit :: (chunk : *Chunk, x : s64, z : s64)
+{
+    chunk.x = x;
+    chunk.z = z;
+    chunk.is_dirty = true;
+
+    glGenVertexArrays (chunk.vaos.count, chunk.vaos.data);
+    glGenBuffers (chunk.vbos.count, chunk.vbos.data);
+
+    GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
+    GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
+
+    for i : 0..ChunkMeshType.Count - 1
+    {
+        glBindVertexArray (chunk.vaos[i]);
+        glBindBuffer (GL_ARRAY_BUFFER, chunk.vbos[i]);
+
+        glEnableVertexAttribArray (0);
+        glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "position"));
+
+        glEnableVertexAttribArray (1);
+        glVertexAttribIPointer (1, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "face"));
+
+        glEnableVertexAttribArray (2);
+        glVertexAttribIPointer (2, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "block_id"));
+
+        glEnableVertexAttribArray (3);
+        glVertexAttribIPointer (3, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "corner"));
     }
-    else if param == .Depth
-    {
-        First_Value :: cast (s64) TerrainParam.Continentalness;
-        Last_Value  :: cast (s64) TerrainParam.Ridges;
+}
 
-        t_values : [Last_Value - First_Value + 1]float = ---;
-        for i : First_Value..Last_Value
+ChunkCleanup :: (chunk : *Chunk)
+{
+    glDeleteVertexArrays (chunk.vaos.count, chunk.vaos.data);
+    glDeleteBuffers (chunk.vbos.count, chunk.vbos.data);
+}
+
+ChunkBlockIndex :: inline (x : s64, y : s64, z : s64) -> s64 #must
+{
+    return y * Chunk_Size * Chunk_Size + z * Chunk_Size + x;
+}
+
+ChunkGetAtRelativeCoordinates :: (chunk : *Chunk, x : s64, z : s64) -> *Chunk #must, new_x : s64, new_z : s64
+{
+    while chunk && x < 0
+    {
+        chunk = chunk.west;
+        x += Chunk_Size;
+    }
+    while chunk && x >= Chunk_Size
+    {
+        chunk = chunk.east;
+        x -= Chunk_Size;
+    }
+    while chunk && z < 0
+    {
+        chunk = chunk.south;
+        z += Chunk_Size;
+    }
+    while chunk && z >= Chunk_Size
+    {
+        chunk = chunk.north;
+        z -= Chunk_Size;
+    }
+
+    return chunk, x, z;
+}
+
+ChunkGetBlockInChunk :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> Block #must
+{
+    #if Enable_Chunk_Bounds_Check
+    {
+        Assert (x >= 0 && x < Chunk_Size, "Invalid x coordinate (got %)", x);
+        Assert (z >= 0 && z < Chunk_Size, "Invalid z coordinate (got %)", z);
+    }
+
+    if y < 0 || y >= Chunk_Height
+        return .{kind = .Air};
+
+    return chunk.blocks[ChunkBlockIndex (x, y, z)];
+}
+
+ChunkGetBlock :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> Block #must
+{
+    if y < 0 || y >= Chunk_Height
+        return .{kind = .Air};
+
+    chunk, x, z = ChunkGetAtRelativeCoordinates (chunk, x, z);
+    if !chunk
+        return .{kind = .Air};
+
+    return ChunkGetBlockInChunk (chunk, x, y, z);
+}
+
+ChunkGenerate :: (world : *World, chunk : *Chunk)
+{
+    if chunk.is_generated
+        return;
+
+    defer chunk.is_generated = true;
+
+    for y : 0..Chunk_Height - 1
+    {
+        for z : 0..Chunk_Size - 1
         {
-            if i == xx TerrainParam.Weirdness
-                continue;
-            t_values[i - First_Value] = CalculateTerrainParam (generator, cast (TerrainParam) i, x, y);
-        }
+            for x : 0..Chunk_Size - 1
+            {
+                sample_x := x + chunk.x * Chunk_Size;
+                sample_z := z + chunk.z * Chunk_Size;
 
-        Assert (surface_params.spline != null, "Surface spline is null (did you forget to call InitDefaultSurfaceSpline?)");
-        depth := HermiteCubicCalculate (surface_params.spline, t_values) - 0.015;
-        return depth;
-    }
-    else if param == .Surface_Height
-    {
-        depth := CalculateTerrainParam (generator, .Depth, x, y);
-        // return 128 + depth * 128;
-        return (1 - (83.0 / 160.0) + depth) * (10000.0 / 76.0);
-    }
+                index := ChunkBlockIndex (x, y, z);
+                surface_height := CalculateTerrainParam (world, .Surface_Height, xx sample_x, xx sample_z);
 
-    return 0;
-}
-
-Generator :: struct
-{
-    seed : u64;
-    noise_offsets : [TerrainNoise.Count][Perlin_Fractal_Max_Octaves]Vec2f;
-    surface_params : SurfaceParams;
-}
-
-CreateSpline :: inline (surface_params : *SurfaceParams, t_value_index : s64, allocator := context.allocator) -> *Spline #must
-{
-    last_spline := surface_params.spline;
-    while last_spline && last_spline.next
-        last_spline = last_spline.next;
-
-    spline := Alloc (Spline, allocator);
-    spline.t_value_index = t_value_index;
-
-    if last_spline
-        last_spline.next = spline;
-    else
-        surface_params.spline = spline;
-
-    return spline;
-}
-
-InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
-{
-    spline_8856 := CreateSpline (params, 0);
-    SplinePushPoint (spline_8856, 0.000000, -1.100000, 0.044000);
-    SplinePushPoint (spline_8856, 0.000000, -1.020000, -0.222200);
-    SplinePushPoint (spline_8856, 0.000000, -0.510000, -0.222200);
-    SplinePushPoint (spline_8856, 0.000000, -0.440000, -0.120000);
-    SplinePushPoint (spline_8856, 0.000000, -0.180000, -0.120000);
-    spline_9512 := CreateSpline (params, 1);
-    spline_10168 := CreateSpline (params, 3);
-    SplinePushPoint (spline_10168, 0.389401, -1.000000, -0.088802);
-    SplinePushPoint (spline_10168, 0.389401, 1.000000, 0.690000);
-    SplinePushPoint (spline_9512, 0.000000, -0.850000, spline_10168);
-    spline_10824 := CreateSpline (params, 3);
-    SplinePushPoint (spline_10824, 0.377880, -1.000000, -0.115760);
-    SplinePushPoint (spline_10824, 0.377880, 1.000000, 0.640000);
-    SplinePushPoint (spline_9512, 0.000000, -0.700000, spline_10824);
-    spline_11480 := CreateSpline (params, 3);
-    SplinePushPoint (spline_11480, 0.000000, -1.000000, -0.222200);
-    SplinePushPoint (spline_11480, 0.000000, -0.750000, -0.222200);
-    SplinePushPoint (spline_11480, 0.000000, -0.650000, 0.000000);
-    SplinePushPoint (spline_11480, 0.000000, 0.595455, 0.000000);
-    SplinePushPoint (spline_11480, 0.253456, 0.605455, 0.000000);
-    SplinePushPoint (spline_11480, 0.253456, 1.000000, 0.100000);
-    SplinePushPoint (spline_9512, 0.000000, -0.400000, spline_11480);
-    spline_12136 := CreateSpline (params, 3);
-    SplinePushPoint (spline_12136, 0.500000, -1.000000, -0.300000);
-    SplinePushPoint (spline_12136, 0.000000, -0.400000, 0.050000);
-    SplinePushPoint (spline_12136, 0.000000, 0.000000, 0.050000);
-    SplinePushPoint (spline_12136, 0.000000, 0.400000, 0.050000);
-    SplinePushPoint (spline_12136, 0.007000, 1.000000, 0.060000);
-    SplinePushPoint (spline_9512, 0.000000, -0.350000, spline_12136);
-    spline_12792 := CreateSpline (params, 3);
-    SplinePushPoint (spline_12792, 0.500000, -1.000000, -0.150000);
-    SplinePushPoint (spline_12792, 0.000000, -0.400000, 0.000000);
-    SplinePushPoint (spline_12792, 0.000000, 0.000000, 0.000000);
-    SplinePushPoint (spline_12792, 0.100000, 0.400000, 0.050000);
-    SplinePushPoint (spline_12792, 0.007000, 1.000000, 0.060000);
-    SplinePushPoint (spline_9512, 0.000000, -0.100000, spline_12792);
-    spline_13448 := CreateSpline (params, 3);
-    SplinePushPoint (spline_13448, 0.500000, -1.000000, -0.150000);
-    SplinePushPoint (spline_13448, 0.000000, -0.400000, 0.000000);
-    SplinePushPoint (spline_13448, 0.000000, 0.000000, 0.000000);
-    SplinePushPoint (spline_13448, 0.000000, 0.400000, 0.000000);
-    SplinePushPoint (spline_13448, 0.000000, 1.000000, 0.000000);
-    SplinePushPoint (spline_9512, 0.000000, 0.200000, spline_13448);
-    spline_14104 := CreateSpline (params, 3);
-    SplinePushPoint (spline_14104, 0.000000, -1.000000, -0.020000);
-    SplinePushPoint (spline_14104, 0.000000, -0.400000, -0.030000);
-    SplinePushPoint (spline_14104, 0.000000, 0.000000, -0.030000);
-    SplinePushPoint (spline_14104, 0.060000, 0.400000, 0.000000);
-    SplinePushPoint (spline_14104, 0.000000, 1.000000, 0.000000);
-    SplinePushPoint (spline_9512, 0.000000, 0.700000, spline_14104);
-    SplinePushPoint (spline_8856, 0.000000, -0.160000, spline_9512);
-    spline_14760 := CreateSpline (params, 1);
-    spline_15416 := CreateSpline (params, 3);
-    SplinePushPoint (spline_15416, 0.389401, -1.000000, -0.088802);
-    SplinePushPoint (spline_15416, 0.389401, 1.000000, 0.690000);
-    SplinePushPoint (spline_14760, 0.000000, -0.850000, spline_15416);
-    spline_16072 := CreateSpline (params, 3);
-    SplinePushPoint (spline_16072, 0.377880, -1.000000, -0.115760);
-    SplinePushPoint (spline_16072, 0.377880, 1.000000, 0.640000);
-    SplinePushPoint (spline_14760, 0.000000, -0.700000, spline_16072);
-    spline_16728 := CreateSpline (params, 3);
-    SplinePushPoint (spline_16728, 0.000000, -1.000000, -0.222200);
-    SplinePushPoint (spline_16728, 0.000000, -0.750000, -0.222200);
-    SplinePushPoint (spline_16728, 0.000000, -0.650000, 0.000000);
-    SplinePushPoint (spline_16728, 0.000000, 0.595455, 0.000000);
-    SplinePushPoint (spline_16728, 0.253456, 0.605455, 0.000000);
-    SplinePushPoint (spline_16728, 0.253456, 1.000000, 0.100000);
-    SplinePushPoint (spline_14760, 0.000000, -0.400000, spline_16728);
-    spline_17384 := CreateSpline (params, 3);
-    SplinePushPoint (spline_17384, 0.500000, -1.000000, -0.300000);
-    SplinePushPoint (spline_17384, 0.000000, -0.400000, 0.050000);
-    SplinePushPoint (spline_17384, 0.000000, 0.000000, 0.050000);
-    SplinePushPoint (spline_17384, 0.000000, 0.400000, 0.050000);
-    SplinePushPoint (spline_17384, 0.007000, 1.000000, 0.060000);
-    SplinePushPoint (spline_14760, 0.000000, -0.350000, spline_17384);
-    spline_18040 := CreateSpline (params, 3);
-    SplinePushPoint (spline_18040, 0.500000, -1.000000, -0.150000);
-    SplinePushPoint (spline_18040, 0.000000, -0.400000, 0.000000);
-    SplinePushPoint (spline_18040, 0.000000, 0.000000, 0.000000);
-    SplinePushPoint (spline_18040, 0.100000, 0.400000, 0.050000);
-    SplinePushPoint (spline_18040, 0.007000, 1.000000, 0.060000);
-    SplinePushPoint (spline_14760, 0.000000, -0.100000, spline_18040);
-    spline_18696 := CreateSpline (params, 3);
-    SplinePushPoint (spline_18696, 0.500000, -1.000000, -0.150000);
-    SplinePushPoint (spline_18696, 0.000000, -0.400000, 0.000000);
-    SplinePushPoint (spline_18696, 0.000000, 0.000000, 0.000000);
-    SplinePushPoint (spline_18696, 0.000000, 0.400000, 0.000000);
-    SplinePushPoint (spline_18696, 0.000000, 1.000000, 0.000000);
-    SplinePushPoint (spline_14760, 0.000000, 0.200000, spline_18696);
-    spline_19352 := CreateSpline (params, 3);
-    SplinePushPoint (spline_19352, 0.000000, -1.000000, -0.020000);
-    SplinePushPoint (spline_19352, 0.000000, -0.400000, -0.030000);
-    SplinePushPoint (spline_19352, 0.000000, 0.000000, -0.030000);
-    SplinePushPoint (spline_19352, 0.060000, 0.400000, 0.000000);
-    SplinePushPoint (spline_19352, 0.000000, 1.000000, 0.000000);
-    SplinePushPoint (spline_14760, 0.000000, 0.700000, spline_19352);
-    SplinePushPoint (spline_8856, 0.000000, -0.150000, spline_14760);
-    spline_20008 := CreateSpline (params, 1);
-    spline_20664 := CreateSpline (params, 3);
-    SplinePushPoint (spline_20664, 0.389401, -1.000000, -0.088802);
-    SplinePushPoint (spline_20664, 0.389401, 1.000000, 0.690000);
-    SplinePushPoint (spline_20008, 0.000000, -0.850000, spline_20664);
-    spline_21320 := CreateSpline (params, 3);
-    SplinePushPoint (spline_21320, 0.377880, -1.000000, -0.115760);
-    SplinePushPoint (spline_21320, 0.377880, 1.000000, 0.640000);
-    SplinePushPoint (spline_20008, 0.000000, -0.700000, spline_21320);
-    spline_21976 := CreateSpline (params, 3);
-    SplinePushPoint (spline_21976, 0.000000, -1.000000, -0.222200);
-    SplinePushPoint (spline_21976, 0.000000, -0.750000, -0.222200);
-    SplinePushPoint (spline_21976, 0.000000, -0.650000, 0.000000);
-    SplinePushPoint (spline_21976, 0.000000, 0.595455, 0.000000);
-    SplinePushPoint (spline_21976, 0.253456, 0.605455, 0.000000);
-    SplinePushPoint (spline_21976, 0.253456, 1.000000, 0.100000);
-    SplinePushPoint (spline_20008, 0.000000, -0.400000, spline_21976);
-    spline_22632 := CreateSpline (params, 3);
-    SplinePushPoint (spline_22632, 0.500000, -1.000000, -0.250000);
-    SplinePushPoint (spline_22632, 0.000000, -0.400000, 0.050000);
-    SplinePushPoint (spline_22632, 0.000000, 0.000000, 0.050000);
-    SplinePushPoint (spline_22632, 0.000000, 0.400000, 0.050000);
-    SplinePushPoint (spline_22632, 0.007000, 1.000000, 0.060000);
-    SplinePushPoint (spline_20008, 0.000000, -0.350000, spline_22632);
-    spline_23288 := CreateSpline (params, 3);
-    SplinePushPoint (spline_23288, 0.500000, -1.000000, -0.100000);
-    SplinePushPoint (spline_23288, 0.010000, -0.400000, 0.001000);
-    SplinePushPoint (spline_23288, 0.010000, 0.000000, 0.003000);
-    SplinePushPoint (spline_23288, 0.094000, 0.400000, 0.050000);
-    SplinePushPoint (spline_23288, 0.007000, 1.000000, 0.060000);
-    SplinePushPoint (spline_20008, 0.000000, -0.100000, spline_23288);
-    spline_23944 := CreateSpline (params, 3);
-    SplinePushPoint (spline_23944, 0.500000, -1.000000, -0.100000);
-    SplinePushPoint (spline_23944, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_23944, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_23944, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_23944, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_20008, 0.000000, 0.200000, spline_23944);
-    spline_24600 := CreateSpline (params, 3);
-    SplinePushPoint (spline_24600, 0.000000, -1.000000, -0.020000);
-    SplinePushPoint (spline_24600, 0.000000, -0.400000, -0.030000);
-    SplinePushPoint (spline_24600, 0.000000, 0.000000, -0.030000);
-    SplinePushPoint (spline_24600, 0.120000, 0.400000, 0.030000);
-    SplinePushPoint (spline_24600, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_20008, 0.000000, 0.700000, spline_24600);
-    SplinePushPoint (spline_8856, 0.000000, -0.100000, spline_20008);
-    spline_25256 := CreateSpline (params, 1);
-    spline_25912 := CreateSpline (params, 3);
-    SplinePushPoint (spline_25912, 0.000000, -1.000000, 0.202350);
-    SplinePushPoint (spline_25912, 0.513825, 0.000000, 0.716175);
-    SplinePushPoint (spline_25912, 0.513825, 1.000000, 1.230000);
-    SplinePushPoint (spline_25256, 0.000000, -0.850000, spline_25912);
-    spline_26568 := CreateSpline (params, 3);
-    SplinePushPoint (spline_26568, 0.000000, -1.000000, 0.200000);
-    SplinePushPoint (spline_26568, 0.433180, 0.000000, 0.446820);
-    SplinePushPoint (spline_26568, 0.433180, 1.000000, 0.880000);
-    SplinePushPoint (spline_25256, 0.000000, -0.700000, spline_26568);
-    spline_27224 := CreateSpline (params, 3);
-    SplinePushPoint (spline_27224, 0.000000, -1.000000, 0.200000);
-    SplinePushPoint (spline_27224, 0.391705, 0.000000, 0.308295);
-    SplinePushPoint (spline_27224, 0.391705, 1.000000, 0.700000);
-    SplinePushPoint (spline_25256, 0.000000, -0.400000, spline_27224);
-    spline_27880 := CreateSpline (params, 3);
-    SplinePushPoint (spline_27880, 0.500000, -1.000000, -0.250000);
-    SplinePushPoint (spline_27880, 0.000000, -0.400000, 0.350000);
-    SplinePushPoint (spline_27880, 0.000000, 0.000000, 0.350000);
-    SplinePushPoint (spline_27880, 0.000000, 0.400000, 0.350000);
-    SplinePushPoint (spline_27880, 0.049000, 1.000000, 0.420000);
-    SplinePushPoint (spline_25256, 0.000000, -0.350000, spline_27880);
-    spline_28536 := CreateSpline (params, 3);
-    SplinePushPoint (spline_28536, 0.500000, -1.000000, -0.100000);
-    SplinePushPoint (spline_28536, 0.070000, -0.400000, 0.007000);
-    SplinePushPoint (spline_28536, 0.070000, 0.000000, 0.021000);
-    SplinePushPoint (spline_28536, 0.658000, 0.400000, 0.350000);
-    SplinePushPoint (spline_28536, 0.049000, 1.000000, 0.420000);
-    SplinePushPoint (spline_25256, 0.000000, -0.100000, spline_28536);
-    spline_29192 := CreateSpline (params, 3);
-    SplinePushPoint (spline_29192, 0.500000, -1.000000, -0.100000);
-    SplinePushPoint (spline_29192, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_29192, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_29192, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_29192, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_25256, 0.000000, 0.200000, spline_29192);
-    spline_29848 := CreateSpline (params, 3);
-    SplinePushPoint (spline_29848, 0.500000, -1.000000, -0.100000);
-    SplinePushPoint (spline_29848, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_29848, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_29848, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_29848, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_25256, 0.000000, 0.400000, spline_29848);
-    spline_30504 := CreateSpline (params, 3);
-    SplinePushPoint (spline_30504, 0.000000, -1.000000, -0.100000);
-    spline_31160 := CreateSpline (params, 3);
-    SplinePushPoint (spline_31160, 0.500000, -1.000000, -0.100000);
-    SplinePushPoint (spline_31160, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_31160, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_31160, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_31160, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_30504, 0.000000, -0.400000, spline_31160);
-    SplinePushPoint (spline_30504, 0.000000, 0.000000, 0.170000);
-    SplinePushPoint (spline_25256, 0.000000, 0.450000, spline_30504);
-    spline_31816 := CreateSpline (params, 3);
-    SplinePushPoint (spline_31816, 0.000000, -1.000000, -0.100000);
-    spline_32472 := CreateSpline (params, 3);
-    SplinePushPoint (spline_32472, 0.500000, -1.000000, -0.100000);
-    SplinePushPoint (spline_32472, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_32472, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_32472, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_32472, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_31816, 0.000000, -0.400000, spline_32472);
-    SplinePushPoint (spline_31816, 0.000000, 0.000000, 0.170000);
-    SplinePushPoint (spline_25256, 0.000000, 0.550000, spline_31816);
-    spline_33128 := CreateSpline (params, 3);
-    SplinePushPoint (spline_33128, 0.500000, -1.000000, -0.100000);
-    SplinePushPoint (spline_33128, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_33128, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_33128, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_33128, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_25256, 0.000000, 0.580000, spline_33128);
-    spline_33784 := CreateSpline (params, 3);
-    SplinePushPoint (spline_33784, 0.000000, -1.000000, -0.020000);
-    SplinePushPoint (spline_33784, 0.000000, -0.400000, -0.030000);
-    SplinePushPoint (spline_33784, 0.000000, 0.000000, -0.030000);
-    SplinePushPoint (spline_33784, 0.120000, 0.400000, 0.030000);
-    SplinePushPoint (spline_33784, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_25256, 0.000000, 0.700000, spline_33784);
-    SplinePushPoint (spline_8856, 0.000000, 0.250000, spline_25256);
-    spline_34440 := CreateSpline (params, 1);
-    spline_35096 := CreateSpline (params, 3);
-    SplinePushPoint (spline_35096, 0.000000, -1.000000, 0.347926);
-    SplinePushPoint (spline_35096, 0.576037, 0.000000, 0.923963);
-    SplinePushPoint (spline_35096, 0.576037, 1.000000, 1.500000);
-    SplinePushPoint (spline_34440, 0.000000, -0.850000, spline_35096);
-    spline_35752 := CreateSpline (params, 3);
-    SplinePushPoint (spline_35752, 0.000000, -1.000000, 0.200000);
-    SplinePushPoint (spline_35752, 0.460829, 0.000000, 0.539171);
-    SplinePushPoint (spline_35752, 0.460829, 1.000000, 1.000000);
-    SplinePushPoint (spline_34440, 0.000000, -0.700000, spline_35752);
-    spline_36408 := CreateSpline (params, 3);
-    SplinePushPoint (spline_36408, 0.000000, -1.000000, 0.200000);
-    SplinePushPoint (spline_36408, 0.460829, 0.000000, 0.539171);
-    SplinePushPoint (spline_36408, 0.460829, 1.000000, 1.000000);
-    SplinePushPoint (spline_34440, 0.000000, -0.400000, spline_36408);
-    spline_37064 := CreateSpline (params, 3);
-    SplinePushPoint (spline_37064, 0.500000, -1.000000, -0.200000);
-    SplinePushPoint (spline_37064, 0.000000, -0.400000, 0.500000);
-    SplinePushPoint (spline_37064, 0.000000, 0.000000, 0.500000);
-    SplinePushPoint (spline_37064, 0.000000, 0.400000, 0.500000);
-    SplinePushPoint (spline_37064, 0.070000, 1.000000, 0.600000);
-    SplinePushPoint (spline_34440, 0.000000, -0.350000, spline_37064);
-    spline_37720 := CreateSpline (params, 3);
-    SplinePushPoint (spline_37720, 0.500000, -1.000000, -0.050000);
-    SplinePushPoint (spline_37720, 0.100000, -0.400000, 0.010000);
-    SplinePushPoint (spline_37720, 0.100000, 0.000000, 0.030000);
-    SplinePushPoint (spline_37720, 0.940000, 0.400000, 0.500000);
-    SplinePushPoint (spline_37720, 0.070000, 1.000000, 0.600000);
-    SplinePushPoint (spline_34440, 0.000000, -0.100000, spline_37720);
-    spline_38376 := CreateSpline (params, 3);
-    SplinePushPoint (spline_38376, 0.500000, -1.000000, -0.050000);
-    SplinePushPoint (spline_38376, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_38376, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_38376, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_38376, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_34440, 0.000000, 0.200000, spline_38376);
-    spline_39032 := CreateSpline (params, 3);
-    SplinePushPoint (spline_39032, 0.500000, -1.000000, -0.050000);
-    SplinePushPoint (spline_39032, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_39032, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_39032, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_39032, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_34440, 0.000000, 0.400000, spline_39032);
-    spline_39688 := CreateSpline (params, 3);
-    SplinePushPoint (spline_39688, 0.000000, -1.000000, -0.050000);
-    spline_40344 := CreateSpline (params, 3);
-    SplinePushPoint (spline_40344, 0.500000, -1.000000, -0.050000);
-    SplinePushPoint (spline_40344, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_40344, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_40344, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_40344, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_39688, 0.000000, -0.400000, spline_40344);
-    SplinePushPoint (spline_39688, 0.000000, 0.000000, 0.170000);
-    SplinePushPoint (spline_34440, 0.000000, 0.450000, spline_39688);
-    spline_41000 := CreateSpline (params, 3);
-    SplinePushPoint (spline_41000, 0.000000, -1.000000, -0.050000);
-    spline_41656 := CreateSpline (params, 3);
-    SplinePushPoint (spline_41656, 0.500000, -1.000000, -0.050000);
-    SplinePushPoint (spline_41656, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_41656, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_41656, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_41656, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_41000, 0.000000, -0.400000, spline_41656);
-    SplinePushPoint (spline_41000, 0.000000, 0.000000, 0.170000);
-    SplinePushPoint (spline_34440, 0.000000, 0.550000, spline_41000);
-    spline_42312 := CreateSpline (params, 3);
-    SplinePushPoint (spline_42312, 0.500000, -1.000000, -0.050000);
-    SplinePushPoint (spline_42312, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_42312, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_42312, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_42312, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_34440, 0.000000, 0.580000, spline_42312);
-    spline_42968 := CreateSpline (params, 3);
-    SplinePushPoint (spline_42968, 0.015000, -1.000000, -0.020000);
-    SplinePushPoint (spline_42968, 0.000000, -0.400000, 0.010000);
-    SplinePushPoint (spline_42968, 0.000000, 0.000000, 0.010000);
-    SplinePushPoint (spline_42968, 0.040000, 0.400000, 0.030000);
-    SplinePushPoint (spline_42968, 0.049000, 1.000000, 0.100000);
-    SplinePushPoint (spline_34440, 0.000000, 0.700000, spline_42968);
-    SplinePushPoint (spline_8856, 0.000000, 1.000000, spline_34440);
-
-    spline_y_range = CalculateSplineRange (spline);
-}
-
-CalculateSplineRange :: (using spline : Spline) -> Vec2f
-{
-    y_range := Vec2f.{Math.FLOAT32_MAX, -Math.FLOAT32_MAX};
-
-    pts := MakeArray (point_count, points.data);
-    for pts
-    {
-        if it.nested_spline
-        {
-            nested_range := CalculateSplineRange (it.nested_spline);
-            y_range.x = Min (y_range.x, nested_range.x);
-            y_range.y = Max (y_range.y, nested_range.y);
-        }
-        else
-        {
-            y_range.x = Min (y_range.x, it.value);
-            y_range.y = Max (y_range.y, it.value);
+                if y == 0
+                {
+                    chunk.blocks[index].kind = .Bedrock;
+                }
+                else if cast (float) y > surface_height
+                {
+                    if y <= world.surface_params.water_level
+                        chunk.blocks[index].kind = .Water;
+                    else
+                        chunk.blocks[index].kind = .Air;
+                }
+                else
+                {
+                    chunk.blocks[index].kind = .Stone;
+                }
+            }
         }
     }
-
-    return y_range;
 }
 
-GenerateNoiseOffsets :: (using generator : *Generator)
+PushBlockVertices :: (vertices : *[..]Vertex, block : BlockKind, position : Vec3f, visible_faces : BlockFaceFlags)
 {
-    rng : RNG;
-    RandomSeed (*rng, seed);
-
-    for noise_offsets
+    if visible_faces & .East
     {
-        offsets := MakeArray (surface_params.noise_params[it_index].octaves, it.data);
-        PerlinGenerateOffsets (*rng, offsets);
+        v := ArrayPush (vertices, .{position, .East, .Bottom_Left, xx block});
+        v.position += .{0.5, -0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .East, .Top_Left, xx block});
+        v.position += .{0.5, 0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .East, .Top_Right, xx block});
+        v.position += .{0.5, 0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .East, .Bottom_Left, xx block});
+        v.position += .{0.5, -0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .East, .Top_Right, xx block});
+        v.position += .{0.5, 0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .East, .Bottom_Right, xx block});
+        v.position += .{0.5, -0.5, 0.5};
     }
+
+    if visible_faces & .West
+    {
+        v := ArrayPush (vertices, .{position, .West, .Bottom_Right, xx block});
+        v.position += .{-0.5, -0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .West, .Top_Left, xx block});
+        v.position += .{-0.5, 0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .West, .Top_Right, xx block});
+        v.position += .{-0.5, 0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .West, .Bottom_Right, xx block});
+        v.position += .{-0.5, -0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .West, .Bottom_Left, xx block});
+        v.position += .{-0.5, -0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .West, .Top_Left, xx block});
+        v.position += .{-0.5, 0.5, 0.5};
+    }
+
+    if visible_faces & .Above
+    {
+        v := ArrayPush (vertices, .{position, .Above, .Bottom_Left, xx block});
+        v.position += .{-0.5, 0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .Above, .Top_Right, xx block});
+        v.position += .{0.5, 0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .Above, .Bottom_Right, xx block});
+        v.position += .{0.5, 0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .Above, .Bottom_Left, xx block});
+        v.position += .{-0.5, 0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .Above, .Top_Left, xx block});
+        v.position += .{-0.5, 0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .Above, .Top_Right, xx block});
+        v.position += .{0.5, 0.5, 0.5};
+    }
+
+    if visible_faces & .Below
+    {
+        v := ArrayPush (vertices, .{position, .Below, .Top_Left, xx block});
+        v.position += .{-0.5, -0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .Below, .Top_Right, xx block});
+        v.position += .{0.5, -0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .Below, .Bottom_Right, xx block});
+        v.position += .{0.5, -0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .Below, .Top_Left, xx block});
+        v.position += .{-0.5, -0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .Below, .Bottom_Right, xx block});
+        v.position += .{0.5, -0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .Below, .Bottom_Left, xx block});
+        v.position += .{-0.5, -0.5, 0.5};
+    }
+
+    if visible_faces & .North
+    {
+        v := ArrayPush (vertices, .{position, .North, .Bottom_Right, xx block});
+        v.position += .{-0.5, -0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .North, .Bottom_Left, xx block});
+        v.position += .{0.5, -0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .North, .Top_Left, xx block});
+        v.position += .{0.5, 0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .North, .Bottom_Right, xx block});
+        v.position += .{-0.5, -0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .North, .Top_Left, xx block});
+        v.position += .{0.5, 0.5, 0.5};
+
+        v = ArrayPush (vertices, .{position, .North, .Top_Right, xx block});
+        v.position += .{-0.5, 0.5, 0.5};
+    }
+
+    if visible_faces & .South
+    {
+        v := ArrayPush (vertices, .{position, .South, .Bottom_Left, xx block});
+        v.position += .{-0.5, -0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .South, .Top_Right, xx block});
+        v.position += .{0.5, 0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .South, .Bottom_Right, xx block});
+        v.position += .{0.5, -0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .South, .Bottom_Left, xx block});
+        v.position += .{-0.5, -0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .South, .Top_Left, xx block});
+        v.position += .{-0.5, 0.5, -0.5};
+
+        v = ArrayPush (vertices, .{position, .South, .Top_Right, xx block});
+        v.position += .{0.5, 0.5, -0.5};
+    }
+}
+
+ChunkPushVertices :: (chunk : *Chunk, vertices : *[..]Vertex, mesh_type : ChunkMeshType)
+{
+    position := Vec3f.{xx (chunk.x * Chunk_Size), 0, xx (chunk.z * Chunk_Size)};
+    for y : 0..Chunk_Height - 1
+    {
+        for z : 0..Chunk_Size - 1
+        {
+            for x : 0..Chunk_Size - 1
+            {
+                block := ChunkGetBlockInChunk (chunk, x, y, z);
+                if GetBlockMeshType (block) != mesh_type
+                    continue;
+
+                visible_faces : BlockFaceFlags;
+                if GetBlockMeshType (ChunkGetBlock (chunk, x + 1, y, z)) != mesh_type
+                    visible_faces |= .East;
+                if GetBlockMeshType (ChunkGetBlock (chunk, x - 1, y, z)) != mesh_type
+                    visible_faces |= .West;
+                if GetBlockMeshType (ChunkGetBlock (chunk, x, y + 1, z)) != mesh_type
+                    visible_faces |= .Above;
+                if GetBlockMeshType (ChunkGetBlock (chunk, x, y - 1, z)) != mesh_type
+                    visible_faces |= .Below;
+                if GetBlockMeshType (ChunkGetBlock (chunk, x, y, z + 1)) != mesh_type
+                    visible_faces |= .North;
+                if GetBlockMeshType (ChunkGetBlock (chunk, x, y, z - 1)) != mesh_type
+                    visible_faces |= .South;
+
+                PushBlockVertices (vertices, block, position + Vec3f.{xx x, xx y, xx z}, visible_faces);
+            }
+        }
+    }
+}
+
+ChunkGenerateMeshes :: (chunk : *Chunk)
+{
+    if !chunk.is_dirty
+        return;
+
+    defer chunk.is_dirty = false;
+
+    state := GetTemporaryStorageState ();
+    defer SetTemporaryStorageState (state);
+
+    vertices : [..]Vertex;
+    vertices.allocator = Temp;
+    ArrayReserve (*vertices, 12000);
+
+    GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
+    GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
+
+    chunk.total_vertex_count = 0;
+    for i : 0..ChunkMeshType.Count - 1
+    {
+        ChunkPushVertices (chunk, *vertices, xx i);
+        chunk.vertex_counts[i] = vertices.count;
+        chunk.total_vertex_count += vertices.count;
+
+        glBindVertexArray (chunk.vaos[i]);
+        glBindBuffer (GL_ARRAY_BUFFER, chunk.vbos[i]);
+
+        glBufferData (GL_ARRAY_BUFFER, size_of (Vertex) * vertices.count, vertices.data, GL_DYNAMIC_DRAW);
+
+        ArrayClear (*vertices);
+    }
+}
+
+WorldInit :: inline (world : *World, seed : u64)
+{
+    Initialize (world);
+
+    GeneratorInit (world, seed);
+    world.all_loaded_chunks.allocator = context.allocator;
+}
+
+WorldGetChunk :: inline (world : *World, x : s64, z : s64) -> *Chunk #must
+{
+    return HashMapGet (*world.all_loaded_chunks, .{x, z});
+}
+
+WorldCreateChunk :: (world : *World, x : s64, z : s64) -> *Chunk #must
+{
+    chunk := WorldGetChunk (world, x, z);
+    if chunk
+        return chunk;
+
+    chunk = Alloc (Chunk, 1);
+    ChunkInit (chunk, x, z);
+    chunk.east  = WorldGetChunk (world, x + 1, z);
+    chunk.west  = WorldGetChunk (world, x - 1, z);
+    chunk.north = WorldGetChunk (world, x, z + 1);
+    chunk.south = WorldGetChunk (world, x, z - 1);
+
+    if chunk.east
+    {
+        chunk.east.west = chunk;
+        chunk.east.is_dirty = true;
+    }
+
+    if chunk.west
+    {
+        chunk.west.east = chunk;
+        chunk.west.is_dirty = true;
+    }
+
+    if chunk.north
+    {
+        chunk.north.south = chunk;
+        chunk.north.is_dirty = true;
+    }
+
+    if chunk.south
+    {
+        chunk.south.north = chunk;
+        chunk.south.is_dirty = true;
+    }
+
+    HashMapInsert (*world.all_loaded_chunks, .{x, z}, chunk);
+
+    return chunk;
 }

@@ -422,9 +422,40 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     }
 }
 
+UIShowTextureAtlasWindow :: (opened : *bool)
+{
+    defer ImGui.End ();
+    if !ImGui.Begin ("Texture Atlas", opened)
+        return;
+
+    draw_list := ImGui.GetWindowDrawList ();
+    avail_width := ImGui.GetContentRegionAvail ().x;
+    min := ImGui.GetCursorScreenPos ();
+
+    Checkerboard_Grid_Size :: 16;
+    checkerboard_size := cast (int) (avail_width / Checkerboard_Grid_Size);
+    for y : 0..checkerboard_size - 1
+    {
+        for x : 0..checkerboard_size - 1
+        {
+            if (x + y) % 2 == 0
+                continue;
+
+            draw_list.AddRectFilled (draw_list,
+                min + .{xx (x * Checkerboard_Grid_Size), xx (y * Checkerboard_Grid_Size)},
+                min + .{xx ((x + 1) * Checkerboard_Grid_Size), xx ((y + 1) * Checkerboard_Grid_Size)},
+                ImGui.ColorConvertFloat4ToU32 (.{1, 1, 1, 0.5})
+            );
+        }
+    }
+
+    ImGui.Image (cast (ImGui.ImTextureID) g_texture_atlas, .{avail_width, avail_width});
+}
+
 g_ui_show_demo_window := false;
 g_ui_show_perlin_test_window := false;
-g_ui_show_terrain_generator_window := true;
+g_ui_show_terrain_generator_window := false;
+g_ui_show_texture_atlas_window := false;
 
 UIUpdate :: ()
 {
@@ -436,6 +467,8 @@ UIUpdate :: ()
             g_ui_show_perlin_test_window = true;
         if ImGui.MenuItem ("Terrain Generator")
             g_ui_show_terrain_generator_window = true;
+        if ImGui.MenuItem ("Texture Atlas")
+            g_ui_show_texture_atlas_window = true;
 
         ImGui.EndMainMenuBar ();
     }
@@ -448,4 +481,7 @@ UIUpdate :: ()
 
     if g_ui_show_terrain_generator_window
         UIShowTerrainGeneratorWindow (*g_ui_show_terrain_generator_window);
+
+    if g_ui_show_texture_atlas_window
+        UIShowTextureAtlasWindow (*g_ui_show_texture_atlas_window);
 }
