@@ -57,6 +57,7 @@ PerlinGradient :: inline (hash : s32, x : float64, y : float64) -> float64 #must
 }
 
 PerlinNoise :: (x : float64, y : float64) -> float64 #must
+#no_abc
 {
     xi := (cast (int) Floor (x)) & 255;
     yi := (cast (int) Floor (y)) & 255;
@@ -114,6 +115,7 @@ PerlinGradient :: inline (hash : s32, x : float64, y : float64, z : float64) -> 
 }
 
 PerlinNoise :: (x : float64, y : float64, z : float64) -> float64 #must
+#no_abc
 {
     xi := (cast (int) Floor (x)) & 255;
     yi := (cast (int) Floor (y)) & 255;
@@ -189,11 +191,13 @@ PerlinFractalMax :: inline (octaves : int, persistance : float) -> float64 #must
 PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec2f, x : float64, y : float64) -> float64 #must
 {
     oct := Min (octaves, Perlin_Fractal_Max_Octaves);
+    Assert (offsets.count >= oct);
 
     result : float64;
     amplitude := 1.0;
     frequency := 1.0;
     for i : 0..oct - 1
+    #no_abc
     {
         if amplitude < Perlin_Fractal_Min_Amplitude
             break;
@@ -213,11 +217,13 @@ PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec2f, x : float6
 PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec3f, x : float64, y : float64, z : float64) -> float64 #must
 {
     oct := Min (octaves, Perlin_Fractal_Max_Octaves);
+    Assert (offsets.count >= oct);
 
     result : float64;
     amplitude := 1.0;
     frequency := 1.0;
     for i : 0..oct - 1
+    #no_abc
     {
         if amplitude < Perlin_Fractal_Min_Amplitude
             break;
