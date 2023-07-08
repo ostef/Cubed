@@ -352,7 +352,10 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
         {
             if texture_handle
             {
-                ImGui.Image (cast (ImGui.ImTextureID) texture_handle, .{xx texture_size, xx texture_size});
+                ImGui.PushStyleVar (.FramePadding, .{0, 0});
+                defer ImGui.PopStyleVar ();
+
+                ImGui.ImageButton ("ImageButton", cast (ImGui.ImTextureID) texture_handle, .{xx texture_size, xx texture_size});
 
                 if ImGui.IsMouseDragging (.Left) && (dragging_map || ImGui.IsItemHovered ())
                 {
