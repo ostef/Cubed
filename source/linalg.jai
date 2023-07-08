@@ -13,7 +13,9 @@ ToDegrees :: inline (angle_in_radians : $T) -> T #must
 Vector :: Linalg.Vector;
 Vec2f :: Linalg.Vec2f;
 Vec2i :: Linalg.Vec2i;
+Vec2l :: Linalg.Vec2l;
 Vec3f :: Linalg.Vec3f;
+Vec3l :: Linalg.Vec2l;
 Vec4f :: Linalg.Vec4f;
 
 Matrix :: Linalg.Matrix;
