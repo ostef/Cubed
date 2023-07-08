@@ -6,8 +6,8 @@
 
 
 
-IMGUI_VERSION :: "1.89 WIP";
-IMGUI_VERSION_NUM :: 18802;
+IMGUI_VERSION :: "1.89.5";
+IMGUI_VERSION_NUM :: 18950;
 
 IMGUI_PAYLOAD_TYPE_COLOR_3F :: "_COL3F";
 IMGUI_PAYLOAD_TYPE_COLOR_4F :: "_COL4F";
@@ -30,7 +30,364 @@ ImFontBuilderIO :: struct {}
 
 Context :: struct {}
 
-NavInput :: s32;
+// Enumerations
+// - We don't use strongly typed enums much because they add constraints (can't extend in private code, can't store typed in bit fields, extra casting on iteration)
+// - Tip: Use your programming IDE navigation facilities on the names in the _central column_ below to find the actual flags/enum lists!
+//   In Visual Studio IDE: CTRL+comma ("Edit.GoToAll") can follow symbols in comments, whereas CTRL+F12 ("Edit.GoToImplementation") cannot.
+//   With Visual Assist installed: ALT+G ("VAssistX.GoToImplementation") can also follow symbols in comments.
+Key :: enum s32 {
+    None                :: 0;
+    Tab                 :: 512;
+    LeftArrow           :: 513;
+    RightArrow          :: 514;
+    UpArrow             :: 515;
+    DownArrow           :: 516;
+    PageUp              :: 517;
+    PageDown            :: 518;
+    Home                :: 519;
+    End                 :: 520;
+    Insert              :: 521;
+    Delete              :: 522;
+    Backspace           :: 523;
+    Space               :: 524;
+    Enter               :: 525;
+    Escape              :: 526;
+    LeftCtrl            :: 527;
+    LeftShift           :: 528;
+    LeftAlt             :: 529;
+    LeftSuper           :: 530;
+    RightCtrl           :: 531;
+    RightShift          :: 532;
+    RightAlt            :: 533;
+    RightSuper          :: 534;
+    Menu                :: 535;
+    _0                  :: 536;
+    _1                  :: 537;
+    _2                  :: 538;
+    _3                  :: 539;
+    _4                  :: 540;
+    _5                  :: 541;
+    _6                  :: 542;
+    _7                  :: 543;
+    _8                  :: 544;
+    _9                  :: 545;
+    A                   :: 546;
+    B                   :: 547;
+    C                   :: 548;
+    D                   :: 549;
+    E                   :: 550;
+    F                   :: 551;
+    G                   :: 552;
+    H                   :: 553;
+    I                   :: 554;
+    J                   :: 555;
+    K                   :: 556;
+    L                   :: 557;
+    M                   :: 558;
+    N                   :: 559;
+    O                   :: 560;
+    P                   :: 561;
+    Q                   :: 562;
+    R                   :: 563;
+    S                   :: 564;
+    T                   :: 565;
+    U                   :: 566;
+    V                   :: 567;
+    W                   :: 568;
+    X                   :: 569;
+    Y                   :: 570;
+    Z                   :: 571;
+    F1                  :: 572;
+    F2                  :: 573;
+    F3                  :: 574;
+    F4                  :: 575;
+    F5                  :: 576;
+    F6                  :: 577;
+    F7                  :: 578;
+    F8                  :: 579;
+    F9                  :: 580;
+    F10                 :: 581;
+    F11                 :: 582;
+    F12                 :: 583;
+    Apostrophe          :: 584;
+    Comma               :: 585;
+    Minus               :: 586;
+    Period              :: 587;
+    Slash               :: 588;
+    Semicolon           :: 589;
+    Equal               :: 590;
+    LeftBracket         :: 591;
+    Backslash           :: 592;
+    RightBracket        :: 593;
+    GraveAccent         :: 594;
+    CapsLock            :: 595;
+    ScrollLock          :: 596;
+    NumLock             :: 597;
+    PrintScreen         :: 598;
+    Pause               :: 599;
+    Keypad0             :: 600;
+    Keypad1             :: 601;
+    Keypad2             :: 602;
+    Keypad3             :: 603;
+    Keypad4             :: 604;
+    Keypad5             :: 605;
+    Keypad6             :: 606;
+    Keypad7             :: 607;
+    Keypad8             :: 608;
+    Keypad9             :: 609;
+    KeypadDecimal       :: 610;
+    KeypadDivide        :: 611;
+    KeypadMultiply      :: 612;
+    KeypadSubtract      :: 613;
+    KeypadAdd           :: 614;
+    KeypadEnter         :: 615;
+    KeypadEqual         :: 616;
+
+    GamepadStart        :: 617;
+    GamepadBack         :: 618;
+    GamepadFaceLeft     :: 619;
+    GamepadFaceRight    :: 620;
+    GamepadFaceUp       :: 621;
+    GamepadFaceDown     :: 622;
+    GamepadDpadLeft     :: 623;
+    GamepadDpadRight    :: 624;
+    GamepadDpadUp       :: 625;
+    GamepadDpadDown     :: 626;
+    GamepadL1           :: 627;
+    GamepadR1           :: 628;
+    GamepadL2           :: 629;
+    GamepadR2           :: 630;
+    GamepadL3           :: 631;
+    GamepadR3           :: 632;
+    GamepadLStickLeft   :: 633;
+    GamepadLStickRight  :: 634;
+    GamepadLStickUp     :: 635;
+    GamepadLStickDown   :: 636;
+    GamepadRStickLeft   :: 637;
+    GamepadRStickRight  :: 638;
+    GamepadRStickUp     :: 639;
+    GamepadRStickDown   :: 640;
+
+    MouseLeft           :: 641;
+    MouseRight          :: 642;
+    MouseMiddle         :: 643;
+    MouseX1             :: 644;
+    MouseX2             :: 645;
+    MouseWheelX         :: 646;
+    MouseWheelY         :: 647;
+
+    ReservedForModCtrl  :: 648;
+    ReservedForModShift :: 649;
+    ReservedForModAlt   :: 650;
+    ReservedForModSuper :: 651;
+    COUNT               :: 652;
+
+    Mod_None            :: 0;
+    Mod_Ctrl            :: 4096;
+    Mod_Shift           :: 8192;
+    Mod_Alt             :: 16384;
+    Mod_Super           :: 32768;
+    Mod_Shortcut        :: 2048;
+    Mod_Mask_           :: 63488;
+
+    NamedKey_BEGIN      :: 512;
+    NamedKey_END        :: 652;
+    NamedKey_COUNT      :: 140;
+
+    KeysData_SIZE       :: 652;
+    KeysData_OFFSET     :: 0;
+
+    ModCtrl             :: 4096;
+    ModShift            :: 8192;
+    ModAlt              :: 16384;
+    ModSuper            :: 32768;
+    KeyPadEnter         :: 615;
+
+    ImGuiKey_None                :: None;
+    ImGuiKey_Tab                 :: Tab;
+    ImGuiKey_LeftArrow           :: LeftArrow;
+    ImGuiKey_RightArrow          :: RightArrow;
+    ImGuiKey_UpArrow             :: UpArrow;
+    ImGuiKey_DownArrow           :: DownArrow;
+    ImGuiKey_PageUp              :: PageUp;
+    ImGuiKey_PageDown            :: PageDown;
+    ImGuiKey_Home                :: Home;
+    ImGuiKey_End                 :: End;
+    ImGuiKey_Insert              :: Insert;
+    ImGuiKey_Delete              :: Delete;
+    ImGuiKey_Backspace           :: Backspace;
+    ImGuiKey_Space               :: Space;
+    ImGuiKey_Enter               :: Enter;
+    ImGuiKey_Escape              :: Escape;
+    ImGuiKey_LeftCtrl            :: LeftCtrl;
+    ImGuiKey_LeftShift           :: LeftShift;
+    ImGuiKey_LeftAlt             :: LeftAlt;
+    ImGuiKey_LeftSuper           :: LeftSuper;
+    ImGuiKey_RightCtrl           :: RightCtrl;
+    ImGuiKey_RightShift          :: RightShift;
+    ImGuiKey_RightAlt            :: RightAlt;
+    ImGuiKey_RightSuper          :: RightSuper;
+    ImGuiKey_Menu                :: Menu;
+    ImGuiKey_0                   :: _0;
+    ImGuiKey_1                   :: _1;
+    ImGuiKey_2                   :: _2;
+    ImGuiKey_3                   :: _3;
+    ImGuiKey_4                   :: _4;
+    ImGuiKey_5                   :: _5;
+    ImGuiKey_6                   :: _6;
+    ImGuiKey_7                   :: _7;
+    ImGuiKey_8                   :: _8;
+    ImGuiKey_9                   :: _9;
+    ImGuiKey_A                   :: A;
+    ImGuiKey_B                   :: B;
+    ImGuiKey_C                   :: C;
+    ImGuiKey_D                   :: D;
+    ImGuiKey_E                   :: E;
+    ImGuiKey_F                   :: F;
+    ImGuiKey_G                   :: G;
+    ImGuiKey_H                   :: H;
+    ImGuiKey_I                   :: I;
+    ImGuiKey_J                   :: J;
+    ImGuiKey_K                   :: K;
+    ImGuiKey_L                   :: L;
+    ImGuiKey_M                   :: M;
+    ImGuiKey_N                   :: N;
+    ImGuiKey_O                   :: O;
+    ImGuiKey_P                   :: P;
+    ImGuiKey_Q                   :: Q;
+    ImGuiKey_R                   :: R;
+    ImGuiKey_S                   :: S;
+    ImGuiKey_T                   :: T;
+    ImGuiKey_U                   :: U;
+    ImGuiKey_V                   :: V;
+    ImGuiKey_W                   :: W;
+    ImGuiKey_X                   :: X;
+    ImGuiKey_Y                   :: Y;
+    ImGuiKey_Z                   :: Z;
+    ImGuiKey_F1                  :: F1;
+    ImGuiKey_F2                  :: F2;
+    ImGuiKey_F3                  :: F3;
+    ImGuiKey_F4                  :: F4;
+    ImGuiKey_F5                  :: F5;
+    ImGuiKey_F6                  :: F6;
+    ImGuiKey_F7                  :: F7;
+    ImGuiKey_F8                  :: F8;
+    ImGuiKey_F9                  :: F9;
+    ImGuiKey_F10                 :: F10;
+    ImGuiKey_F11                 :: F11;
+    ImGuiKey_F12                 :: F12;
+    ImGuiKey_Apostrophe          :: Apostrophe;
+    ImGuiKey_Comma               :: Comma;
+    ImGuiKey_Minus               :: Minus;
+    ImGuiKey_Period              :: Period;
+    ImGuiKey_Slash               :: Slash;
+    ImGuiKey_Semicolon           :: Semicolon;
+    ImGuiKey_Equal               :: Equal;
+    ImGuiKey_LeftBracket         :: LeftBracket;
+    ImGuiKey_Backslash           :: Backslash;
+    ImGuiKey_RightBracket        :: RightBracket;
+    ImGuiKey_GraveAccent         :: GraveAccent;
+    ImGuiKey_CapsLock            :: CapsLock;
+    ImGuiKey_ScrollLock          :: ScrollLock;
+    ImGuiKey_NumLock             :: NumLock;
+    ImGuiKey_PrintScreen         :: PrintScreen;
+    ImGuiKey_Pause               :: Pause;
+    ImGuiKey_Keypad0             :: Keypad0;
+    ImGuiKey_Keypad1             :: Keypad1;
+    ImGuiKey_Keypad2             :: Keypad2;
+    ImGuiKey_Keypad3             :: Keypad3;
+    ImGuiKey_Keypad4             :: Keypad4;
+    ImGuiKey_Keypad5             :: Keypad5;
+    ImGuiKey_Keypad6             :: Keypad6;
+    ImGuiKey_Keypad7             :: Keypad7;
+    ImGuiKey_Keypad8             :: Keypad8;
+    ImGuiKey_Keypad9             :: Keypad9;
+    ImGuiKey_KeypadDecimal       :: KeypadDecimal;
+    ImGuiKey_KeypadDivide        :: KeypadDivide;
+    ImGuiKey_KeypadMultiply      :: KeypadMultiply;
+    ImGuiKey_KeypadSubtract      :: KeypadSubtract;
+    ImGuiKey_KeypadAdd           :: KeypadAdd;
+    ImGuiKey_KeypadEnter         :: KeypadEnter;
+    ImGuiKey_KeypadEqual         :: KeypadEqual;
+
+    ImGuiKey_GamepadStart        :: GamepadStart;
+    ImGuiKey_GamepadBack         :: GamepadBack;
+    ImGuiKey_GamepadFaceLeft     :: GamepadFaceLeft;
+    ImGuiKey_GamepadFaceRight    :: GamepadFaceRight;
+    ImGuiKey_GamepadFaceUp       :: GamepadFaceUp;
+    ImGuiKey_GamepadFaceDown     :: GamepadFaceDown;
+    ImGuiKey_GamepadDpadLeft     :: GamepadDpadLeft;
+    ImGuiKey_GamepadDpadRight    :: GamepadDpadRight;
+    ImGuiKey_GamepadDpadUp       :: GamepadDpadUp;
+    ImGuiKey_GamepadDpadDown     :: GamepadDpadDown;
+    ImGuiKey_GamepadL1           :: GamepadL1;
+    ImGuiKey_GamepadR1           :: GamepadR1;
+    ImGuiKey_GamepadL2           :: GamepadL2;
+    ImGuiKey_GamepadR2           :: GamepadR2;
+    ImGuiKey_GamepadL3           :: GamepadL3;
+    ImGuiKey_GamepadR3           :: GamepadR3;
+    ImGuiKey_GamepadLStickLeft   :: GamepadLStickLeft;
+    ImGuiKey_GamepadLStickRight  :: GamepadLStickRight;
+    ImGuiKey_GamepadLStickUp     :: GamepadLStickUp;
+    ImGuiKey_GamepadLStickDown   :: GamepadLStickDown;
+    ImGuiKey_GamepadRStickLeft   :: GamepadRStickLeft;
+    ImGuiKey_GamepadRStickRight  :: GamepadRStickRight;
+    ImGuiKey_GamepadRStickUp     :: GamepadRStickUp;
+    ImGuiKey_GamepadRStickDown   :: GamepadRStickDown;
+
+    ImGuiKey_MouseLeft           :: MouseLeft;
+    ImGuiKey_MouseRight          :: MouseRight;
+    ImGuiKey_MouseMiddle         :: MouseMiddle;
+    ImGuiKey_MouseX1             :: MouseX1;
+    ImGuiKey_MouseX2             :: MouseX2;
+    ImGuiKey_MouseWheelX         :: MouseWheelX;
+    ImGuiKey_MouseWheelY         :: MouseWheelY;
+
+    ImGuiKey_ReservedForModCtrl  :: ReservedForModCtrl;
+    ImGuiKey_ReservedForModShift :: ReservedForModShift;
+    ImGuiKey_ReservedForModAlt   :: ReservedForModAlt;
+    ImGuiKey_ReservedForModSuper :: ReservedForModSuper;
+    ImGuiKey_COUNT               :: COUNT;
+
+    ImGuiMod_None                :: Mod_None;
+    ImGuiMod_Ctrl                :: Mod_Ctrl;
+    ImGuiMod_Shift               :: Mod_Shift;
+    ImGuiMod_Alt                 :: Mod_Alt;
+    ImGuiMod_Super               :: Mod_Super;
+    ImGuiMod_Shortcut            :: Mod_Shortcut;
+    ImGuiMod_Mask_               :: Mod_Mask_;
+
+    ImGuiKey_NamedKey_BEGIN      :: NamedKey_BEGIN;
+    ImGuiKey_NamedKey_END        :: NamedKey_END;
+    ImGuiKey_NamedKey_COUNT      :: NamedKey_COUNT;
+
+    ImGuiKey_KeysData_SIZE       :: KeysData_SIZE;
+    ImGuiKey_KeysData_OFFSET     :: KeysData_OFFSET;
+
+    ImGuiKey_ModCtrl             :: ModCtrl;
+    ImGuiKey_ModShift            :: ModShift;
+    ImGuiKey_ModAlt              :: ModAlt;
+    ImGuiKey_ModSuper            :: ModSuper;
+    ImGuiKey_KeyPadEnter         :: KeyPadEnter;
+}
+
+// Enumeration for AddMouseSourceEvent() actual source of Mouse Input data.
+// Historically we use "Mouse" terminology everywhere to indicate pointer data, e.g. MousePos, IsMousePressed(), io.AddMousePosEvent()
+// But that "Mouse" data can come from different source which occasionally may be useful for application to know about.
+// You can submit a change of pointer type using io.AddMouseSourceEvent().
+MouseSource :: enum s32 {
+    Mouse       :: 0;
+    TouchScreen :: 1;
+    Pen         :: 2;
+    COUNT       :: 3;
+
+    ImGuiMouseSource_Mouse       :: Mouse;
+    ImGuiMouseSource_TouchScreen :: TouchScreen;
+    ImGuiMouseSource_Pen         :: Pen;
+    ImGuiMouseSource_COUNT       :: COUNT;
+}
+
+KeyChord :: s32;
 
 ImTextureID :: *void;
 
@@ -165,6 +522,10 @@ SetNextWindowContentSize :: (size: ImVec2) #no_context {
 }
 SetNextWindowCollapsed :: (collapsed: bool, cond: Cond = .None) -> void #foreign imgui "?SetNextWindowCollapsed@ImGui@@YAX_NH@Z";
 SetNextWindowFocus :: () -> void #foreign imgui "?SetNextWindowFocus@ImGui@@YAXXZ";
+SetNextWindowScroll :: (scroll: *ImVec2) -> void #foreign imgui "?SetNextWindowScroll@ImGui@@YAXAEBUImVec2@@@Z";
+SetNextWindowScroll :: (scroll: ImVec2) #no_context {
+    SetNextWindowScroll(*scroll);
+}
 SetNextWindowBgAlpha :: (alpha: float) -> void #foreign imgui "?SetNextWindowBgAlpha@ImGui@@YAXM@Z";
 SetNextWindowViewport :: (viewport_id: ID) -> void #foreign imgui "?SetNextWindowViewport@ImGui@@YAXI@Z";
 SetWindowPos :: (pos: *ImVec2, cond: Cond = .None) -> void #foreign imgui "?SetWindowPos@ImGui@@YAXAEBUImVec2@@H@Z";
@@ -198,6 +559,8 @@ GetWindowContentRegionMin :: () -> ImVec2 #cpp_return_type_is_non_pod #foreign i
 GetWindowContentRegionMax :: () -> ImVec2 #cpp_return_type_is_non_pod #foreign imgui "?GetWindowContentRegionMax@ImGui@@YA?AUImVec2@@XZ";
 
 // Windows Scrolling
+// - Any change of Scroll will be applied at the beginning of next frame in the first call to Begin().
+// - You may instead use SetNextWindowScroll() prior to calling Begin() to avoid this delay, as an alternative to using SetScrollX()/SetScrollY().
 GetScrollX :: () -> float #foreign imgui "?GetScrollX@ImGui@@YAMXZ";
 GetScrollY :: () -> float #foreign imgui "?GetScrollY@ImGui@@YAMXZ";
 SetScrollX :: (scroll_x: float) -> void #foreign imgui "?SetScrollX@ImGui@@YAXM@Z";
@@ -224,8 +587,8 @@ PushStyleVar :: (idx: StyleVar, val: ImVec2) #no_context {
     PushStyleVar(idx, *val);
 }
 PopStyleVar :: (count: s32 = 1) -> void #foreign imgui "?PopStyleVar@ImGui@@YAXH@Z";
-PushAllowKeyboardFocus :: (allow_keyboard_focus: bool) -> void #foreign imgui "?PushAllowKeyboardFocus@ImGui@@YAX_N@Z";
-PopAllowKeyboardFocus :: () -> void #foreign imgui "?PopAllowKeyboardFocus@ImGui@@YAXXZ";
+PushTabStop :: (tab_stop: bool) -> void #foreign imgui "?PushTabStop@ImGui@@YAX_N@Z";
+PopTabStop :: () -> void #foreign imgui "?PopTabStop@ImGui@@YAXXZ";
 PushButtonRepeat :: (repeat: bool) -> void #foreign imgui "?PushButtonRepeat@ImGui@@YAX_N@Z";
 PopButtonRepeat :: () -> void #foreign imgui "?PopButtonRepeat@ImGui@@YAXXZ";
 
@@ -238,7 +601,7 @@ PushTextWrapPos :: (wrap_local_pos_x: float = 0.0) -> void #foreign imgui "?Push
 PopTextWrapPos :: () -> void #foreign imgui "?PopTextWrapPos@ImGui@@YAXXZ";
 
 // Style read access
-// - Use the style editor (ShowStyleEditor() function) to interactively see what the colors are)
+// - Use the ShowStyleEditor() function to interactively see/edit the colors.
 GetFont :: () -> *ImFont #foreign imgui "?GetFont@ImGui@@YAPEAUImFont@@XZ";
 GetFontSize :: () -> float #foreign imgui "?GetFontSize@ImGui@@YAMXZ";
 GetFontTexUvWhitePixel :: () -> ImVec2 #cpp_return_type_is_non_pod #foreign imgui "?GetFontTexUvWhitePixel@ImGui@@YA?AUImVec2@@XZ";
@@ -291,7 +654,7 @@ GetFrameHeight :: () -> float #foreign imgui "?GetFrameHeight@ImGui@@YAMXZ";
 GetFrameHeightWithSpacing :: () -> float #foreign imgui "?GetFrameHeightWithSpacing@ImGui@@YAMXZ";
 
 // ID stack/scopes
-// Read the FAQ (docs/FAQ.md or http://dearimgui.org/faq) for more details about how ID are handled in dear imgui.
+// Read the FAQ (docs/FAQ.md or http://dearimgui.com/faq) for more details about how ID are handled in dear imgui.
 // - Those questions are answered and impacted by understanding of the ID stack system:
 //   - "Q: Why is my widget not reacting when I click on it?"
 //   - "Q: How can I have widgets with an empty label?"
@@ -333,6 +696,8 @@ LabelText :: (label: *u8, fmt: *u8, __args: ..Any) -> void #foreign imgui "?Labe
 
 BulletText :: (fmt: *u8, __args: ..Any) -> void #foreign imgui "?BulletText@ImGui@@YAXPEBDZZ";
 
+SeparatorText :: (label: *u8) -> void #foreign imgui "?SeparatorText@ImGui@@YAXPEBD@Z";
+
 // Widgets: Main
 // - Most widgets return true when the value has been changed or when pressed/selected
 // - You may also use one of the many IsItemXXX functions (e.g. IsItemActive, IsItemHovered, etc.) to query widget state.
@@ -346,14 +711,6 @@ InvisibleButton :: (str_id: *u8, size: ImVec2, flags: ButtonFlags = .None) -> bo
     return InvisibleButton(str_id, *size, flags);
 }
 ArrowButton :: (str_id: *u8, dir: Dir) -> bool #foreign imgui "?ArrowButton@ImGui@@YA_NPEBDH@Z";
-Image :: (user_texture_id: ImTextureID, size: *ImVec2, uv0: *ImVec2, uv1: *ImVec2, tint_col: *ImVec4, border_col: *ImVec4) -> void #foreign imgui "?Image@ImGui@@YAXPEAXAEBUImVec2@@11AEBUImVec4@@2@Z";
-Image :: (user_texture_id: ImTextureID, size: ImVec2, uv0: ImVec2 = ImVec2.{0, 0}, uv1: ImVec2 = ImVec2.{1, 1}, tint_col: ImVec4 = ImVec4.{1, 1, 1, 1}, border_col: ImVec4 = ImVec4.{0, 0, 0, 0}) #no_context {
-    Image(user_texture_id, *size, *uv0, *uv1, *tint_col, *border_col);
-}
-ImageButton :: (user_texture_id: ImTextureID, size: *ImVec2, uv0: *ImVec2, uv1: *ImVec2, frame_padding: s32 = -1, bg_col: *ImVec4, tint_col: *ImVec4) -> bool #foreign imgui "?ImageButton@ImGui@@YA_NPEAXAEBUImVec2@@11HAEBUImVec4@@2@Z";
-ImageButton :: (user_texture_id: ImTextureID, size: ImVec2, uv0: ImVec2 = ImVec2.{0, 0}, uv1: ImVec2 = ImVec2.{1, 1}, frame_padding: s32 = -1, bg_col: ImVec4 = ImVec4.{0, 0, 0, 0}, tint_col: ImVec4 = ImVec4.{1, 1, 1, 1}) -> bool #no_context {
-    return ImageButton(user_texture_id, *size, *uv0, *uv1, frame_padding, *bg_col, *tint_col);
-}
 Checkbox :: (label: *u8, v: *bool) -> bool #foreign imgui "?Checkbox@ImGui@@YA_NPEBDPEA_N@Z";
 CheckboxFlags :: (label: *u8, flags: *s32, flags_value: s32) -> bool #foreign imgui "?CheckboxFlags@ImGui@@YA_NPEBDPEAHH@Z";
 CheckboxFlags :: (label: *u8, flags: *u32, flags_value: u32) -> bool #foreign imgui "?CheckboxFlags@ImGui@@YA_NPEBDPEAII@Z";
@@ -365,7 +722,18 @@ ProgressBar :: (fraction: float, size_arg: ImVec2 = ImVec2.{-FLOAT32_MIN, 0}, ov
 }
 Bullet :: () -> void #foreign imgui "?Bullet@ImGui@@YAXXZ";
 
-// Widgets: Combo Box
+// Widgets: Images
+// - Read about ImTextureID here: https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples
+Image :: (user_texture_id: ImTextureID, size: *ImVec2, uv0: *ImVec2, uv1: *ImVec2, tint_col: *ImVec4, border_col: *ImVec4) -> void #foreign imgui "?Image@ImGui@@YAXPEAXAEBUImVec2@@11AEBUImVec4@@2@Z";
+Image :: (user_texture_id: ImTextureID, size: ImVec2, uv0: ImVec2 = ImVec2.{0, 0}, uv1: ImVec2 = ImVec2.{1, 1}, tint_col: ImVec4 = ImVec4.{1, 1, 1, 1}, border_col: ImVec4 = ImVec4.{0, 0, 0, 0}) #no_context {
+    Image(user_texture_id, *size, *uv0, *uv1, *tint_col, *border_col);
+}
+ImageButton :: (str_id: *u8, user_texture_id: ImTextureID, size: *ImVec2, uv0: *ImVec2, uv1: *ImVec2, bg_col: *ImVec4, tint_col: *ImVec4) -> bool #foreign imgui "?ImageButton@ImGui@@YA_NPEBDPEAXAEBUImVec2@@22AEBUImVec4@@3@Z";
+ImageButton :: (str_id: *u8, user_texture_id: ImTextureID, size: ImVec2, uv0: ImVec2 = ImVec2.{0, 0}, uv1: ImVec2 = ImVec2.{1, 1}, bg_col: ImVec4 = ImVec4.{0, 0, 0, 0}, tint_col: ImVec4 = ImVec4.{1, 1, 1, 1}) -> bool #no_context {
+    return ImageButton(str_id, user_texture_id, *size, *uv0, *uv1, *bg_col, *tint_col);
+}
+
+// Widgets: Combo Box (Dropdown)
 // - The BeginCombo()/EndCombo() api allows you to manage your contents and selection state however you want it, by creating e.g. Selectable() items.
 // - The old Combo() api are helpers over BeginCombo()/EndCombo() which are kept available for convenience purpose. This is analogous to how ListBox are created.
 BeginCombo :: (label: *u8, preview_value: *u8, flags: ComboFlags = .None) -> bool #foreign imgui "?BeginCombo@ImGui@@YA_NPEBD0H@Z";
@@ -376,7 +744,7 @@ Combo :: (label: *u8, current_item: *s32, items_getter: #type (data: *void, idx:
 
 // Widgets: Drag Sliders
 // - CTRL+Click on any drag box to turn them into an input box. Manually input values aren't clamped by default and can go off-bounds. Use ImGuiSliderFlags_AlwaysClamp to always clamp.
-// - For all the Float2/Float3/Float4/Int2/Int3/Int4 versions of every functions, note that a 'float v[X]' function argument is the same as 'float* v',
+// - For all the Float2/Float3/Float4/Int2/Int3/Int4 versions of every function, note that a 'float v[X]' function argument is the same as 'float* v',
 //   the array syntax is just a way to document the number of elements that are expected to be accessible. You can pass address of your first element out of a contiguous set, e.g. &myvector.x
 // - Adjust format string to decorate the value with a prefix, a suffix, or adapt the editing and display precision e.g. "%.3f" -> 1.234; "%5.2f secs" -> 01.23 secs; "Biscuit: %.0f" -> Biscuit: 1; etc.
 // - Format string may also be set to NULL or use the default format ("%f" or "%d").
@@ -384,7 +752,7 @@ Combo :: (label: *u8, current_item: *s32, items_getter: #type (data: *void, idx:
 // - Use v_min < v_max to clamp edits to given limits. Note that CTRL+Click manual input can override those limits if ImGuiSliderFlags_AlwaysClamp is not used.
 // - Use v_max = FLT_MAX / INT_MAX etc to avoid clamping to a maximum, same with v_min = -FLT_MAX / INT_MIN to avoid clamping to a minimum.
 // - We use the same sets of flags for DragXXX() and SliderXXX() functions as the features are the same and it makes it easier to swap them.
-// - Legacy: Pre-1.78 there are DragXXX() function signatures that takes a final `float power=1.0f' argument instead of the `ImGuiSliderFlags flags=0' argument.
+// - Legacy: Pre-1.78 there are DragXXX() function signatures that take a final `float power=1.0f' argument instead of the `ImGuiSliderFlags flags=0' argument.
 //   If you get a warning converting a float to ImGuiSliderFlags, read https://github.com/ocornut/imgui/issues/3361
 DragFloat :: (label: *u8, v: *float, v_speed: float = 1.0, v_min: float = 0.0, v_max: float = 0.0, format: *u8 = "%.3f", flags: SliderFlags = .None) -> bool #foreign imgui "?DragFloat@ImGui@@YA_NPEBDPEAMMMM0H@Z";
 DragFloat2 :: (label: *u8, v: *[2] float, v_speed: float = 1.0, v_min: float = 0.0, v_max: float = 0.0, format: *u8 = "%.3f", flags: SliderFlags = .None) -> bool #foreign imgui "?DragFloat2@ImGui@@YA_NPEBDQEAMMMM0H@Z";
@@ -403,7 +771,7 @@ DragScalarN :: (label: *u8, data_type: DataType, p_data: *void, components: s32,
 // - CTRL+Click on any slider to turn them into an input box. Manually input values aren't clamped by default and can go off-bounds. Use ImGuiSliderFlags_AlwaysClamp to always clamp.
 // - Adjust format string to decorate the value with a prefix, a suffix, or adapt the editing and display precision e.g. "%.3f" -> 1.234; "%5.2f secs" -> 01.23 secs; "Biscuit: %.0f" -> Biscuit: 1; etc.
 // - Format string may also be set to NULL or use the default format ("%f" or "%d").
-// - Legacy: Pre-1.78 there are SliderXXX() function signatures that takes a final `float power=1.0f' argument instead of the `ImGuiSliderFlags flags=0' argument.
+// - Legacy: Pre-1.78 there are SliderXXX() function signatures that take a final `float power=1.0f' argument instead of the `ImGuiSliderFlags flags=0' argument.
 //   If you get a warning converting a float to ImGuiSliderFlags, read https://github.com/ocornut/imgui/issues/3361
 SliderFloat :: (label: *u8, v: *float, v_min: float, v_max: float, format: *u8 = "%.3f", flags: SliderFlags = .None) -> bool #foreign imgui "?SliderFloat@ImGui@@YA_NPEBDPEAMMM0H@Z";
 SliderFloat2 :: (label: *u8, v: *[2] float, v_min: float, v_max: float, format: *u8 = "%.3f", flags: SliderFlags = .None) -> bool #foreign imgui "?SliderFloat2@ImGui@@YA_NPEBDQEAMMM0H@Z";
@@ -474,7 +842,7 @@ TreeNodeEx :: (str_id: *u8, flags: TreeNodeFlags, fmt: *u8, __args: ..Any) -> bo
 TreeNodeEx :: (ptr_id: *void, flags: TreeNodeFlags, fmt: *u8, __args: ..Any) -> bool #foreign imgui "?TreeNodeEx@ImGui@@YA_NPEBXHPEBDZZ";
 
 TreePush :: (str_id: *u8) -> void #foreign imgui "?TreePush@ImGui@@YAXPEBD@Z";
-TreePush :: (ptr_id: *void = null) -> void #foreign imgui "?TreePush@ImGui@@YAXPEBX@Z";
+TreePush :: (ptr_id: *void) -> void #foreign imgui "?TreePush@ImGui@@YAXPEBX@Z";
 TreePop :: () -> void #foreign imgui "?TreePop@ImGui@@YAXXZ";
 GetTreeNodeToLabelSpacing :: () -> float #foreign imgui "?GetTreeNodeToLabelSpacing@ImGui@@YAMXZ";
 CollapsingHeader :: (label: *u8, flags: TreeNodeFlags = .None) -> bool #foreign imgui "?CollapsingHeader@ImGui@@YA_NPEBDH@Z";
@@ -537,13 +905,13 @@ MenuItem :: (label: *u8, shortcut: *u8, p_selected: *bool, enabled := true) -> b
 
 // Tooltips
 // - Tooltip are windows following the mouse. They do not take focus away.
-BeginTooltip :: () -> void #foreign imgui "?BeginTooltip@ImGui@@YAXXZ";
+BeginTooltip :: () -> bool #foreign imgui "?BeginTooltip@ImGui@@YA_NXZ";
 EndTooltip :: () -> void #foreign imgui "?EndTooltip@ImGui@@YAXXZ";
 SetTooltip :: (fmt: *u8, __args: ..Any) -> void #foreign imgui "?SetTooltip@ImGui@@YAXPEBDZZ";
 
 // Popups: begin/end functions
 //  - BeginPopup(): query popup state, if open start appending into the window. Call EndPopup() afterwards. ImGuiWindowFlags are forwarded to the window.
-//  - BeginPopupModal(): block every interactions behind the window, cannot be closed by user, add a dimming background, has a title bar.
+//  - BeginPopupModal(): block every interaction behind the window, cannot be closed by user, add a dimming background, has a title bar.
 BeginPopup :: (str_id: *u8, flags: WindowFlags = .None) -> bool #foreign imgui "?BeginPopup@ImGui@@YA_NPEBDH@Z";
 BeginPopupModal :: (name: *u8, p_open: *bool = null, flags: WindowFlags = .None) -> bool #foreign imgui "?BeginPopupModal@ImGui@@YA_NPEBDPEA_NH@Z";
 EndPopup :: () -> void #foreign imgui "?EndPopup@ImGui@@YAXXZ";
@@ -587,7 +955,7 @@ IsPopupOpen :: (str_id: *u8, flags: PopupFlags = .None) -> bool #foreign imgui "
 // - 4. Optionally call TableHeadersRow() to submit a header row. Names are pulled from TableSetupColumn() data.
 // - 5. Populate contents:
 //    - In most situations you can use TableNextRow() + TableSetColumnIndex(N) to start appending into a column.
-//    - If you are using tables as a sort of grid, where every columns is holding the same type of contents,
+//    - If you are using tables as a sort of grid, where every column is holding the same type of contents,
 //      you may prefer using TableNextColumn() instead of TableNextRow() + TableSetColumnIndex().
 //      TableNextColumn() will automatically wrap-around into the next row if needed.
 //    - IMPORTANT: Comparatively to the old Columns() API, we need to call TableNextColumn() for the first column!
@@ -648,7 +1016,7 @@ SetColumnOffset :: (column_index: s32, offset_x: float) -> void #foreign imgui "
 GetColumnsCount :: () -> s32 #foreign imgui "?GetColumnsCount@ImGui@@YAHXZ";
 
 // Tab Bars, Tabs
-// Note: Tabs are automatically created by the docking system. Use this to create tab bars/tabs yourself without docking being involved.
+// - Note: Tabs are automatically created by the docking system (when in 'docking' branch). Use this to create tab bars/tabs yourself.
 BeginTabBar :: (str_id: *u8, flags: TabBarFlags = .None) -> bool #foreign imgui "?BeginTabBar@ImGui@@YA_NPEBDH@Z";
 EndTabBar :: () -> void #foreign imgui "?EndTabBar@ImGui@@YAXXZ";
 BeginTabItem :: (label: *u8, p_open: *bool = null, flags: TabItemFlags = .None) -> bool #foreign imgui "?BeginTabItem@ImGui@@YA_NPEBDPEA_NH@Z";
@@ -737,6 +1105,7 @@ IsItemToggledOpen :: () -> bool #foreign imgui "?IsItemToggledOpen@ImGui@@YA_NXZ
 IsAnyItemHovered :: () -> bool #foreign imgui "?IsAnyItemHovered@ImGui@@YA_NXZ";
 IsAnyItemActive :: () -> bool #foreign imgui "?IsAnyItemActive@ImGui@@YA_NXZ";
 IsAnyItemFocused :: () -> bool #foreign imgui "?IsAnyItemFocused@ImGui@@YA_NXZ";
+GetItemID :: () -> ID #foreign imgui "?GetItemID@ImGui@@YAIXZ";
 GetItemRectMin :: () -> ImVec2 #cpp_return_type_is_non_pod #foreign imgui "?GetItemRectMin@ImGui@@YA?AUImVec2@@XZ";
 GetItemRectMax :: () -> ImVec2 #cpp_return_type_is_non_pod #foreign imgui "?GetItemRectMax@ImGui@@YA?AUImVec2@@XZ";
 GetItemRectSize :: () -> ImVec2 #cpp_return_type_is_non_pod #foreign imgui "?GetItemRectSize@ImGui@@YA?AUImVec2@@XZ";
@@ -790,20 +1159,19 @@ ColorConvertFloat4ToU32 :: (in: ImVec4) -> ImU32 #no_context {
 ColorConvertRGBtoHSV :: (r: float, g: float, b: float, out_h: *float, out_s: *float, out_v: *float) -> void #foreign imgui "?ColorConvertRGBtoHSV@ImGui@@YAXMMMAEAM00@Z";
 ColorConvertHSVtoRGB :: (h: float, s: float, v: float, out_r: *float, out_g: *float, out_b: *float) -> void #foreign imgui "?ColorConvertHSVtoRGB@ImGui@@YAXMMMAEAM00@Z";
 
-// Inputs Utilities: Keyboard
-// Without IMGUI_DISABLE_OBSOLETE_KEYIO: (legacy support)
-//   - For 'ImGuiKey key' you can still use your legacy native/user indices according to how your backend/engine stored them in io.KeysDown[].
-// With IMGUI_DISABLE_OBSOLETE_KEYIO: (this is the way forward)
-//   - Any use of 'ImGuiKey' will assert when key < 512 will be passed, previously reserved as native/user keys indices
-//   - GetKeyIndex() is pass-through and therefore deprecated (gone if IMGUI_DISABLE_OBSOLETE_KEYIO is defined)
-IsKeyDown :: (key: Key) -> bool #foreign imgui "?IsKeyDown@ImGui@@YA_NH@Z";
-IsKeyPressed :: (key: Key, repeat := true) -> bool #foreign imgui "?IsKeyPressed@ImGui@@YA_NH_N@Z";
-IsKeyReleased :: (key: Key) -> bool #foreign imgui "?IsKeyReleased@ImGui@@YA_NH@Z";
-GetKeyPressedAmount :: (key: Key, repeat_delay: float, rate: float) -> s32 #foreign imgui "?GetKeyPressedAmount@ImGui@@YAHHMM@Z";
-GetKeyName :: (key: Key) -> *u8 #foreign imgui "?GetKeyName@ImGui@@YAPEBDH@Z";
+// Inputs Utilities: Keyboard/Mouse/Gamepad
+// - the ImGuiKey enum contains all possible keyboard, mouse and gamepad inputs (e.g. ImGuiKey_A, ImGuiKey_MouseLeft, ImGuiKey_GamepadDpadUp...).
+// - before v1.87, we used ImGuiKey to carry native/user indices as defined by each backends. About use of those legacy ImGuiKey values:
+//  - without IMGUI_DISABLE_OBSOLETE_KEYIO (legacy support): you can still use your legacy native/user indices (< 512) according to how your backend/engine stored them in io.KeysDown[], but need to cast them to ImGuiKey.
+//  - with    IMGUI_DISABLE_OBSOLETE_KEYIO (this is the way forward): any use of ImGuiKey will assert with key < 512. GetKeyIndex() is pass-through and therefore deprecated (gone if IMGUI_DISABLE_OBSOLETE_KEYIO is defined).
+IsKeyDown :: (key: Key) -> bool #foreign imgui "?IsKeyDown@ImGui@@YA_NW4ImGuiKey@@@Z";
+IsKeyPressed :: (key: Key, repeat := true) -> bool #foreign imgui "?IsKeyPressed@ImGui@@YA_NW4ImGuiKey@@_N@Z";
+IsKeyReleased :: (key: Key) -> bool #foreign imgui "?IsKeyReleased@ImGui@@YA_NW4ImGuiKey@@@Z";
+GetKeyPressedAmount :: (key: Key, repeat_delay: float, rate: float) -> s32 #foreign imgui "?GetKeyPressedAmount@ImGui@@YAHW4ImGuiKey@@MM@Z";
+GetKeyName :: (key: Key) -> *u8 #foreign imgui "?GetKeyName@ImGui@@YAPEBDW4ImGuiKey@@@Z";
 SetNextFrameWantCaptureKeyboard :: (want_capture_keyboard: bool) -> void #foreign imgui "?SetNextFrameWantCaptureKeyboard@ImGui@@YAX_N@Z";
 
-// Inputs Utilities: Mouse
+// Inputs Utilities: Mouse specific
 // - To refer to a mouse button, you may use named enums in your code e.g. ImGuiMouseButton_Left, ImGuiMouseButton_Right.
 // - You can also use regular integer: it is forever guaranteed that 0=Left, 1=Right, 2=Middle.
 // - Dragging operations are only reported after mouse has moved a certain distance away from the initial clicking position (see 'lock_threshold' and 'io.MouseDraggingThreshold')
@@ -864,7 +1232,13 @@ DestroyPlatformWindows :: () -> void #foreign imgui "?DestroyPlatformWindows@ImG
 FindViewportByID :: (id: ID) -> *Viewport #foreign imgui "?FindViewportByID@ImGui@@YAPEAUImGuiViewport@@I@Z";
 FindViewportByPlatformHandle :: (platform_handle: *void) -> *Viewport #foreign imgui "?FindViewportByPlatformHandle@ImGui@@YAPEAUImGuiViewport@@PEAX@Z";
 
-GetKeyIndex :: (key: Key) -> s32 #foreign imgui "?GetKeyIndex@ImGui@@YAHH@Z";
+GetKeyIndex :: (key: Key) -> Key #foreign imgui "?GetKeyIndex@ImGui@@YA?AW4ImGuiKey@@W42@@Z";
+
+// OBSOLETED in 1.89 (from August 2022)
+ImageButton :: (user_texture_id: ImTextureID, size: *ImVec2, uv0: *ImVec2, uv1: *ImVec2, frame_padding: s32 = -1, bg_col: *ImVec4, tint_col: *ImVec4) -> bool #foreign imgui "?ImageButton@ImGui@@YA_NPEAXAEBUImVec2@@11HAEBUImVec4@@2@Z";
+ImageButton :: (user_texture_id: ImTextureID, size: ImVec2, uv0: ImVec2 = ImVec2.{0, 0}, uv1: ImVec2 = ImVec2.{1, 1}, frame_padding: s32 = -1, bg_col: ImVec4 = ImVec4.{0, 0, 0, 0}, tint_col: ImVec4 = ImVec4.{1, 1, 1, 1}) -> bool #no_context {
+    return ImageButton(user_texture_id, *size, *uv0, *uv1, frame_padding, *bg_col, *tint_col);
+}
 
 // OBSOLETED in 1.86 (from November 2021)
 CalcListClipping :: (items_count: s32, items_height: float, out_items_display_start: *s32, out_items_display_end: *s32) -> void #foreign imgui "?CalcListClipping@ImGui@@YAXHMPEAH0@Z";
@@ -872,16 +1246,8 @@ CalcListClipping :: (items_count: s32, items_height: float, out_items_display_st
 // OBSOLETED in 1.81 (from February 2021)
 ListBoxHeader :: (label: *u8, items_count: s32, height_in_items: s32 = -1) -> bool #foreign imgui "?ListBoxHeader@ImGui@@YA_NPEBDHH@Z";
 
-// OBSOLETED in 1.78 (from June 2020)
-// Old drag/sliders functions that took a 'float power = 1.0' argument instead of flags.
-// For shared code, you can version check at compile-time with `#if IMGUI_VERSION_NUM >= 17704`.
-DragScalar :: (label: *u8, data_type: DataType, p_data: *void, v_speed: float, p_min: *void, p_max: *void, format: *u8, power: float) -> bool #foreign imgui "?DragScalar@ImGui@@YA_NPEBDHPEAXMPEBX20M@Z";
-DragScalarN :: (label: *u8, data_type: DataType, p_data: *void, components: s32, v_speed: float, p_min: *void, p_max: *void, format: *u8, power: float) -> bool #foreign imgui "?DragScalarN@ImGui@@YA_NPEBDHPEAXHMPEBX20M@Z";
-
-SliderScalar :: (label: *u8, data_type: DataType, p_data: *void, p_min: *void, p_max: *void, format: *u8, power: float) -> bool #foreign imgui "?SliderScalar@ImGui@@YA_NPEBDHPEAXPEBX20M@Z";
-SliderScalarN :: (label: *u8, data_type: DataType, p_data: *void, components: s32, p_min: *void, p_max: *void, format: *u8, power: float) -> bool #foreign imgui "?SliderScalarN@ImGui@@YA_NPEBDHPEAXHPEBX20M@Z";
-
 // Flags for ImGui::Begin()
+// (Those are per-window flags. There are shared flags in ImGuiIO: io.ConfigWindowsResizeFromEdges and io.ConfigWindowsMoveFromTitleBarOnly)
 WindowFlags :: enum_flags s32 {
     None                      :: 0x0;
     NoTitleBar                :: 0x1;
@@ -955,6 +1321,7 @@ WindowFlags :: enum_flags s32 {
 }
 
 // Flags for ImGui::InputText()
+// (Those are per-item flags. There are shared flags in ImGuiIO: io.ConfigInputTextCursorBlink and io.ConfigInputTextEnterKeepActive)
 InputTextFlags :: enum_flags s32 {
     None                :: 0x0;
     CharsDecimal        :: 0x1;
@@ -977,8 +1344,7 @@ InputTextFlags :: enum_flags s32 {
     CharsScientific     :: 0x20000;
     CallbackResize      :: 0x40000;
     CallbackEdit        :: 0x80000;
-
-    AlwaysInsertMode    :: 0x2000;
+    EscapeClearsAll     :: 0x100000;
 
     ImGuiInputTextFlags_None                :: None;
     ImGuiInputTextFlags_CharsDecimal        :: CharsDecimal;
@@ -1001,8 +1367,7 @@ InputTextFlags :: enum_flags s32 {
     ImGuiInputTextFlags_CharsScientific     :: CharsScientific;
     ImGuiInputTextFlags_CallbackResize      :: CallbackResize;
     ImGuiInputTextFlags_CallbackEdit        :: CallbackEdit;
-
-    ImGuiInputTextFlags_AlwaysInsertMode    :: AlwaysInsertMode;
+    ImGuiInputTextFlags_EscapeClearsAll     :: EscapeClearsAll;
 }
 
 // Flags for ImGui::TreeNodeEx(), ImGui::CollapsingHeader*()
@@ -1050,7 +1415,7 @@ TreeNodeFlags :: enum_flags s32 {
 //   It is therefore guaranteed to be legal to pass a mouse button index in ImGuiPopupFlags.
 // - For the same reason, we exceptionally default the ImGuiPopupFlags argument of BeginPopupContextXXX functions to 1 instead of 0.
 //   IMPORTANT: because the default parameter is 1 (==ImGuiPopupFlags_MouseButtonRight), if you rely on the default parameter
-//   and want to another another flag, you need to pass in the ImGuiPopupFlags_MouseButtonRight flag.
+//   and want to use another flag, you need to pass in the ImGuiPopupFlags_MouseButtonRight flag explicitly.
 // - Multiple buttons currently cannot be combined/or-ed in those functions (we could allow it later).
 PopupFlags :: enum_flags s32 {
     None                    :: 0x0;
@@ -1185,7 +1550,7 @@ TabItemFlags :: enum_flags s32 {
 // - When ScrollX is on:
 //    - Table defaults to ImGuiTableFlags_SizingFixedFit -> all Columns defaults to ImGuiTableColumnFlags_WidthFixed
 //    - Columns sizing policy allowed: Fixed/Auto mostly.
-//    - Fixed Columns can be enlarged as needed. Table will show an horizontal scrollbar if needed.
+//    - Fixed Columns can be enlarged as needed. Table will show a horizontal scrollbar if needed.
 //    - When using auto-resizing (non-resizable) fixed columns, querying the content width to use item right-alignment e.g. SetNextItemWidth(-FLT_MIN) doesn't make sense, would create a feedback loop.
 //    - Using Stretch columns OFTEN DOES NOT MAKE SENSE if ScrollX is on, UNLESS you have specified a value for 'inner_width' in BeginTable().
 //      If you specify a value for 'inner_width' then effectively the scrolling space is known and Stretch or mixed Fixed/Stretch columns become meaningful again.
@@ -1359,7 +1724,7 @@ TableRowFlags :: enum_flags s32 {
 //  - Layer 0: draw with RowBg0 color if set, otherwise draw with ColumnBg0 if set.
 //  - Layer 1: draw with RowBg1 color if set, otherwise draw with ColumnBg1 if set.
 //  - Layer 2: draw with CellBg color if set.
-// The purpose of the two row/columns layers is to let you decide if a background color changes should override or blend with the existing color.
+// The purpose of the two row/columns layers is to let you decide if a background color change should override or blend with the existing color.
 // When using ImGuiTableFlags_RowBg on the table, each row has the RowBg0 color automatically set for odd/even rows.
 // If you set the color of RowBg0 target, your color will override the existing RowBg0 color.
 // If you set the color of RowBg1 or ColumnBg1 target, your color will blend over the RowBg0 color.
@@ -1413,6 +1778,10 @@ HoveredFlags :: enum_flags s32 {
     RectOnly                     :: 0x1a0;
     RootAndChildWindows          :: 0x3;
 
+    DelayNormal                  :: 0x800;
+    DelayShort                   :: 0x1000;
+    NoSharedDelay                :: 0x2000;
+
     ImGuiHoveredFlags_None                         :: None;
     ImGuiHoveredFlags_ChildWindows                 :: ChildWindows;
     ImGuiHoveredFlags_RootWindow                   :: RootWindow;
@@ -1427,6 +1796,10 @@ HoveredFlags :: enum_flags s32 {
     ImGuiHoveredFlags_NoNavOverride                :: NoNavOverride;
     ImGuiHoveredFlags_RectOnly                     :: RectOnly;
     ImGuiHoveredFlags_RootAndChildWindows          :: RootAndChildWindows;
+
+    ImGuiHoveredFlags_DelayNormal                  :: DelayNormal;
+    ImGuiHoveredFlags_DelayShort                   :: DelayShort;
+    ImGuiHoveredFlags_NoSharedDelay                :: NoSharedDelay;
 }
 
 // Flags for ImGui::DockSpace(), shared/inherited by child nodes.
@@ -1538,327 +1911,10 @@ SortDirection :: enum s32 {
     ImGuiSortDirection_Descending :: Descending;
 }
 
-// Keys value 0 to 511 are left unused as legacy native/opaque key values (< 1.87)
-// Keys value >= 512 are named keys (>= 1.87)
-Key :: enum s32 {
-    None               :: 0;
-    Tab                :: 512;
-    LeftArrow          :: 513;
-    RightArrow         :: 514;
-    UpArrow            :: 515;
-    DownArrow          :: 516;
-    PageUp             :: 517;
-    PageDown           :: 518;
-    Home               :: 519;
-    End                :: 520;
-    Insert             :: 521;
-    Delete             :: 522;
-    Backspace          :: 523;
-    Space              :: 524;
-    Enter              :: 525;
-    Escape             :: 526;
-    LeftCtrl           :: 527;
-    LeftShift          :: 528;
-    LeftAlt            :: 529;
-    LeftSuper          :: 530;
-    RightCtrl          :: 531;
-    RightShift         :: 532;
-    RightAlt           :: 533;
-    RightSuper         :: 534;
-    Menu               :: 535;
-    _0                 :: 536;
-    _1                 :: 537;
-    _2                 :: 538;
-    _3                 :: 539;
-    _4                 :: 540;
-    _5                 :: 541;
-    _6                 :: 542;
-    _7                 :: 543;
-    _8                 :: 544;
-    _9                 :: 545;
-    A                  :: 546;
-    B                  :: 547;
-    C                  :: 548;
-    D                  :: 549;
-    E                  :: 550;
-    F                  :: 551;
-    G                  :: 552;
-    H                  :: 553;
-    I                  :: 554;
-    J                  :: 555;
-    K                  :: 556;
-    L                  :: 557;
-    M                  :: 558;
-    N                  :: 559;
-    O                  :: 560;
-    P                  :: 561;
-    Q                  :: 562;
-    R                  :: 563;
-    S                  :: 564;
-    T                  :: 565;
-    U                  :: 566;
-    V                  :: 567;
-    W                  :: 568;
-    X                  :: 569;
-    Y                  :: 570;
-    Z                  :: 571;
-    F1                 :: 572;
-    F2                 :: 573;
-    F3                 :: 574;
-    F4                 :: 575;
-    F5                 :: 576;
-    F6                 :: 577;
-    F7                 :: 578;
-    F8                 :: 579;
-    F9                 :: 580;
-    F10                :: 581;
-    F11                :: 582;
-    F12                :: 583;
-    Apostrophe         :: 584;
-    Comma              :: 585;
-    Minus              :: 586;
-    Period             :: 587;
-    Slash              :: 588;
-    Semicolon          :: 589;
-    Equal              :: 590;
-    LeftBracket        :: 591;
-    Backslash          :: 592;
-    RightBracket       :: 593;
-    GraveAccent        :: 594;
-    CapsLock           :: 595;
-    ScrollLock         :: 596;
-    NumLock            :: 597;
-    PrintScreen        :: 598;
-    Pause              :: 599;
-    Keypad0            :: 600;
-    Keypad1            :: 601;
-    Keypad2            :: 602;
-    Keypad3            :: 603;
-    Keypad4            :: 604;
-    Keypad5            :: 605;
-    Keypad6            :: 606;
-    Keypad7            :: 607;
-    Keypad8            :: 608;
-    Keypad9            :: 609;
-    KeypadDecimal      :: 610;
-    KeypadDivide       :: 611;
-    KeypadMultiply     :: 612;
-    KeypadSubtract     :: 613;
-    KeypadAdd          :: 614;
-    KeypadEnter        :: 615;
-    KeypadEqual        :: 616;
-
-    GamepadStart       :: 617;
-    GamepadBack        :: 618;
-    GamepadFaceUp      :: 619;
-    GamepadFaceDown    :: 620;
-    GamepadFaceLeft    :: 621;
-    GamepadFaceRight   :: 622;
-    GamepadDpadUp      :: 623;
-    GamepadDpadDown    :: 624;
-    GamepadDpadLeft    :: 625;
-    GamepadDpadRight   :: 626;
-    GamepadL1          :: 627;
-    GamepadR1          :: 628;
-    GamepadL2          :: 629;
-    GamepadR2          :: 630;
-    GamepadL3          :: 631;
-    GamepadR3          :: 632;
-    GamepadLStickUp    :: 633;
-    GamepadLStickDown  :: 634;
-    GamepadLStickLeft  :: 635;
-    GamepadLStickRight :: 636;
-    GamepadRStickUp    :: 637;
-    GamepadRStickDown  :: 638;
-    GamepadRStickLeft  :: 639;
-    GamepadRStickRight :: 640;
-
-    ModCtrl            :: 641;
-    ModShift           :: 642;
-    ModAlt             :: 643;
-    ModSuper           :: 644;
-
-    COUNT              :: 645;
-
-    NamedKey_BEGIN     :: 512;
-    NamedKey_END       :: 645;
-    NamedKey_COUNT     :: 133;
-
-    KeysData_SIZE      :: 645;
-    KeysData_OFFSET    :: 0;
-
-    KeyPadEnter        :: 615;
-
-    ImGuiKey_None               :: None;
-    ImGuiKey_Tab                :: Tab;
-    ImGuiKey_LeftArrow          :: LeftArrow;
-    ImGuiKey_RightArrow         :: RightArrow;
-    ImGuiKey_UpArrow            :: UpArrow;
-    ImGuiKey_DownArrow          :: DownArrow;
-    ImGuiKey_PageUp             :: PageUp;
-    ImGuiKey_PageDown           :: PageDown;
-    ImGuiKey_Home               :: Home;
-    ImGuiKey_End                :: End;
-    ImGuiKey_Insert             :: Insert;
-    ImGuiKey_Delete             :: Delete;
-    ImGuiKey_Backspace          :: Backspace;
-    ImGuiKey_Space              :: Space;
-    ImGuiKey_Enter              :: Enter;
-    ImGuiKey_Escape             :: Escape;
-    ImGuiKey_LeftCtrl           :: LeftCtrl;
-    ImGuiKey_LeftShift          :: LeftShift;
-    ImGuiKey_LeftAlt            :: LeftAlt;
-    ImGuiKey_LeftSuper          :: LeftSuper;
-    ImGuiKey_RightCtrl          :: RightCtrl;
-    ImGuiKey_RightShift         :: RightShift;
-    ImGuiKey_RightAlt           :: RightAlt;
-    ImGuiKey_RightSuper         :: RightSuper;
-    ImGuiKey_Menu               :: Menu;
-    ImGuiKey_0                  :: _0;
-    ImGuiKey_1                  :: _1;
-    ImGuiKey_2                  :: _2;
-    ImGuiKey_3                  :: _3;
-    ImGuiKey_4                  :: _4;
-    ImGuiKey_5                  :: _5;
-    ImGuiKey_6                  :: _6;
-    ImGuiKey_7                  :: _7;
-    ImGuiKey_8                  :: _8;
-    ImGuiKey_9                  :: _9;
-    ImGuiKey_A                  :: A;
-    ImGuiKey_B                  :: B;
-    ImGuiKey_C                  :: C;
-    ImGuiKey_D                  :: D;
-    ImGuiKey_E                  :: E;
-    ImGuiKey_F                  :: F;
-    ImGuiKey_G                  :: G;
-    ImGuiKey_H                  :: H;
-    ImGuiKey_I                  :: I;
-    ImGuiKey_J                  :: J;
-    ImGuiKey_K                  :: K;
-    ImGuiKey_L                  :: L;
-    ImGuiKey_M                  :: M;
-    ImGuiKey_N                  :: N;
-    ImGuiKey_O                  :: O;
-    ImGuiKey_P                  :: P;
-    ImGuiKey_Q                  :: Q;
-    ImGuiKey_R                  :: R;
-    ImGuiKey_S                  :: S;
-    ImGuiKey_T                  :: T;
-    ImGuiKey_U                  :: U;
-    ImGuiKey_V                  :: V;
-    ImGuiKey_W                  :: W;
-    ImGuiKey_X                  :: X;
-    ImGuiKey_Y                  :: Y;
-    ImGuiKey_Z                  :: Z;
-    ImGuiKey_F1                 :: F1;
-    ImGuiKey_F2                 :: F2;
-    ImGuiKey_F3                 :: F3;
-    ImGuiKey_F4                 :: F4;
-    ImGuiKey_F5                 :: F5;
-    ImGuiKey_F6                 :: F6;
-    ImGuiKey_F7                 :: F7;
-    ImGuiKey_F8                 :: F8;
-    ImGuiKey_F9                 :: F9;
-    ImGuiKey_F10                :: F10;
-    ImGuiKey_F11                :: F11;
-    ImGuiKey_F12                :: F12;
-    ImGuiKey_Apostrophe         :: Apostrophe;
-    ImGuiKey_Comma              :: Comma;
-    ImGuiKey_Minus              :: Minus;
-    ImGuiKey_Period             :: Period;
-    ImGuiKey_Slash              :: Slash;
-    ImGuiKey_Semicolon          :: Semicolon;
-    ImGuiKey_Equal              :: Equal;
-    ImGuiKey_LeftBracket        :: LeftBracket;
-    ImGuiKey_Backslash          :: Backslash;
-    ImGuiKey_RightBracket       :: RightBracket;
-    ImGuiKey_GraveAccent        :: GraveAccent;
-    ImGuiKey_CapsLock           :: CapsLock;
-    ImGuiKey_ScrollLock         :: ScrollLock;
-    ImGuiKey_NumLock            :: NumLock;
-    ImGuiKey_PrintScreen        :: PrintScreen;
-    ImGuiKey_Pause              :: Pause;
-    ImGuiKey_Keypad0            :: Keypad0;
-    ImGuiKey_Keypad1            :: Keypad1;
-    ImGuiKey_Keypad2            :: Keypad2;
-    ImGuiKey_Keypad3            :: Keypad3;
-    ImGuiKey_Keypad4            :: Keypad4;
-    ImGuiKey_Keypad5            :: Keypad5;
-    ImGuiKey_Keypad6            :: Keypad6;
-    ImGuiKey_Keypad7            :: Keypad7;
-    ImGuiKey_Keypad8            :: Keypad8;
-    ImGuiKey_Keypad9            :: Keypad9;
-    ImGuiKey_KeypadDecimal      :: KeypadDecimal;
-    ImGuiKey_KeypadDivide       :: KeypadDivide;
-    ImGuiKey_KeypadMultiply     :: KeypadMultiply;
-    ImGuiKey_KeypadSubtract     :: KeypadSubtract;
-    ImGuiKey_KeypadAdd          :: KeypadAdd;
-    ImGuiKey_KeypadEnter        :: KeypadEnter;
-    ImGuiKey_KeypadEqual        :: KeypadEqual;
-
-    ImGuiKey_GamepadStart       :: GamepadStart;
-    ImGuiKey_GamepadBack        :: GamepadBack;
-    ImGuiKey_GamepadFaceUp      :: GamepadFaceUp;
-    ImGuiKey_GamepadFaceDown    :: GamepadFaceDown;
-    ImGuiKey_GamepadFaceLeft    :: GamepadFaceLeft;
-    ImGuiKey_GamepadFaceRight   :: GamepadFaceRight;
-    ImGuiKey_GamepadDpadUp      :: GamepadDpadUp;
-    ImGuiKey_GamepadDpadDown    :: GamepadDpadDown;
-    ImGuiKey_GamepadDpadLeft    :: GamepadDpadLeft;
-    ImGuiKey_GamepadDpadRight   :: GamepadDpadRight;
-    ImGuiKey_GamepadL1          :: GamepadL1;
-    ImGuiKey_GamepadR1          :: GamepadR1;
-    ImGuiKey_GamepadL2          :: GamepadL2;
-    ImGuiKey_GamepadR2          :: GamepadR2;
-    ImGuiKey_GamepadL3          :: GamepadL3;
-    ImGuiKey_GamepadR3          :: GamepadR3;
-    ImGuiKey_GamepadLStickUp    :: GamepadLStickUp;
-    ImGuiKey_GamepadLStickDown  :: GamepadLStickDown;
-    ImGuiKey_GamepadLStickLeft  :: GamepadLStickLeft;
-    ImGuiKey_GamepadLStickRight :: GamepadLStickRight;
-    ImGuiKey_GamepadRStickUp    :: GamepadRStickUp;
-    ImGuiKey_GamepadRStickDown  :: GamepadRStickDown;
-    ImGuiKey_GamepadRStickLeft  :: GamepadRStickLeft;
-    ImGuiKey_GamepadRStickRight :: GamepadRStickRight;
-
-    ImGuiKey_ModCtrl            :: ModCtrl;
-    ImGuiKey_ModShift           :: ModShift;
-    ImGuiKey_ModAlt             :: ModAlt;
-    ImGuiKey_ModSuper           :: ModSuper;
-
-    ImGuiKey_COUNT              :: COUNT;
-
-    ImGuiKey_NamedKey_BEGIN     :: NamedKey_BEGIN;
-    ImGuiKey_NamedKey_END       :: NamedKey_END;
-    ImGuiKey_NamedKey_COUNT     :: NamedKey_COUNT;
-
-    ImGuiKey_KeysData_SIZE      :: KeysData_SIZE;
-    ImGuiKey_KeysData_OFFSET    :: KeysData_OFFSET;
-
-    ImGuiKey_KeyPadEnter        :: KeyPadEnter;
-}
-
-// Helper "flags" version of key-mods to store and compare multiple key-mods easily. Sometimes used for storage (e.g. io.KeyMods) but otherwise not much used in public API.
-ModFlags :: enum_flags s32 {
-    None  :: 0x0;
-    Ctrl  :: 0x1;
-    Shift :: 0x2;
-    Alt   :: 0x4;
-    Super :: 0x8;
-
-    ImGuiModFlags_None  :: None;
-    ImGuiModFlags_Ctrl  :: Ctrl;
-    ImGuiModFlags_Shift :: Shift;
-    ImGuiModFlags_Alt   :: Alt;
-    ImGuiModFlags_Super :: Super;
-}
-
-// Gamepad/Keyboard navigation
-// Since >= 1.87 backends you generally don't need to care about this enum since io.NavInputs[] is setup automatically. This might become private/internal some day.
-// Keyboard: Set io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard to enable. NewFrame() will automatically fill io.NavInputs[] based on your io.AddKeyEvent() calls.
-// Gamepad:  Set io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad to enable. Backend: set ImGuiBackendFlags_HasGamepad and fill the io.NavInputs[] fields before calling NewFrame(). Note that io.NavInputs[] is cleared by EndFrame().
-// Read instructions in imgui.cpp for more details. Download PNG/PSD at http://dearimgui.org/controls_sheets.
-NavInput_ :: enum s32 {
+// OBSOLETED in 1.88 (from July 2022): ImGuiNavInput and io.NavInputs[].
+// Official backends between 1.60 and 1.86: will keep working and feed gamepad inputs as long as IMGUI_DISABLE_OBSOLETE_KEYIO is not set.
+// Custom backends: feed gamepad inputs via io.AddKeyEvent() and ImGuiKey_GamepadXXX enums.
+NavInput :: enum s32 {
     Activate    :: 0;
     Cancel      :: 1;
     Input       :: 2;
@@ -1875,12 +1931,7 @@ NavInput_ :: enum s32 {
     FocusNext   :: 13;
     TweakSlow   :: 14;
     TweakFast   :: 15;
-
-    KeyLeft_    :: 16;
-    KeyRight_   :: 17;
-    KeyUp_      :: 18;
-    KeyDown_    :: 19;
-    COUNT       :: 20;
+    COUNT       :: 16;
 
     ImGuiNavInput_Activate    :: Activate;
     ImGuiNavInput_Cancel      :: Cancel;
@@ -1898,11 +1949,6 @@ NavInput_ :: enum s32 {
     ImGuiNavInput_FocusNext   :: FocusNext;
     ImGuiNavInput_TweakSlow   :: TweakSlow;
     ImGuiNavInput_TweakFast   :: TweakFast;
-
-    ImGuiNavInput_KeyLeft_    :: KeyLeft_;
-    ImGuiNavInput_KeyRight_   :: KeyRight_;
-    ImGuiNavInput_KeyUp_      :: KeyUp_;
-    ImGuiNavInput_KeyDown_    :: KeyDown_;
     ImGuiNavInput_COUNT       :: COUNT;
 }
 
@@ -2091,59 +2137,65 @@ Col :: enum s32 {
 //   With Visual Assist installed: ALT+G ("VAssistX.GoToImplementation") can also follow symbols in comments.
 // - When changing this enum, you need to update the associated internal table GStyleVarInfo[] accordingly. This is where we link enum values to members offset/type.
 StyleVar :: enum s32 {
-    Alpha               :: 0;
-    DisabledAlpha       :: 1;
-    WindowPadding       :: 2;
-    WindowRounding      :: 3;
-    WindowBorderSize    :: 4;
-    WindowMinSize       :: 5;
-    WindowTitleAlign    :: 6;
-    ChildRounding       :: 7;
-    ChildBorderSize     :: 8;
-    PopupRounding       :: 9;
-    PopupBorderSize     :: 10;
-    FramePadding        :: 11;
-    FrameRounding       :: 12;
-    FrameBorderSize     :: 13;
-    ItemSpacing         :: 14;
-    ItemInnerSpacing    :: 15;
-    IndentSpacing       :: 16;
-    CellPadding         :: 17;
-    ScrollbarSize       :: 18;
-    ScrollbarRounding   :: 19;
-    GrabMinSize         :: 20;
-    GrabRounding        :: 21;
-    TabRounding         :: 22;
-    ButtonTextAlign     :: 23;
-    SelectableTextAlign :: 24;
-    COUNT               :: 25;
+    Alpha                   :: 0;
+    DisabledAlpha           :: 1;
+    WindowPadding           :: 2;
+    WindowRounding          :: 3;
+    WindowBorderSize        :: 4;
+    WindowMinSize           :: 5;
+    WindowTitleAlign        :: 6;
+    ChildRounding           :: 7;
+    ChildBorderSize         :: 8;
+    PopupRounding           :: 9;
+    PopupBorderSize         :: 10;
+    FramePadding            :: 11;
+    FrameRounding           :: 12;
+    FrameBorderSize         :: 13;
+    ItemSpacing             :: 14;
+    ItemInnerSpacing        :: 15;
+    IndentSpacing           :: 16;
+    CellPadding             :: 17;
+    ScrollbarSize           :: 18;
+    ScrollbarRounding       :: 19;
+    GrabMinSize             :: 20;
+    GrabRounding            :: 21;
+    TabRounding             :: 22;
+    ButtonTextAlign         :: 23;
+    SelectableTextAlign     :: 24;
+    SeparatorTextBorderSize :: 25;
+    SeparatorTextAlign      :: 26;
+    SeparatorTextPadding    :: 27;
+    COUNT                   :: 28;
 
-    ImGuiStyleVar_Alpha               :: Alpha;
-    ImGuiStyleVar_DisabledAlpha       :: DisabledAlpha;
-    ImGuiStyleVar_WindowPadding       :: WindowPadding;
-    ImGuiStyleVar_WindowRounding      :: WindowRounding;
-    ImGuiStyleVar_WindowBorderSize    :: WindowBorderSize;
-    ImGuiStyleVar_WindowMinSize       :: WindowMinSize;
-    ImGuiStyleVar_WindowTitleAlign    :: WindowTitleAlign;
-    ImGuiStyleVar_ChildRounding       :: ChildRounding;
-    ImGuiStyleVar_ChildBorderSize     :: ChildBorderSize;
-    ImGuiStyleVar_PopupRounding       :: PopupRounding;
-    ImGuiStyleVar_PopupBorderSize     :: PopupBorderSize;
-    ImGuiStyleVar_FramePadding        :: FramePadding;
-    ImGuiStyleVar_FrameRounding       :: FrameRounding;
-    ImGuiStyleVar_FrameBorderSize     :: FrameBorderSize;
-    ImGuiStyleVar_ItemSpacing         :: ItemSpacing;
-    ImGuiStyleVar_ItemInnerSpacing    :: ItemInnerSpacing;
-    ImGuiStyleVar_IndentSpacing       :: IndentSpacing;
-    ImGuiStyleVar_CellPadding         :: CellPadding;
-    ImGuiStyleVar_ScrollbarSize       :: ScrollbarSize;
-    ImGuiStyleVar_ScrollbarRounding   :: ScrollbarRounding;
-    ImGuiStyleVar_GrabMinSize         :: GrabMinSize;
-    ImGuiStyleVar_GrabRounding        :: GrabRounding;
-    ImGuiStyleVar_TabRounding         :: TabRounding;
-    ImGuiStyleVar_ButtonTextAlign     :: ButtonTextAlign;
-    ImGuiStyleVar_SelectableTextAlign :: SelectableTextAlign;
-    ImGuiStyleVar_COUNT               :: COUNT;
+    ImGuiStyleVar_Alpha                   :: Alpha;
+    ImGuiStyleVar_DisabledAlpha           :: DisabledAlpha;
+    ImGuiStyleVar_WindowPadding           :: WindowPadding;
+    ImGuiStyleVar_WindowRounding          :: WindowRounding;
+    ImGuiStyleVar_WindowBorderSize        :: WindowBorderSize;
+    ImGuiStyleVar_WindowMinSize           :: WindowMinSize;
+    ImGuiStyleVar_WindowTitleAlign        :: WindowTitleAlign;
+    ImGuiStyleVar_ChildRounding           :: ChildRounding;
+    ImGuiStyleVar_ChildBorderSize         :: ChildBorderSize;
+    ImGuiStyleVar_PopupRounding           :: PopupRounding;
+    ImGuiStyleVar_PopupBorderSize         :: PopupBorderSize;
+    ImGuiStyleVar_FramePadding            :: FramePadding;
+    ImGuiStyleVar_FrameRounding           :: FrameRounding;
+    ImGuiStyleVar_FrameBorderSize         :: FrameBorderSize;
+    ImGuiStyleVar_ItemSpacing             :: ItemSpacing;
+    ImGuiStyleVar_ItemInnerSpacing        :: ItemInnerSpacing;
+    ImGuiStyleVar_IndentSpacing           :: IndentSpacing;
+    ImGuiStyleVar_CellPadding             :: CellPadding;
+    ImGuiStyleVar_ScrollbarSize           :: ScrollbarSize;
+    ImGuiStyleVar_ScrollbarRounding       :: ScrollbarRounding;
+    ImGuiStyleVar_GrabMinSize             :: GrabMinSize;
+    ImGuiStyleVar_GrabRounding            :: GrabRounding;
+    ImGuiStyleVar_TabRounding             :: TabRounding;
+    ImGuiStyleVar_ButtonTextAlign         :: ButtonTextAlign;
+    ImGuiStyleVar_SelectableTextAlign     :: SelectableTextAlign;
+    ImGuiStyleVar_SeparatorTextBorderSize :: SeparatorTextBorderSize;
+    ImGuiStyleVar_SeparatorTextAlign      :: SeparatorTextAlign;
+    ImGuiStyleVar_SeparatorTextPadding    :: SeparatorTextPadding;
+    ImGuiStyleVar_COUNT                   :: COUNT;
 }
 
 // Flags for InvisibleButton() [extended in imgui_internal.h]
@@ -2236,6 +2288,7 @@ ColorEditFlags :: enum_flags s32 {
 
 // Flags for DragFloat(), DragInt(), SliderFloat(), SliderInt() etc.
 // We use the same sets of flags for DragXXX() and SliderXXX() functions as the features are the same and it makes it easier to swap them.
+// (Those are per-item flags. There are shared flags in ImGuiIO: io.ConfigDragClickToInputText)
 SliderFlags :: enum_flags s32 {
     None            :: 0x0;
     AlwaysClamp     :: 0x10;
@@ -2244,16 +2297,12 @@ SliderFlags :: enum_flags s32 {
     NoInput         :: 0x80;
     InvalidMask_    :: 0x7000000f;
 
-    ClampOnInput    :: 0x10;
-
     ImGuiSliderFlags_None            :: None;
     ImGuiSliderFlags_AlwaysClamp     :: AlwaysClamp;
     ImGuiSliderFlags_Logarithmic     :: Logarithmic;
     ImGuiSliderFlags_NoRoundToFormat :: NoRoundToFormat;
     ImGuiSliderFlags_NoInput         :: NoInput;
     ImGuiSliderFlags_InvalidMask_    :: InvalidMask_;
-
-    ImGuiSliderFlags_ClampOnInput    :: ClampOnInput;
 }
 
 // Identify a mouse button.
@@ -2337,7 +2386,7 @@ Style :: struct {
     WindowPadding:              ImVec2; // Padding within a window.
     WindowRounding:             float; // Radius of window corners rounding. Set to 0.0f to have rectangular windows. Large values tend to lead to variety of artifacts and are not recommended.
     WindowBorderSize:           float; // Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-    WindowMinSize:              ImVec2; // Minimum window size. This is a global setting. If you want to constraint individual windows, use SetNextWindowSizeConstraints().
+    WindowMinSize:              ImVec2; // Minimum window size. This is a global setting. If you want to constrain individual windows, use SetNextWindowSizeConstraints().
     WindowTitleAlign:           ImVec2; // Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
     WindowMenuButtonPosition:   Dir; // Side of the collapsing/docking button in the title bar (None/Left/Right). Defaults to ImGuiDir_Left.
     ChildRounding:              float; // Radius of child window corners rounding. Set to 0.0f to have rectangular windows.
@@ -2360,10 +2409,13 @@ Style :: struct {
     LogSliderDeadzone:          float; // The size in pixels of the dead-zone around zero on logarithmic sliders that cross zero.
     TabRounding:                float; // Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
     TabBorderSize:              float; // Thickness of border around tabs.
-    TabMinWidthForCloseButton:  float; // Minimum width for close button to appears on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
+    TabMinWidthForCloseButton:  float; // Minimum width for close button to appear on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
     ColorButtonPosition:        Dir; // Side of the color button in the ColorEdit4 widget (left/right). Defaults to ImGuiDir_Right.
     ButtonTextAlign:            ImVec2; // Alignment of button text when button is larger than text. Defaults to (0.5f, 0.5f) (centered).
     SelectableTextAlign:        ImVec2; // Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.
+    SeparatorTextBorderSize:    float; // Thickkness of border in SeparatorText()
+    SeparatorTextAlign:         ImVec2; // Alignment of text within the separator. Defaults to (0.0f, 0.5f) (left aligned, center).
+    SeparatorTextPadding:       ImVec2; // Horizontal offset of text from each edge of the separator + spacing on other axis. Generally small values. .y is recommended to be == FramePadding.y.
     DisplayWindowPadding:       ImVec2; // Window position are clamped to be visible within the display area or monitors by at least this amount. Only applies to regular windows.
     DisplaySafeAreaPadding:     ImVec2; // If you cannot see the edges of your screen (e.g. on a TV) increase the safe area padding. Apply to popups/tooltips as well regular windows. NB: Prefer configuring your TV sets correctly!
     MouseCursorScale:           float; // Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). We apply per-monitor DPI scaling over this scale. May be removed later.
@@ -2379,7 +2431,7 @@ Style :: struct {
 }
 
 // [Internal] Storage used by IsKeyDown(), IsKeyPressed() etc functions.
-// If prior to 1.87 you used io.KeysDownDuration[] (which was marked as internal), you should use GetKeyData(key)->DownDuration and not io.KeysData[key]->DownDuration.
+// If prior to 1.87 you used io.KeysDownDuration[] (which was marked as internal), you should use GetKeyData(key)->DownDuration and *NOT* io.KeysData[key]->DownDuration.
 KeyData :: struct {
     Down:             bool; // True for if key is down
     DownDuration:     float; // Duration the key has been down (<0.0f: not pressed, 0.0f: just pressed, >0.0f: time held)
@@ -2398,9 +2450,11 @@ IO :: struct {
     MouseDoubleClickTime:              float; // = 0.30f          // Time for a double-click, in seconds.
     MouseDoubleClickMaxDist:           float; // = 6.0f           // Distance threshold to stay in to validate a double-click, in pixels.
     MouseDragThreshold:                float; // = 6.0f           // Distance threshold before considering we are dragging.
-    KeyRepeatDelay:                    float; // = 0.250f         // When holding a key/button, time before it starts repeating, in seconds (for buttons in Repeat mode, etc.).
+    KeyRepeatDelay:                    float; // = 0.275f         // When holding a key/button, time before it starts repeating, in seconds (for buttons in Repeat mode, etc.).
     KeyRepeatRate:                     float; // = 0.050f         // When holding a key/button, rate at which it repeats, in seconds.
-    UserData:                          *void; // = NULL           // Store your own data for retrieval by callbacks.
+    HoverDelayNormal:                  float; // = 0.30 sec       // Delay on hovering before IsItemHovered(ImGuiHoveredFlags_DelayNormal) returns true.
+    HoverDelayShort:                   float; // = 0.10 sec       // Delay on hovering before IsItemHovered(ImGuiHoveredFlags_DelayShort) returns true.
+    UserData:                          *void; // = NULL           // Store your own data.
 
     Fonts:                             *ImFontAtlas; // <auto>           // Font atlas: load, rasterize and pack one or more fonts into a single texture.
     FontGlobalScale:                   float; // = 1.0f           // Global scale all fonts
@@ -2428,6 +2482,9 @@ IO :: struct {
     ConfigWindowsMoveFromTitleBarOnly: bool; // = false       // Enable allowing to move windows only when clicking on their title bar. Does not apply to windows without a title bar.
     ConfigMemoryCompactTimer:          float; // = 60.0f          // Timer (in seconds) to free transient windows/tables memory buffers when unused. Set to -1.0f to disable.
 
+    ConfigDebugBeginReturnValueOnce:   bool; // = false         // First-time calls to Begin()/BeginChild() will return false. NEEDS TO BE SET AT APPLICATION BOOT TIME if you don't want to miss windows.
+    ConfigDebugBeginReturnValueLoop:   bool; // = false         // Some calls to Begin()/BeginChild() will return false. Will cycle through window depths then repeat. Suggested use: add "io.ConfigDebugBeginReturnValue = io.KeyShift" in your main loop then occasionally press SHIFT. Windows should be flickering while running.
+
     BackendPlatformName:               *u8; // = NULL
     BackendRendererName:               *u8; // = NULL
     BackendPlatformUserData:           *void; // = NULL           // User data for platform backend
@@ -2447,18 +2504,19 @@ IO :: struct {
     ImeWindowHandle:                   *void; // = NULL           // [Obsolete] Set ImGuiViewport::PlatformHandleRaw instead. Set this to your HWND to get automatic IME cursor positioning.
 
     // Input Functions
-    AddKeyEvent :: (this: *IO, key: Key, down: bool) -> void #cpp_method #foreign imgui "?AddKeyEvent@ImGuiIO@@QEAAXH_N@Z";
-    AddKeyAnalogEvent :: (this: *IO, key: Key, down: bool, v: float) -> void #cpp_method #foreign imgui "?AddKeyAnalogEvent@ImGuiIO@@QEAAXH_NM@Z";
+    AddKeyEvent :: (this: *IO, key: Key, down: bool) -> void #cpp_method #foreign imgui "?AddKeyEvent@ImGuiIO@@QEAAXW4ImGuiKey@@_N@Z";
+    AddKeyAnalogEvent :: (this: *IO, key: Key, down: bool, v: float) -> void #cpp_method #foreign imgui "?AddKeyAnalogEvent@ImGuiIO@@QEAAXW4ImGuiKey@@_NM@Z";
     AddMousePosEvent :: (this: *IO, x: float, y: float) -> void #cpp_method #foreign imgui "?AddMousePosEvent@ImGuiIO@@QEAAXMM@Z";
     AddMouseButtonEvent :: (this: *IO, button: s32, down: bool) -> void #cpp_method #foreign imgui "?AddMouseButtonEvent@ImGuiIO@@QEAAXH_N@Z";
-    AddMouseWheelEvent :: (this: *IO, wh_x: float, wh_y: float) -> void #cpp_method #foreign imgui "?AddMouseWheelEvent@ImGuiIO@@QEAAXMM@Z";
+    AddMouseWheelEvent :: (this: *IO, wheel_x: float, wheel_y: float) -> void #cpp_method #foreign imgui "?AddMouseWheelEvent@ImGuiIO@@QEAAXMM@Z";
+    AddMouseSourceEvent :: (this: *IO, source: MouseSource) -> void #cpp_method #foreign imgui "?AddMouseSourceEvent@ImGuiIO@@QEAAXW4ImGuiMouseSource@@@Z";
     AddMouseViewportEvent :: (this: *IO, id: ID) -> void #cpp_method #foreign imgui "?AddMouseViewportEvent@ImGuiIO@@QEAAXI@Z";
     AddFocusEvent :: (this: *IO, focused: bool) -> void #cpp_method #foreign imgui "?AddFocusEvent@ImGuiIO@@QEAAX_N@Z";
     AddInputCharacter :: (this: *IO, c: u32) -> void #cpp_method #foreign imgui "?AddInputCharacter@ImGuiIO@@QEAAXI@Z";
     AddInputCharacterUTF16 :: (this: *IO, c: ImWchar16) -> void #cpp_method #foreign imgui "?AddInputCharacterUTF16@ImGuiIO@@QEAAXG@Z";
     AddInputCharactersUTF8 :: (this: *IO, str: *u8) -> void #cpp_method #foreign imgui "?AddInputCharactersUTF8@ImGuiIO@@QEAAXPEBD@Z";
 
-    SetKeyEventNativeData :: (this: *IO, key: Key, native_keycode: s32, native_scancode: s32, native_legacy_index: s32 = -1) -> void #cpp_method #foreign imgui "?SetKeyEventNativeData@ImGuiIO@@QEAAXHHHH@Z";
+    SetKeyEventNativeData :: (this: *IO, key: Key, native_keycode: s32, native_scancode: s32, native_legacy_index: s32 = -1) -> void #cpp_method #foreign imgui "?SetKeyEventNativeData@ImGuiIO@@QEAAXW4ImGuiKey@@HHH@Z";
     SetAppAcceptingEvents :: (this: *IO, accepting_events: bool) -> void #cpp_method #foreign imgui "?SetAppAcceptingEvents@ImGuiIO@@QEAAX_N@Z";
     ClearInputCharacters :: (this: *IO) -> void #cpp_method #foreign imgui "?ClearInputCharacters@ImGuiIO@@QEAAXXZ";
     ClearInputKeys :: (this: *IO) -> void #cpp_method #foreign imgui "?ClearInputKeys@ImGuiIO@@QEAAXXZ";
@@ -2470,7 +2528,7 @@ IO :: struct {
     WantSaveIniSettings:               bool; // When manual .ini load/save is active (io.IniFilename == NULL), this will be set to notify your application that you can call SaveIniSettingsToMemory() and save yourself. Important: clear io.WantSaveIniSettings yourself after saving!
     NavActive:                         bool; // Keyboard/Gamepad navigation is currently allowed (will handle ImGuiKey_NavXXX events) = a window is focused and it doesn't use the ImGuiWindowFlags_NoNavInputs flag.
     NavVisible:                        bool; // Keyboard/Gamepad navigation is visible and allowed (will handle ImGuiKey_NavXXX events).
-    Framerate:                         float; // Rough estimate of application framerate, in frame per second. Solely for convenience. Rolling average estimation based on io.DeltaTime over 120 frames.
+    Framerate:                         float; // Estimate of application framerate (rolling average over 60 frames, based on io.DeltaTime), in frame per second. Solely for convenience. Slow applications may not want to use a moving average or may want to reset underlying buffers occasionally.
     MetricsRenderVertices:             s32; // Vertices output during last call to Render()
     MetricsRenderIndices:              s32; // Indices output during last call to Render() = number of triangles * 3
     MetricsRenderWindows:              s32; // Number of visible windows
@@ -2478,22 +2536,25 @@ IO :: struct {
     MetricsActiveAllocations:          s32; // Number of active allocations, updated by MemAlloc/MemFree based on current context. May be off if you have multiple imgui contexts.
     MouseDelta:                        ImVec2; // Mouse delta. Note that this is zero if either current or previous position are invalid (-FLT_MAX,-FLT_MAX), so a disappearing/reappearing mouse won't have a huge delta.
 
-    KeyMap:                            [645] s32; // [LEGACY] Input: map of indices into the KeysDown[512] entries array which represent your "native" keyboard state. The first 512 are now unused and should be kept zero. Legacy backend will write into KeyMap[] using ImGuiKey_ indices which are always >512.
-    KeysDown:                          [645] bool; // [LEGACY] Input: Keyboard keys that are pressed (ideally left in the "native" order your engine has access to keyboard keys, so you can use your own defines/enums for keys). This used to be [512] sized. It is now ImGuiKey_COUNT to allow legacy io.KeysDown[GetKeyIndex(...)] to work without an overflow.
+    KeyMap:                            [652] s32; // [LEGACY] Input: map of indices into the KeysDown[512] entries array which represent your "native" keyboard state. The first 512 are now unused and should be kept zero. Legacy backend will write into KeyMap[] using ImGuiKey_ indices which are always >512.
+    KeysDown:                          [652] bool; // [LEGACY] Input: Keyboard keys that are pressed (ideally left in the "native" order your engine has access to keyboard keys, so you can use your own defines/enums for keys). This used to be [512] sized. It is now ImGuiKey_COUNT to allow legacy io.KeysDown[GetKeyIndex(...)] to work without an overflow.
+    NavInputs:                         [16] float; // [LEGACY] Since 1.88, NavInputs[] was removed. Backends from 1.60 to 1.86 won't build. Feed gamepad inputs via io.AddKeyEvent() and ImGuiKey_GamepadXXX enums.
+
+    Ctx:                               *Context; // Parent UI context (needs to be set explicitly by parent).
 
     MousePos:                          ImVec2; // Mouse position, in pixels. Set to ImVec2(-FLT_MAX, -FLT_MAX) if mouse is unavailable (on another screen, etc.)
-    MouseDown:                         [5] bool; // Mouse buttons: 0=left, 1=right, 2=middle + extras (ImGuiMouseButton_COUNT == 5). Dear ImGui mostly uses left and right buttons. Others buttons allows us to track if the mouse is being used by your application + available to user as a convenience via IsMouse** API.
-    MouseWheel:                        float; // Mouse wheel Vertical: 1 unit scrolls about 5 lines text.
-    MouseWheelH:                       float; // Mouse wheel Horizontal. Most users don't have a mouse with an horizontal wheel, may not be filled by all backends.
+    MouseDown:                         [5] bool; // Mouse buttons: 0=left, 1=right, 2=middle + extras (ImGuiMouseButton_COUNT == 5). Dear ImGui mostly uses left and right buttons. Other buttons allow us to track if the mouse is being used by your application + available to user as a convenience via IsMouse** API.
+    MouseWheel:                        float; // Mouse wheel Vertical: 1 unit scrolls about 5 lines text. >0 scrolls Up, <0 scrolls Down. Hold SHIFT to turn vertical scroll into horizontal scroll.
+    MouseWheelH:                       float; // Mouse wheel Horizontal. >0 scrolls Left, <0 scrolls Right. Most users don't have a mouse with a horizontal wheel, may not be filled by all backends.
+    MouseSource_:                      MouseSource; // Mouse actual input peripheral (Mouse/TouchScreen/Pen).
     MouseHoveredViewport:              ID; // (Optional) Modify using io.AddMouseViewportEvent(). With multi-viewports: viewport the OS mouse is hovering. If possible _IGNORING_ viewports with the ImGuiViewportFlags_NoInputs flag is much better (few backends can handle that). Set io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport if you can provide this info. If you don't imgui will infer the value using the rectangles and last focused time of the viewports it knows about (ignoring other OS windows).
     KeyCtrl:                           bool; // Keyboard modifier down: Control
     KeyShift:                          bool; // Keyboard modifier down: Shift
     KeyAlt:                            bool; // Keyboard modifier down: Alt
     KeySuper:                          bool; // Keyboard modifier down: Cmd/Super/Windows
-    NavInputs:                         [20] float; // Gamepad inputs. Cleared back to zero by EndFrame(). Keyboard keys will be auto-mapped and be written here by NewFrame().
 
-    KeyMods:                           ModFlags; // Key mods flags (same as io.KeyCtrl/KeyShift/KeyAlt/KeySuper but merged into flags), updated by NewFrame()
-    KeysData:                          [645] KeyData; // Key state for all known keys. Use IsKeyXXX() functions to access this.
+    KeyMods:                           KeyChord; // Key mods flags (any of ImGuiMod_Ctrl/ImGuiMod_Shift/ImGuiMod_Alt/ImGuiMod_Super flags, same as io.KeyCtrl/KeyShift/KeyAlt/KeySuper but merged into flags. DOES NOT CONTAINS ImGuiMod_Shortcut which is pretranslated). Read-only, updated by NewFrame()
+    KeysData:                          [652] KeyData; // Key state for all known keys. Use IsKeyXXX() functions to access this.
     WantCaptureMouseUnlessPopupClose:  bool; // Alternative to WantCaptureMouse: (WantCaptureMouse == true && WantCaptureMouseUnlessPopupClose == false) when a click over void is expected to close a popup.
     MousePosPrev:                      ImVec2; // Previous mouse position (note that MouseDelta is not necessary == MousePos-MousePosPrev, in case either position is invalid)
     MouseClickedPos:                   [5] ImVec2; // Position at time of clicking
@@ -2505,12 +2566,11 @@ IO :: struct {
     MouseReleased:                     [5] bool; // Mouse button went from Down to !Down
     MouseDownOwned:                    [5] bool; // Track if button was clicked inside a dear imgui window or over void blocked by a popup. We don't request mouse capture from the application if click started outside ImGui bounds.
     MouseDownOwnedUnlessPopupClose:    [5] bool; // Track if button was clicked inside a dear imgui window.
+    MouseWheelRequestAxisSwap:         bool; // On a non-Mac system, holding SHIFT requests WheelY to perform the equivalent of a WheelX event. On a Mac system this is already enforced by the system.
     MouseDownDuration:                 [5] float; // Duration the mouse button has been down (0.0f == just clicked)
     MouseDownDurationPrev:             [5] float; // Previous time the mouse button has been down
     MouseDragMaxDistanceAbs:           [5] ImVec2; // Maximum distance, absolute, on each axis, of how much mouse has traveled from the clicking point
     MouseDragMaxDistanceSqr:           [5] float; // Squared maximum distance of how much mouse has traveled from the clicking point (used for moving thresholds)
-    NavInputsDownDuration:             [20] float;
-    NavInputsDownDurationPrev:         [20] float;
     PenPressure:                       float; // Touch/Pen pressure (0.0f to 1.0f, should be >0.0f only when MouseDown[0] == true). Helper storage currently unused by Dear ImGui.
     AppFocusLost:                      bool; // Only modify via AddFocusEvent()
     AppAcceptingEvents:                bool; // Only modify via SetAppAcceptingEvents()
@@ -2532,6 +2592,7 @@ IO :: struct {
 // - ImGuiInputTextFlags_CallbackCharFilter:  Callback on character inputs to replace or discard them. Modify 'EventChar' to replace or discard, or return 1 in callback to discard.
 // - ImGuiInputTextFlags_CallbackResize:      Callback on buffer capacity changes request (beyond 'buf_size' parameter value), allowing the string to grow.
 InputTextCallbackData :: struct {
+    Ctx:            *Context; // Parent UI context
     EventFlag:      InputTextFlags; // One ImGuiInputTextFlags_Callback*    // Read-only
     Flags:          InputTextFlags; // What user passed to InputText()      // Read-only
     UserData:       *void; // What user passed to InputText()      // Read-only
@@ -2559,7 +2620,7 @@ InputTextCallbackData :: struct {
 // Resizing callback data to apply custom constraint. As enabled by SetNextWindowSizeConstraints(). Callback is called during the next Begin().
 // NB: For basic min/max size constraint on each axis you don't need to use the callback! The SetNextWindowSizeConstraints() parameters are enough.
 SizeCallbackData :: struct {
-    UserData:    *void; // Read-only.   What user passed to SetNextWindowSizeConstraints()
+    UserData:    *void; // Read-only.   What user passed to SetNextWindowSizeConstraints(). Generally store an integer or float in here (need reinterpret_cast<>).
     Pos:         ImVec2; // Read-only.   Window position, for reference.
     CurrentSize: ImVec2; // Read-only.   Current window size.
     DesiredSize: ImVec2; // Read-write.  Desired size, based on user's mouse position. Write to this field to restrain resizing.
@@ -2614,7 +2675,7 @@ TableSortSpecs :: struct {
     SpecsDirty: bool; // Set to true when specs have changed since last time! Use this to sort again, then clear the flag.
 }
 
-// Helper: Execute a block of code at maximum once a frame. Convenient if you want to quickly create an UI within deep-nested code that runs multiple times every frame.
+// Helper: Execute a block of code at maximum once a frame. Convenient if you want to quickly create a UI within deep-nested code that runs multiple times every frame.
 // Usage: static ImGuiOnceUponAFrame oaf; if (oaf) ImGui::Text("This will be called only once per frame");
 OnceUponAFrame :: struct {
     RefFrame: s32;
@@ -2702,7 +2763,7 @@ Storage :: struct {
 }
 
 // Helper: Manually clip large list of items.
-// If you have lots evenly spaced items and you have a random access to the list, you can perform coarse
+// If you have lots evenly spaced items and you have random access to the list, you can perform coarse
 // clipping based on visibility to only submit items that are in view.
 // The clipper calculates the range of visible items and advance the cursor to compensate for the non-visible items we have skipped.
 // (Dear ImGui already clip items based on their bounds but: it needs to first layout the item to do so, and generally
@@ -2722,6 +2783,7 @@ Storage :: struct {
 // - User code submit visible elements.
 // - The clipper also handles various subtleties related to keyboard/gamepad navigation, wrapping etc.
 ListClipper :: struct {
+    Ctx:          *Context; // Parent UI context
     DisplayStart: s32; // First item to display, updated by each call to Step()
     DisplayEnd:   s32; // End of items to display (exclusive)
     ItemsCount:   s32; // [Internal] Number of items
@@ -2880,7 +2942,7 @@ ImDrawList :: struct {
     // - For circle primitives, use "num_segments == 0" to automatically calculate tessellation (preferred).
     //   In older versions (until Dear ImGui 1.77) the AddCircle functions defaulted to num_segments == 12.
     //   In future versions we will use textures to provide cheaper and higher-quality circles.
-    //   Use AddNgon() and AddNgonFilled() functions if you need to guaranteed a specific number of sides.
+    //   Use AddNgon() and AddNgonFilled() functions if you need to guarantee a specific number of sides.
     AddLine :: (this: *ImDrawList, p1: *ImVec2, p2: *ImVec2, col: ImU32, thickness: float = 1.0) -> void #cpp_method #foreign imgui "?AddLine@ImDrawList@@QEAAXAEBUImVec2@@0IM@Z";
     AddLine :: (this: *ImDrawList, p1: ImVec2, p2: ImVec2, col: ImU32, thickness: float = 1.0) #no_context {
         AddLine(this, *p1, *p2, col, thickness);
@@ -3063,7 +3125,7 @@ ImFontConfig :: struct {
     PixelSnapH:           bool; // false    // Align every glyph to pixel boundary. Useful e.g. if you are merging a non-pixel aligned font with the default font. If enabled, you can set OversampleH/V to 1.
     GlyphExtraSpacing:    ImVec2; // 0, 0     // Extra spacing (in pixels) between glyphs. Only X axis is supported for now.
     GlyphOffset:          ImVec2; // 0, 0     // Offset all glyphs from this font input.
-    GlyphRanges:          *ImWchar; // NULL     // Pointer to a user-provided list of Unicode range (2 value per range, values are inclusive, zero-terminated list). THE ARRAY DATA NEEDS TO PERSIST AS LONG AS THE FONT IS ALIVE.
+    GlyphRanges:          *ImWchar; // NULL     // THE ARRAY DATA NEEDS TO PERSIST AS LONG AS THE FONT IS ALIVE. Pointer to a user-provided list of Unicode range (2 value per range, values are inclusive, zero-terminated list).
     GlyphMinAdvanceX:     float; // 0        // Minimum AdvanceX for glyphs, set Min to align font icons, set both Min/Max to enforce mono-space font
     GlyphMaxAdvanceX:     float; // FLT_MAX  // Maximum AdvanceX for glyphs
     MergeMode:            bool; // false    // Merge into previous ImFont, so you can combine multiple inputs font into one ImFont (e.g. ASCII font + icons + Japanese glyphs). You may want to use GlyphOffset.y when merge font of different heights.
@@ -3148,7 +3210,7 @@ ImFontAtlasFlags :: enum_flags s32 {
 // - Important: By default, AddFontFromMemoryTTF() takes ownership of the data. Even though we are not writing to it, we will free the pointer on destruction.
 //   You can set font_cfg->FontDataOwnedByAtlas=false to keep ownership of your data and it won't be freed,
 // - Even though many functions are suffixed with "TTF", OTF data is supported just as well.
-// - This is an old API and it is currently awkward for those and and various other reasons! We will address them in the future!
+// - This is an old API and it is currently awkward for those and various other reasons! We will address them in the future!
 ImFontAtlas :: struct {
     Constructor :: (this: *ImFontAtlas) -> void #cpp_method #foreign imgui "??0ImFontAtlas@@QEAA@XZ";
     Destructor :: (this: *ImFontAtlas) -> void #cpp_method #foreign imgui "??1ImFontAtlas@@QEAA@XZ";
@@ -3176,6 +3238,7 @@ ImFontAtlas :: struct {
     // NB: Make sure that your string are UTF-8 and NOT in your local code page. In C++11, you can create UTF-8 string literal using the u8"Hello world" syntax. See FAQ for details.
     // NB: Consider using ImFontGlyphRangesBuilder to build glyph ranges from textual data.
     GetGlyphRangesDefault :: (this: *ImFontAtlas) -> *ImWchar #cpp_method #foreign imgui "?GetGlyphRangesDefault@ImFontAtlas@@QEAAPEBGXZ";
+    GetGlyphRangesGreek :: (this: *ImFontAtlas) -> *ImWchar #cpp_method #foreign imgui "?GetGlyphRangesGreek@ImFontAtlas@@QEAAPEBGXZ";
     GetGlyphRangesKorean :: (this: *ImFontAtlas) -> *ImWchar #cpp_method #foreign imgui "?GetGlyphRangesKorean@ImFontAtlas@@QEAAPEBGXZ";
     GetGlyphRangesJapanese :: (this: *ImFontAtlas) -> *ImWchar #cpp_method #foreign imgui "?GetGlyphRangesJapanese@ImFontAtlas@@QEAAPEBGXZ";
     GetGlyphRangesChineseFull :: (this: *ImFontAtlas) -> *ImWchar #cpp_method #foreign imgui "?GetGlyphRangesChineseFull@ImFontAtlas@@QEAAPEBGXZ";
@@ -3206,6 +3269,7 @@ ImFontAtlas :: struct {
     TexDesiredWidth:    s32; // Texture width desired by user before Build(). Must be a power-of-two. If have many glyphs your graphics API have texture size restrictions you may want to increase texture width to decrease height.
     TexGlyphPadding:    s32; // Padding between glyphs within texture in pixels. Defaults to 1. If your rendering method doesn't rely on bilinear filtering you may set this to 0 (will also need to set AntiAliasedLinesUseTex = false).
     Locked:             bool; // Marked as Locked by ImGui::NewFrame() so attempt to modify the atlas will assert.
+    UserData:           *void; // Store your own atlas related user-data (if e.g. you have multiple font atlas).
 
     TexReady:           bool; // Set when texture was built matching current font input
     TexPixelsUseColors: bool; // Tell whether our texture data is known to use colors (rather than just alpha channel), in order to help backend select a format.
@@ -3242,8 +3306,10 @@ ImFont :: struct {
     ConfigData:          *ImFontConfig; // 4-8   // in  //            // Pointer within ContainerAtlas->ConfigData
     ConfigDataCount:     s16; // 2     // in  // ~ 1        // Number of ImFontConfig involved in creating this font. Bigger than 1 when merging multiple font sources into one ImFont.
     FallbackChar:        ImWchar; // 2     // out // = FFFD/'?' // Character used if a glyph isn't found.
-    EllipsisChar:        ImWchar; // 2     // out // = '...'    // Character used for ellipsis rendering.
-    DotChar:             ImWchar; // 2     // out // = '.'      // Character used for ellipsis rendering (if a single '...' character isn't found)
+    EllipsisChar:        ImWchar; // 2     // out // = '...'/'.'// Character used for ellipsis rendering.
+    EllipsisCharCount:   s16; // 1     // out // 1 or 3
+    EllipsisWidth:       float; // 4     // out               // Width
+    EllipsisCharStep:    float; // 4     // out               // Step between characters when EllipsisCount > 0
     DirtyLookupTables:   bool; // 1     // out //
     Scale:               float; // 4     // in  // = 1.f      // Base font scale, multiplied by the per-window font scale which you can adjust with SetWindowFontScale()
     Ascent:              float; // 4+4   // out //            // Ascent: distance from top to bottom of e.g. 'A' [0..FontSize]
@@ -3298,10 +3364,12 @@ ViewportFlags :: enum_flags s32 {
     NoFocusOnClick      :: 0x40;
     NoInputs            :: 0x80;
     NoRendererClear     :: 0x100;
-    TopMost             :: 0x200;
-    Minimized           :: 0x400;
-    NoAutoMerge         :: 0x800;
-    CanHostOtherWindows :: 0x1000;
+    NoAutoMerge         :: 0x200;
+    TopMost             :: 0x400;
+    CanHostOtherWindows :: 0x800;
+
+    IsMinimized         :: 0x1000;
+    IsFocused           :: 0x2000;
 
     ImGuiViewportFlags_None                :: None;
     ImGuiViewportFlags_IsPlatformWindow    :: IsPlatformWindow;
@@ -3313,10 +3381,12 @@ ViewportFlags :: enum_flags s32 {
     ImGuiViewportFlags_NoFocusOnClick      :: NoFocusOnClick;
     ImGuiViewportFlags_NoInputs            :: NoInputs;
     ImGuiViewportFlags_NoRendererClear     :: NoRendererClear;
-    ImGuiViewportFlags_TopMost             :: TopMost;
-    ImGuiViewportFlags_Minimized           :: Minimized;
     ImGuiViewportFlags_NoAutoMerge         :: NoAutoMerge;
+    ImGuiViewportFlags_TopMost             :: TopMost;
     ImGuiViewportFlags_CanHostOtherWindows :: CanHostOtherWindows;
+
+    ImGuiViewportFlags_IsMinimized         :: IsMinimized;
+    ImGuiViewportFlags_IsFocused           :: IsFocused;
 }
 
 // - Currently represents the Platform Window created by the application which is hosting our Dear ImGui windows.
@@ -3341,6 +3411,7 @@ Viewport :: struct {
     PlatformUserData:      *void; // void* to hold custom data structure for the OS / platform (e.g. windowing info, render context). generally set by your Platform_CreateWindow function.
     PlatformHandle:        *void; // void* for FindViewportByPlatformHandle(). (e.g. suggested to use natural platform handle such as HWND, GLFWWindow*, SDL_Window*)
     PlatformHandleRaw:     *void; // void* to hold lower-level, platform-native window handle (under Win32 this is expected to be a HWND, unused for other platforms), when using an abstraction layer like GLFW or SDL (where PlatformHandle would be a SDL_Window*)
+    PlatformWindowCreated: bool; // Platform window has been created (Platform_CreateWindow() has been called). This is false during the first frame where a viewport is being created.
     PlatformRequestMove:   bool; // Platform window requested move (e.g. window was moved by the OS / host window manager, authoritative position will be OS window position)
     PlatformRequestResize: bool; // Platform window requested resize (e.g. window was resized by the OS / host window manager, authoritative size will be OS window size)
     PlatformRequestClose:  bool; // Platform window requested closure (e.g. window was moved by the OS / host window manager, e.g. pressing ALT-F4)
@@ -3424,19 +3495,20 @@ ImDrawCornerFlags_ :: enum_flags s32 {
     ImDrawCornerFlags_Right    :: Right;
 }
 
-// RENAMED ImGuiKeyModFlags -> ImGuiModFlags in 1.88 (from April 2022)
-KeyModFlags :: s32;
-KeyModFlags_ :: enum_flags s32 {
+// RENAMED and MERGED both ImGuiKey_ModXXX and ImGuiModFlags_XXX into ImGuiMod_XXX (from September 2022)
+// RENAMED ImGuiKeyModFlags -> ImGuiModFlags in 1.88 (from April 2022). Exceptionally commented out ahead of obscolescence schedule to reduce confusion and because they were not meant to be used in the first place.
+ModFlags :: KeyChord;
+ModFlags_ :: enum_flags s32 {
     None  :: 0x0;
-    Ctrl  :: 0x1;
-    Shift :: 0x2;
-    Alt   :: 0x4;
-    Super :: 0x8;
-    ImGuiKeyModFlags_None  :: None;
-    ImGuiKeyModFlags_Ctrl  :: Ctrl;
-    ImGuiKeyModFlags_Shift :: Shift;
-    ImGuiKeyModFlags_Alt   :: Alt;
-    ImGuiKeyModFlags_Super :: Super;
+    Ctrl  :: 0x1000;
+    Shift :: 0x2000;
+    Alt   :: 0x4000;
+    Super :: 0x8000;
+    ImGuiModFlags_None  :: None;
+    ImGuiModFlags_Ctrl  :: Ctrl;
+    ImGuiModFlags_Shift :: Shift;
+    ImGuiModFlags_Alt   :: Alt;
+    ImGuiModFlags_Super :: Super;
 }
 
 #scope_file
