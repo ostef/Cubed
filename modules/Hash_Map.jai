@@ -56,8 +56,8 @@ HashMapInit :: inline (map : *HashMap, capacity : s64, allocator := context.allo
     map.allocator = allocator;
     map.entries = Alloc (map.Entry, capacity, allocator);
 
-    for * map.entries
-        it.hash = Hash_Never_Occupied;
+    for i : 0..map.allocated - 1
+        map.entries[i].hash = Hash_Never_Occupied;
 }
 
 HashMapFree :: inline (using map : *HashMap)
@@ -95,6 +95,9 @@ HashMapGrow :: (map : *HashMap)
     map.count = 0;
     map.occupied = 0;
     map.allocated = new_capacity;
+
+    for i : 0..map.allocated - 1
+        map.entries[i].hash = Hash_Never_Occupied;
 
     for entry : old_entries
     {
