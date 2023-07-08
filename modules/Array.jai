@@ -1,3 +1,5 @@
+#import "Common";
+
 ArrayFree :: inline (arr : *[..]$T)
 {
     Free (arr.data, arr.allocator);
@@ -11,7 +13,7 @@ ArrayClear :: inline (arr : *[..]$T)
     arr.count = 0;
 }
 
-ArrayReserve :: (arr : *[..]$T, new_capacity : s64)
+ArrayReserve :: inline (arr : *[..]$T, new_capacity : s64)
 {
     if !arr.allocator.proc
         arr.allocator = context.allocator;
@@ -19,17 +21,17 @@ ArrayReserve :: (arr : *[..]$T, new_capacity : s64)
     if new_capacity <= arr.allocated
         return;
 
-    new_data := cast (*T) Realloc (arr.data, new_capacity * size_of (T));
+    new_data := cast (*T) Realloc (arr.data, arr.allocated * size_of (T), new_capacity * size_of (T));
     arr.data = new_data;
     arr.allocated = new_capacity;
 }
 
-ArrayPush :: (arr : *[..]$T, $initialize := true) -> *T #must
+ArrayPush :: inline (arr : *[..]$T, $initialize := true) -> *T #must
 {
     if arr.count >= arr.allocated
         ArrayReserve (arr, arr.allocated * 2 + 8);
 
-    ptr := arr.data[arr.count];
+    ptr := *arr.data[arr.count];
     arr.count += 1;
     #if initialize
         Initialize (ptr);
@@ -52,7 +54,7 @@ ArrayPop :: inline (arr : *[..]$T)
     arr.count -= 1;
 }
 
-ArrayInsert :: (arr : *[..]$T, index : s64, $initialize := true) -> *T #must
+ArrayInsert :: inline (arr : *[..]$T, index : s64, $initialize := true) -> *T #must
 {
     Assert (index >= 0 && index <= arr.count, "Index out of bounds (index is %, bounds are [0, %])", index, arr.count);
 
@@ -85,7 +87,7 @@ ArrayRemove :: inline (arr : *[..]$T, index : s64)
     arr.data[index] = arr.data[arr.count];
 }
 
-ArrayOrderedInsert :: (arr : *[..]$T, index : s64, $initialize := true) -> *T #must
+ArrayOrderedInsert :: inline (arr : *[..]$T, index : s64, $initialize := true) -> *T #must
 {
     Assert (index >= 0 && index <= arr.count, "Index out of bounds (index is %, bounds are [0, %])", index, arr.count);
 
