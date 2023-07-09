@@ -5,6 +5,7 @@ Camera :: struct
     rotation : Quatf;
     mouse_input : Vec2f;
 
+    base_movement_speed := 2.0;
     rotation_speed := 0.2;
     rotation_smoothing := 0.3;
 
@@ -33,7 +34,11 @@ UpdateFlyingCamera :: (using cam : *Camera, delta_time : float, allow_movement :
         movement_input = Normalized (movement_input);
     }
 
-    speed := 2.0;
+    if IsKeyDown (SDLK_DOWN)
+        base_movement_speed = Max (base_movement_speed * 0.9, 1);
+    else if IsKeyDown (SDLK_UP)
+        base_movement_speed = Min (base_movement_speed * 1.1, 50);
+    speed := base_movement_speed;
     if IsKeyDown (SDLK_LSHIFT)
         speed *= 10;
 
