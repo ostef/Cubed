@@ -317,7 +317,6 @@ g_ui_terrain_generator : struct
 {
     offset : Vec2f;
     scale : float = 16;
-    dragging_map : bool;
     generator : Generator;
     texture_handle : GLuint;
     size : s32 = 1024;
@@ -325,6 +324,7 @@ g_ui_terrain_generator : struct
     selected_param := TerrainParam.Surface_Height;
     show_param := TerrainParam.Surface_Height;
     use_threads := true;
+    show_player_position := true;
 };
 
 #scope_export
@@ -352,23 +352,33 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
         {
             if texture_handle
             {
+                draw_list := ImGui.GetWindowDrawList ();
+                map_top_left := ImGui.GetCursorScreenPos ();
+
                 ImGui.PushStyleVar (.FramePadding, .{0, 0});
                 defer ImGui.PopStyleVar ();
 
                 ImGui.ImageButton ("ImageButton", cast (ImGui.ImTextureID) texture_handle, .{xx texture_size, xx texture_size});
+                if show_player_position
+                {
+                    player_pos_scale := (texture_size / cast (float) size) / scale;
+                    player_pos := (Vec2f.{g_camera.position.x, g_camera.position.z} - offset) * player_pos_scale;
+                    player_pos += map_top_left;
 
-                if ImGui.IsMouseDragging (.Left) && (dragging_map || ImGui.IsItemHovered ())
+                    if player_pos.x >= map_top_left.x && player_pos.x < map_top_left.x + xx texture_size
+                    && player_pos.y >= map_top_left.y && player_pos.y < map_top_left.y + xx texture_size
+                    {
+                        draw_list.AddCircleFilled (draw_list, player_pos, 5, ImGui.GetColorU32 (.{1,1,1,1}));
+                    }
+                }
+
+                if ImGui.IsMouseDragging (.Left) && (ImGui.IsItemActive () || ImGui.IsItemHovered ())
                 {
                     drag_scale := scale * (size / cast (float) texture_size);
                     offset -= ImGui.GetMouseDragDelta (.Left) * drag_scale;
                     ImGui.ResetMouseDragDelta (.Left);
-                    dragging_map = true;
 
                     should_generate = true;
-                }
-                else
-                {
-                    dragging_map = false;
                 }
             }
         }
@@ -382,7 +392,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     ImGui.LabelText ("Seed", "%lld", generator.seed);
     ImGui.SliderInt ("Texture Size", *texture_size, 128, 4096);
     should_generate |= ImGui.SliderInt ("Size", *size, 16, 4096);
-    should_generate |= ImGui.SliderFloat ("Scale", *scale, 1, 4096);
+    should_generate |= ImGui.SliderFloat ("Scale", *scale, 1, 100);
     should_generate |= ImGui.SliderInt ("Water Level", *generator.surface_params.water_level, 0, 320);
 
     terrain_param_names := Alloc (*u8, cast (s64) TerrainParam.Count, Temp);
@@ -404,6 +414,10 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     }
 
     ImGui.Checkbox ("Use Threads", *use_threads);
+
+    ImGui.SameLine ();
+
+    ImGui.Checkbox ("Show Player Position", *show_player_position);
 
     should_generate |= ImGui.Button ("Generate");
 
