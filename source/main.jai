@@ -172,7 +172,7 @@ main :: ()
         style.GrabRounding = 4;
         style.TabRounding = 6;
         style.FramePadding = .{10, 6};
-        // style.SeparatorTextBorderSize = 1;
+        style.SeparatorTextBorderSize = 1;
         style.FrameBorderSize = 1;
         style.ItemSpacing.y = 6;
         style.ItemInnerSpacing.x = 8;
@@ -201,7 +201,7 @@ main :: ()
     b_aabb := AABB.{.{2, 2, 2}, .{3, 3, 3}};
     point := Vec3f.{-1, 0.5, 0.7};
 
-    WorldInit (*g_world, RandomGetU64 (*context.random_number_generator));
+    WorldInit (*g_world, Basic.current_time_monotonic ().low);
 
     g_camera.position.y = xx g_world.surface_params.water_level + 10.0;
     delta_time := 1 / 60.0;
@@ -332,6 +332,8 @@ main :: ()
         }
 
         SDL_GL_SwapWindow (g_window);
+
+        Basic.sleep_milliseconds (10);
 
         frame_end := Basic.current_time_monotonic ();
         delta_time = cast (float) Basic.to_float64_seconds (frame_end - frame_start);
