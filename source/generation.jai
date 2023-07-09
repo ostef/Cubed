@@ -162,7 +162,9 @@ CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x :
     else if param == .Ridges
     {
         weirdness := CalculateTerrainParam (generator, .Weirdness, x, y);
-        weirdness = Abs (3 * Abs (weirdness) - 2);
+        // weirdness = Abs (3 * Abs (weirdness) - 2);
+        weirdness = 1 - Abs (3 * Abs (weirdness) - 2);
+        // weirdness = -3 * Abs (Abs (weirdness) - 2.0 / 3.0) - 1.0 / 3.0;
 
         return weirdness;
     }
