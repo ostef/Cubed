@@ -173,8 +173,6 @@ GetSurfaceColor :: inline (using params : SurfaceParams, surface_level : float) 
 
 #scope_export
 
-Threads :: #import "Thread";
-
 GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Vec2f, scale : float, generator : *Generator, param : TerrainParam, use_threads := false)
 {
     WorkerData :: struct
@@ -217,8 +215,6 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Ve
 
         return .CONTINUE;
     }
-
-    System :: #import "System";
 
     buffer := Alloc (u32, width * height, Temp);
 

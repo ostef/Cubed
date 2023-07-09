@@ -11,6 +11,9 @@ using, only (.["+", "-", "*", "/"]) Basic;
 GL_Utils :: #import "GL_Utils";
 #import "Random64";
 
+Threads :: #import "Thread";
+System :: #import "System";
+
 Im3d :: #import "Im3d";
 Im3dImpl :: #import "Im3d/Impl/GL";
 ImGui :: #import "ImGui";
@@ -267,6 +270,7 @@ main :: ()
             g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
         Im3d.NewFrame ();
 
+        WorldHandleNewlyGeneratedChunks (*g_world);
         WorldGenerateAroundPosition (*g_world, g_camera.position, g_settings.render_distance);
 
         /*

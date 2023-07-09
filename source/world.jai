@@ -93,6 +93,9 @@ World :: struct
     #as using generator : Generator;
     origin_chunk : *Chunk;
     all_loaded_chunks : HashMap (Vec2l, *Chunk, hash_func = HashVec2l, comp_func = (a, b) => a == b);
+    // Volatile: all the Chunks in this map are being modified in another thread
+    chunks_being_generated : HashMap (Vec2l, *Chunk, hash_func = HashVec2l, comp_func = (a, b) => a == b);
+    chunk_generation_thread_group : Threads.Thread_Group;
 }
 
 Vertex :: struct
@@ -241,7 +244,8 @@ ChunkGetBlock :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> Block #mu
     return ChunkGetBlockInChunk (chunk, x, y, z);
 }
 
-ChunkGenerate :: (world : *World, chunk : *Chunk)
+// Careful: this routine must be thread safe!
+ChunkGenerate :: (world : World, chunk : *Chunk)
 {
     if chunk.is_generated
         return;
@@ -476,20 +480,50 @@ ChunkGenerateMeshes :: (chunk : *Chunk)
     }
 }
 
-WorldInit :: inline (world : *World, seed : u64)
+#scope_file
+
+ChunkGenerationWorkerData :: struct
+{
+    logging_name : string;
+    world : *World;
+    chunk : *Chunk;
+}
+
+ChunkGenerationWorkerProc :: (group : *Threads.Thread_Group, thread : *Threads.Thread, work : *void) -> Threads.Thread_Continue_Status
+{
+    using data := cast (*ChunkGenerationWorkerData) work;
+    ChunkGenerate (world, chunk);
+
+    return .CONTINUE;
+}
+
+WorldInitBase :: inline (world : *World)
 {
     Initialize (world);
 
-    GeneratorInit (world, seed);
     world.all_loaded_chunks.allocator = context.allocator;
+    world.chunks_being_generated.allocator = context.allocator;
+
+    thread_count := Clamp (System.get_number_of_processors (.ALL_LOGICAL) - 1, 2, 200);
+    Threads.init (*world.chunk_generation_thread_group, thread_count, ChunkGenerationWorkerProc);
+    world.chunk_generation_thread_group.name = "ChunkGeneration";
+    world.chunk_generation_thread_group.logging = true;
+
+    Threads.start (*world.chunk_generation_thread_group);
+}
+
+#scope_export
+
+WorldInit :: inline (world : *World, seed : u64)
+{
+    WorldInitBase (world);
+    GeneratorInit (world, seed);
 }
 
 WorldInit :: inline (world : *World, seed : u64, surface_params : SurfaceParams)
 {
-    Initialize (world);
-
+    WorldInitBase (world);
     GeneratorInit (world, seed, surface_params);
-    world.all_loaded_chunks.allocator = context.allocator;
 }
 
 WorldFree :: (using world : *World)
@@ -503,6 +537,7 @@ WorldFree :: (using world : *World)
     HashMapFree (*all_loaded_chunks);
     SplineFree (surface_params.spline);
     surface_params.spline = null;
+    Threads.shutdown (*chunk_generation_thread_group);
 }
 
 WorldGetChunk :: inline (world : *World, x : s64, z : s64) -> *Chunk #must
@@ -518,10 +553,21 @@ WorldCreateChunk :: (world : *World, x : s64, z : s64) -> *Chunk #must
 
     chunk = Alloc (Chunk);
     ChunkInit (chunk, x, z);
-    chunk.east  = WorldGetChunk (world, x + 1, z);
-    chunk.west  = WorldGetChunk (world, x - 1, z);
-    chunk.north = WorldGetChunk (world, x, z + 1);
-    chunk.south = WorldGetChunk (world, x, z - 1);
+    WorldAddChunk (world, chunk);
+
+    return chunk;
+}
+
+WorldAddChunk :: (world : *World, chunk : *Chunk)
+{
+    if WorldGetChunk (world, chunk.x, chunk.z)
+        Panic ("Tried adding a chunk that already exists at x:% z:%", chunk.x, chunk.z);
+
+    chunk.is_dirty = true;
+    chunk.east  = WorldGetChunk (world, chunk.x + 1, chunk.z);
+    chunk.west  = WorldGetChunk (world, chunk.x - 1, chunk.z);
+    chunk.north = WorldGetChunk (world, chunk.x, chunk.z + 1);
+    chunk.south = WorldGetChunk (world, chunk.x, chunk.z - 1);
 
     if chunk.east
     {
@@ -547,9 +593,42 @@ WorldCreateChunk :: (world : *World, x : s64, z : s64) -> *Chunk #must
         chunk.south.is_dirty = true;
     }
 
-    HashMapInsert (*world.all_loaded_chunks, .{x, z}, chunk);
+    HashMapInsert (*world.all_loaded_chunks, .{chunk.x, chunk.z}, chunk);
+}
 
-    return chunk;
+WorldHandleNewlyGeneratedChunks :: (using world : *World)
+{
+    completed := Threads.get_completed_work (*chunk_generation_thread_group);
+    for completed
+    {
+        data := cast (*ChunkGenerationWorkerData) it;
+
+        Free (data.logging_name.data);
+
+        HashMapRemove (*chunks_being_generated, .{data.chunk.x, data.chunk.z});
+        WorldAddChunk (world, data.chunk);
+
+        Free (data);
+    }
+}
+
+WorldLaunchThreadedChunkGeneration :: inline (using world : *World, x : s64, z : s64)
+{
+    // Check if the chunk generation has already been launched
+    if HashMapGet (*chunks_being_generated, .{x, z})
+        return;
+
+    chunk := Alloc (Chunk);
+    ChunkInit (chunk, x, z);
+    HashMapInsert (*chunks_being_generated, .{x, z}, chunk);
+
+    data := Alloc (ChunkGenerationWorkerData);
+    data.world = world;
+    data.chunk = chunk;
+    if world.chunk_generation_thread_group.logging
+        data.logging_name = FormatString ("Chunk (%, %)", x, z);
+
+    Threads.add_work (*chunk_generation_thread_group, data, data.logging_name);
 }
 
 WorldGenerateAroundPosition :: (world : *World, position : Vec3f, distance_in_chunks : int)
@@ -565,9 +644,10 @@ WorldGenerateAroundPosition :: (world : *World, position : Vec3f, distance_in_ch
 
             if Distance (horizontal_pos, chunk_pos) < xx (distance_in_chunks * Chunk_Size)
             {
-                chunk := WorldCreateChunk (world, x, z);
-                if !chunk.is_generated
-                    ChunkGenerate (world, chunk);
+                if WorldGetChunk (world, x, z)
+                    continue;
+
+                WorldLaunchThreadedChunkGeneration (world, x, z);
             }
         }
     }
