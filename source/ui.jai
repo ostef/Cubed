@@ -249,9 +249,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Ve
         group : Threads.Thread_Group;
         Threads.init (*group, thread_count, WorkerProc);
         group.name = "GenerateTerrainTexture";
-        // GenerateTerrainTexture should not allocate, but just in case we set the allocator
-        // to null because I don't want to have to think about thread safety of allocations
-        group.allocator = .{};
+        group.logging = false;
 
         Threads.start (*group);
 
@@ -307,8 +305,6 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Ve
 
     end_time := Basic.current_time_monotonic ();
     elapsed := cast (float) (Basic.to_float64_seconds (end_time - start_time));
-
-    Println ("Generated terrain texture in % seconds", elapsed);
 }
 
 #scope_file
