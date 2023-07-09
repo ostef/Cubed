@@ -15,10 +15,20 @@ SplinePoint :: struct
 
 Spline :: struct
 {
-    next : *Spline;
     t_value_index : int;
     point_count : s64;
     points : [Max_Spline_Points]SplinePoint;
+}
+
+SplineFree :: (spline : *Spline, allocator := context.allocator)
+{
+    for i : 0..spline.point_count - 1
+    {
+        if spline.points[i].nested_spline
+            SplineFree (spline.points[i].nested_spline, allocator);
+    }
+
+    Free (spline, allocator);
 }
 
 SplinePushPoint :: inline (using spline : *Spline, derivative : float, location : float, value : float)
@@ -202,41 +212,54 @@ Generator :: struct
     using surface_params : SurfaceParams;
 }
 
-CreateSpline :: inline (surface_params : *SurfaceParams, t_value_index : s64, allocator := context.allocator) -> *Spline #must
+SplineCreate :: inline (t_value_index : s64, allocator := context.allocator) -> *Spline #must
 {
-    last_spline := surface_params.spline;
-    while last_spline && last_spline.next
-        last_spline = last_spline.next;
-
     spline := Alloc (Spline, allocator);
     spline.t_value_index = t_value_index;
-
-    if last_spline
-        last_spline.next = spline;
-    else
-        surface_params.spline = spline;
 
     return spline;
 }
 
-InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
+SplineClone :: (spline : *Spline, allocator := context.allocator) -> *Spline #must
 {
-    spline_8856 := CreateSpline (params, 0);
+    result := Alloc (Spline, allocator);
+    for i : 0..spline.point_count - 1
+    {
+        pt := spline.points[i];
+        if pt.nested_spline
+            result.points[i].nested_spline = SplineClone (pt.nested_spline, allocator);
+
+        result.points[i].derivative = pt.derivative;
+        result.points[i].location = pt.location;
+        result.points[i].value = pt.value;
+    }
+
+    result.t_value_index = spline.t_value_index;
+    result.point_count = spline.point_count;
+
+    return result;
+}
+
+InitDefaultSurfaceSpline :: (params : *SurfaceParams)
+{
+    spline_8856 := SplineCreate (0);
+    params.spline = spline_8856;
+
     SplinePushPoint (spline_8856, 0.000000, -1.100000, 0.044000);
     SplinePushPoint (spline_8856, 0.000000, -1.020000, -0.222200);
     SplinePushPoint (spline_8856, 0.000000, -0.510000, -0.222200);
     SplinePushPoint (spline_8856, 0.000000, -0.440000, -0.120000);
     SplinePushPoint (spline_8856, 0.000000, -0.180000, -0.120000);
-    spline_9512 := CreateSpline (params, 1);
-    spline_10168 := CreateSpline (params, 3);
+    spline_9512 := SplineCreate (1);
+    spline_10168 := SplineCreate (3);
     SplinePushPoint (spline_10168, 0.389401, -1.000000, -0.088802);
     SplinePushPoint (spline_10168, 0.389401, 1.000000, 0.690000);
     SplinePushPoint (spline_9512, 0.000000, -0.850000, spline_10168);
-    spline_10824 := CreateSpline (params, 3);
+    spline_10824 := SplineCreate (3);
     SplinePushPoint (spline_10824, 0.377880, -1.000000, -0.115760);
     SplinePushPoint (spline_10824, 0.377880, 1.000000, 0.640000);
     SplinePushPoint (spline_9512, 0.000000, -0.700000, spline_10824);
-    spline_11480 := CreateSpline (params, 3);
+    spline_11480 := SplineCreate (3);
     SplinePushPoint (spline_11480, 0.000000, -1.000000, -0.222200);
     SplinePushPoint (spline_11480, 0.000000, -0.750000, -0.222200);
     SplinePushPoint (spline_11480, 0.000000, -0.650000, 0.000000);
@@ -244,28 +267,28 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_11480, 0.253456, 0.605455, 0.000000);
     SplinePushPoint (spline_11480, 0.253456, 1.000000, 0.100000);
     SplinePushPoint (spline_9512, 0.000000, -0.400000, spline_11480);
-    spline_12136 := CreateSpline (params, 3);
+    spline_12136 := SplineCreate (3);
     SplinePushPoint (spline_12136, 0.500000, -1.000000, -0.300000);
     SplinePushPoint (spline_12136, 0.000000, -0.400000, 0.050000);
     SplinePushPoint (spline_12136, 0.000000, 0.000000, 0.050000);
     SplinePushPoint (spline_12136, 0.000000, 0.400000, 0.050000);
     SplinePushPoint (spline_12136, 0.007000, 1.000000, 0.060000);
     SplinePushPoint (spline_9512, 0.000000, -0.350000, spline_12136);
-    spline_12792 := CreateSpline (params, 3);
+    spline_12792 := SplineCreate (3);
     SplinePushPoint (spline_12792, 0.500000, -1.000000, -0.150000);
     SplinePushPoint (spline_12792, 0.000000, -0.400000, 0.000000);
     SplinePushPoint (spline_12792, 0.000000, 0.000000, 0.000000);
     SplinePushPoint (spline_12792, 0.100000, 0.400000, 0.050000);
     SplinePushPoint (spline_12792, 0.007000, 1.000000, 0.060000);
     SplinePushPoint (spline_9512, 0.000000, -0.100000, spline_12792);
-    spline_13448 := CreateSpline (params, 3);
+    spline_13448 := SplineCreate (3);
     SplinePushPoint (spline_13448, 0.500000, -1.000000, -0.150000);
     SplinePushPoint (spline_13448, 0.000000, -0.400000, 0.000000);
     SplinePushPoint (spline_13448, 0.000000, 0.000000, 0.000000);
     SplinePushPoint (spline_13448, 0.000000, 0.400000, 0.000000);
     SplinePushPoint (spline_13448, 0.000000, 1.000000, 0.000000);
     SplinePushPoint (spline_9512, 0.000000, 0.200000, spline_13448);
-    spline_14104 := CreateSpline (params, 3);
+    spline_14104 := SplineCreate (3);
     SplinePushPoint (spline_14104, 0.000000, -1.000000, -0.020000);
     SplinePushPoint (spline_14104, 0.000000, -0.400000, -0.030000);
     SplinePushPoint (spline_14104, 0.000000, 0.000000, -0.030000);
@@ -273,16 +296,16 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_14104, 0.000000, 1.000000, 0.000000);
     SplinePushPoint (spline_9512, 0.000000, 0.700000, spline_14104);
     SplinePushPoint (spline_8856, 0.000000, -0.160000, spline_9512);
-    spline_14760 := CreateSpline (params, 1);
-    spline_15416 := CreateSpline (params, 3);
+    spline_14760 := SplineCreate (1);
+    spline_15416 := SplineCreate (3);
     SplinePushPoint (spline_15416, 0.389401, -1.000000, -0.088802);
     SplinePushPoint (spline_15416, 0.389401, 1.000000, 0.690000);
     SplinePushPoint (spline_14760, 0.000000, -0.850000, spline_15416);
-    spline_16072 := CreateSpline (params, 3);
+    spline_16072 := SplineCreate (3);
     SplinePushPoint (spline_16072, 0.377880, -1.000000, -0.115760);
     SplinePushPoint (spline_16072, 0.377880, 1.000000, 0.640000);
     SplinePushPoint (spline_14760, 0.000000, -0.700000, spline_16072);
-    spline_16728 := CreateSpline (params, 3);
+    spline_16728 := SplineCreate (3);
     SplinePushPoint (spline_16728, 0.000000, -1.000000, -0.222200);
     SplinePushPoint (spline_16728, 0.000000, -0.750000, -0.222200);
     SplinePushPoint (spline_16728, 0.000000, -0.650000, 0.000000);
@@ -290,28 +313,28 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_16728, 0.253456, 0.605455, 0.000000);
     SplinePushPoint (spline_16728, 0.253456, 1.000000, 0.100000);
     SplinePushPoint (spline_14760, 0.000000, -0.400000, spline_16728);
-    spline_17384 := CreateSpline (params, 3);
+    spline_17384 := SplineCreate (3);
     SplinePushPoint (spline_17384, 0.500000, -1.000000, -0.300000);
     SplinePushPoint (spline_17384, 0.000000, -0.400000, 0.050000);
     SplinePushPoint (spline_17384, 0.000000, 0.000000, 0.050000);
     SplinePushPoint (spline_17384, 0.000000, 0.400000, 0.050000);
     SplinePushPoint (spline_17384, 0.007000, 1.000000, 0.060000);
     SplinePushPoint (spline_14760, 0.000000, -0.350000, spline_17384);
-    spline_18040 := CreateSpline (params, 3);
+    spline_18040 := SplineCreate (3);
     SplinePushPoint (spline_18040, 0.500000, -1.000000, -0.150000);
     SplinePushPoint (spline_18040, 0.000000, -0.400000, 0.000000);
     SplinePushPoint (spline_18040, 0.000000, 0.000000, 0.000000);
     SplinePushPoint (spline_18040, 0.100000, 0.400000, 0.050000);
     SplinePushPoint (spline_18040, 0.007000, 1.000000, 0.060000);
     SplinePushPoint (spline_14760, 0.000000, -0.100000, spline_18040);
-    spline_18696 := CreateSpline (params, 3);
+    spline_18696 := SplineCreate (3);
     SplinePushPoint (spline_18696, 0.500000, -1.000000, -0.150000);
     SplinePushPoint (spline_18696, 0.000000, -0.400000, 0.000000);
     SplinePushPoint (spline_18696, 0.000000, 0.000000, 0.000000);
     SplinePushPoint (spline_18696, 0.000000, 0.400000, 0.000000);
     SplinePushPoint (spline_18696, 0.000000, 1.000000, 0.000000);
     SplinePushPoint (spline_14760, 0.000000, 0.200000, spline_18696);
-    spline_19352 := CreateSpline (params, 3);
+    spline_19352 := SplineCreate (3);
     SplinePushPoint (spline_19352, 0.000000, -1.000000, -0.020000);
     SplinePushPoint (spline_19352, 0.000000, -0.400000, -0.030000);
     SplinePushPoint (spline_19352, 0.000000, 0.000000, -0.030000);
@@ -319,16 +342,16 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_19352, 0.000000, 1.000000, 0.000000);
     SplinePushPoint (spline_14760, 0.000000, 0.700000, spline_19352);
     SplinePushPoint (spline_8856, 0.000000, -0.150000, spline_14760);
-    spline_20008 := CreateSpline (params, 1);
-    spline_20664 := CreateSpline (params, 3);
+    spline_20008 := SplineCreate (1);
+    spline_20664 := SplineCreate (3);
     SplinePushPoint (spline_20664, 0.389401, -1.000000, -0.088802);
     SplinePushPoint (spline_20664, 0.389401, 1.000000, 0.690000);
     SplinePushPoint (spline_20008, 0.000000, -0.850000, spline_20664);
-    spline_21320 := CreateSpline (params, 3);
+    spline_21320 := SplineCreate (3);
     SplinePushPoint (spline_21320, 0.377880, -1.000000, -0.115760);
     SplinePushPoint (spline_21320, 0.377880, 1.000000, 0.640000);
     SplinePushPoint (spline_20008, 0.000000, -0.700000, spline_21320);
-    spline_21976 := CreateSpline (params, 3);
+    spline_21976 := SplineCreate (3);
     SplinePushPoint (spline_21976, 0.000000, -1.000000, -0.222200);
     SplinePushPoint (spline_21976, 0.000000, -0.750000, -0.222200);
     SplinePushPoint (spline_21976, 0.000000, -0.650000, 0.000000);
@@ -336,28 +359,28 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_21976, 0.253456, 0.605455, 0.000000);
     SplinePushPoint (spline_21976, 0.253456, 1.000000, 0.100000);
     SplinePushPoint (spline_20008, 0.000000, -0.400000, spline_21976);
-    spline_22632 := CreateSpline (params, 3);
+    spline_22632 := SplineCreate (3);
     SplinePushPoint (spline_22632, 0.500000, -1.000000, -0.250000);
     SplinePushPoint (spline_22632, 0.000000, -0.400000, 0.050000);
     SplinePushPoint (spline_22632, 0.000000, 0.000000, 0.050000);
     SplinePushPoint (spline_22632, 0.000000, 0.400000, 0.050000);
     SplinePushPoint (spline_22632, 0.007000, 1.000000, 0.060000);
     SplinePushPoint (spline_20008, 0.000000, -0.350000, spline_22632);
-    spline_23288 := CreateSpline (params, 3);
+    spline_23288 := SplineCreate (3);
     SplinePushPoint (spline_23288, 0.500000, -1.000000, -0.100000);
     SplinePushPoint (spline_23288, 0.010000, -0.400000, 0.001000);
     SplinePushPoint (spline_23288, 0.010000, 0.000000, 0.003000);
     SplinePushPoint (spline_23288, 0.094000, 0.400000, 0.050000);
     SplinePushPoint (spline_23288, 0.007000, 1.000000, 0.060000);
     SplinePushPoint (spline_20008, 0.000000, -0.100000, spline_23288);
-    spline_23944 := CreateSpline (params, 3);
+    spline_23944 := SplineCreate (3);
     SplinePushPoint (spline_23944, 0.500000, -1.000000, -0.100000);
     SplinePushPoint (spline_23944, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_23944, 0.000000, 0.000000, 0.010000);
     SplinePushPoint (spline_23944, 0.040000, 0.400000, 0.030000);
     SplinePushPoint (spline_23944, 0.049000, 1.000000, 0.100000);
     SplinePushPoint (spline_20008, 0.000000, 0.200000, spline_23944);
-    spline_24600 := CreateSpline (params, 3);
+    spline_24600 := SplineCreate (3);
     SplinePushPoint (spline_24600, 0.000000, -1.000000, -0.020000);
     SplinePushPoint (spline_24600, 0.000000, -0.400000, -0.030000);
     SplinePushPoint (spline_24600, 0.000000, 0.000000, -0.030000);
@@ -365,53 +388,53 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_24600, 0.049000, 1.000000, 0.100000);
     SplinePushPoint (spline_20008, 0.000000, 0.700000, spline_24600);
     SplinePushPoint (spline_8856, 0.000000, -0.100000, spline_20008);
-    spline_25256 := CreateSpline (params, 1);
-    spline_25912 := CreateSpline (params, 3);
+    spline_25256 := SplineCreate (1);
+    spline_25912 := SplineCreate (3);
     SplinePushPoint (spline_25912, 0.000000, -1.000000, 0.202350);
     SplinePushPoint (spline_25912, 0.513825, 0.000000, 0.716175);
     SplinePushPoint (spline_25912, 0.513825, 1.000000, 1.230000);
     SplinePushPoint (spline_25256, 0.000000, -0.850000, spline_25912);
-    spline_26568 := CreateSpline (params, 3);
+    spline_26568 := SplineCreate (3);
     SplinePushPoint (spline_26568, 0.000000, -1.000000, 0.200000);
     SplinePushPoint (spline_26568, 0.433180, 0.000000, 0.446820);
     SplinePushPoint (spline_26568, 0.433180, 1.000000, 0.880000);
     SplinePushPoint (spline_25256, 0.000000, -0.700000, spline_26568);
-    spline_27224 := CreateSpline (params, 3);
+    spline_27224 := SplineCreate (3);
     SplinePushPoint (spline_27224, 0.000000, -1.000000, 0.200000);
     SplinePushPoint (spline_27224, 0.391705, 0.000000, 0.308295);
     SplinePushPoint (spline_27224, 0.391705, 1.000000, 0.700000);
     SplinePushPoint (spline_25256, 0.000000, -0.400000, spline_27224);
-    spline_27880 := CreateSpline (params, 3);
+    spline_27880 := SplineCreate (3);
     SplinePushPoint (spline_27880, 0.500000, -1.000000, -0.250000);
     SplinePushPoint (spline_27880, 0.000000, -0.400000, 0.350000);
     SplinePushPoint (spline_27880, 0.000000, 0.000000, 0.350000);
     SplinePushPoint (spline_27880, 0.000000, 0.400000, 0.350000);
     SplinePushPoint (spline_27880, 0.049000, 1.000000, 0.420000);
     SplinePushPoint (spline_25256, 0.000000, -0.350000, spline_27880);
-    spline_28536 := CreateSpline (params, 3);
+    spline_28536 := SplineCreate (3);
     SplinePushPoint (spline_28536, 0.500000, -1.000000, -0.100000);
     SplinePushPoint (spline_28536, 0.070000, -0.400000, 0.007000);
     SplinePushPoint (spline_28536, 0.070000, 0.000000, 0.021000);
     SplinePushPoint (spline_28536, 0.658000, 0.400000, 0.350000);
     SplinePushPoint (spline_28536, 0.049000, 1.000000, 0.420000);
     SplinePushPoint (spline_25256, 0.000000, -0.100000, spline_28536);
-    spline_29192 := CreateSpline (params, 3);
+    spline_29192 := SplineCreate (3);
     SplinePushPoint (spline_29192, 0.500000, -1.000000, -0.100000);
     SplinePushPoint (spline_29192, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_29192, 0.000000, 0.000000, 0.010000);
     SplinePushPoint (spline_29192, 0.040000, 0.400000, 0.030000);
     SplinePushPoint (spline_29192, 0.049000, 1.000000, 0.100000);
     SplinePushPoint (spline_25256, 0.000000, 0.200000, spline_29192);
-    spline_29848 := CreateSpline (params, 3);
+    spline_29848 := SplineCreate (3);
     SplinePushPoint (spline_29848, 0.500000, -1.000000, -0.100000);
     SplinePushPoint (spline_29848, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_29848, 0.000000, 0.000000, 0.010000);
     SplinePushPoint (spline_29848, 0.040000, 0.400000, 0.030000);
     SplinePushPoint (spline_29848, 0.049000, 1.000000, 0.100000);
     SplinePushPoint (spline_25256, 0.000000, 0.400000, spline_29848);
-    spline_30504 := CreateSpline (params, 3);
+    spline_30504 := SplineCreate (3);
     SplinePushPoint (spline_30504, 0.000000, -1.000000, -0.100000);
-    spline_31160 := CreateSpline (params, 3);
+    spline_31160 := SplineCreate (3);
     SplinePushPoint (spline_31160, 0.500000, -1.000000, -0.100000);
     SplinePushPoint (spline_31160, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_31160, 0.000000, 0.000000, 0.010000);
@@ -420,9 +443,9 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_30504, 0.000000, -0.400000, spline_31160);
     SplinePushPoint (spline_30504, 0.000000, 0.000000, 0.170000);
     SplinePushPoint (spline_25256, 0.000000, 0.450000, spline_30504);
-    spline_31816 := CreateSpline (params, 3);
+    spline_31816 := SplineCreate (3);
     SplinePushPoint (spline_31816, 0.000000, -1.000000, -0.100000);
-    spline_32472 := CreateSpline (params, 3);
+    spline_32472 := SplineCreate (3);
     SplinePushPoint (spline_32472, 0.500000, -1.000000, -0.100000);
     SplinePushPoint (spline_32472, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_32472, 0.000000, 0.000000, 0.010000);
@@ -431,14 +454,14 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_31816, 0.000000, -0.400000, spline_32472);
     SplinePushPoint (spline_31816, 0.000000, 0.000000, 0.170000);
     SplinePushPoint (spline_25256, 0.000000, 0.550000, spline_31816);
-    spline_33128 := CreateSpline (params, 3);
+    spline_33128 := SplineCreate (3);
     SplinePushPoint (spline_33128, 0.500000, -1.000000, -0.100000);
     SplinePushPoint (spline_33128, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_33128, 0.000000, 0.000000, 0.010000);
     SplinePushPoint (spline_33128, 0.040000, 0.400000, 0.030000);
     SplinePushPoint (spline_33128, 0.049000, 1.000000, 0.100000);
     SplinePushPoint (spline_25256, 0.000000, 0.580000, spline_33128);
-    spline_33784 := CreateSpline (params, 3);
+    spline_33784 := SplineCreate (3);
     SplinePushPoint (spline_33784, 0.000000, -1.000000, -0.020000);
     SplinePushPoint (spline_33784, 0.000000, -0.400000, -0.030000);
     SplinePushPoint (spline_33784, 0.000000, 0.000000, -0.030000);
@@ -446,53 +469,53 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_33784, 0.049000, 1.000000, 0.100000);
     SplinePushPoint (spline_25256, 0.000000, 0.700000, spline_33784);
     SplinePushPoint (spline_8856, 0.000000, 0.250000, spline_25256);
-    spline_34440 := CreateSpline (params, 1);
-    spline_35096 := CreateSpline (params, 3);
+    spline_34440 := SplineCreate (1);
+    spline_35096 := SplineCreate (3);
     SplinePushPoint (spline_35096, 0.000000, -1.000000, 0.347926);
     SplinePushPoint (spline_35096, 0.576037, 0.000000, 0.923963);
     SplinePushPoint (spline_35096, 0.576037, 1.000000, 1.500000);
     SplinePushPoint (spline_34440, 0.000000, -0.850000, spline_35096);
-    spline_35752 := CreateSpline (params, 3);
+    spline_35752 := SplineCreate (3);
     SplinePushPoint (spline_35752, 0.000000, -1.000000, 0.200000);
     SplinePushPoint (spline_35752, 0.460829, 0.000000, 0.539171);
     SplinePushPoint (spline_35752, 0.460829, 1.000000, 1.000000);
     SplinePushPoint (spline_34440, 0.000000, -0.700000, spline_35752);
-    spline_36408 := CreateSpline (params, 3);
+    spline_36408 := SplineCreate (3);
     SplinePushPoint (spline_36408, 0.000000, -1.000000, 0.200000);
     SplinePushPoint (spline_36408, 0.460829, 0.000000, 0.539171);
     SplinePushPoint (spline_36408, 0.460829, 1.000000, 1.000000);
     SplinePushPoint (spline_34440, 0.000000, -0.400000, spline_36408);
-    spline_37064 := CreateSpline (params, 3);
+    spline_37064 := SplineCreate (3);
     SplinePushPoint (spline_37064, 0.500000, -1.000000, -0.200000);
     SplinePushPoint (spline_37064, 0.000000, -0.400000, 0.500000);
     SplinePushPoint (spline_37064, 0.000000, 0.000000, 0.500000);
     SplinePushPoint (spline_37064, 0.000000, 0.400000, 0.500000);
     SplinePushPoint (spline_37064, 0.070000, 1.000000, 0.600000);
     SplinePushPoint (spline_34440, 0.000000, -0.350000, spline_37064);
-    spline_37720 := CreateSpline (params, 3);
+    spline_37720 := SplineCreate (3);
     SplinePushPoint (spline_37720, 0.500000, -1.000000, -0.050000);
     SplinePushPoint (spline_37720, 0.100000, -0.400000, 0.010000);
     SplinePushPoint (spline_37720, 0.100000, 0.000000, 0.030000);
     SplinePushPoint (spline_37720, 0.940000, 0.400000, 0.500000);
     SplinePushPoint (spline_37720, 0.070000, 1.000000, 0.600000);
     SplinePushPoint (spline_34440, 0.000000, -0.100000, spline_37720);
-    spline_38376 := CreateSpline (params, 3);
+    spline_38376 := SplineCreate (3);
     SplinePushPoint (spline_38376, 0.500000, -1.000000, -0.050000);
     SplinePushPoint (spline_38376, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_38376, 0.000000, 0.000000, 0.010000);
     SplinePushPoint (spline_38376, 0.040000, 0.400000, 0.030000);
     SplinePushPoint (spline_38376, 0.049000, 1.000000, 0.100000);
     SplinePushPoint (spline_34440, 0.000000, 0.200000, spline_38376);
-    spline_39032 := CreateSpline (params, 3);
+    spline_39032 := SplineCreate (3);
     SplinePushPoint (spline_39032, 0.500000, -1.000000, -0.050000);
     SplinePushPoint (spline_39032, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_39032, 0.000000, 0.000000, 0.010000);
     SplinePushPoint (spline_39032, 0.040000, 0.400000, 0.030000);
     SplinePushPoint (spline_39032, 0.049000, 1.000000, 0.100000);
     SplinePushPoint (spline_34440, 0.000000, 0.400000, spline_39032);
-    spline_39688 := CreateSpline (params, 3);
+    spline_39688 := SplineCreate (3);
     SplinePushPoint (spline_39688, 0.000000, -1.000000, -0.050000);
-    spline_40344 := CreateSpline (params, 3);
+    spline_40344 := SplineCreate (3);
     SplinePushPoint (spline_40344, 0.500000, -1.000000, -0.050000);
     SplinePushPoint (spline_40344, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_40344, 0.000000, 0.000000, 0.010000);
@@ -501,9 +524,9 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_39688, 0.000000, -0.400000, spline_40344);
     SplinePushPoint (spline_39688, 0.000000, 0.000000, 0.170000);
     SplinePushPoint (spline_34440, 0.000000, 0.450000, spline_39688);
-    spline_41000 := CreateSpline (params, 3);
+    spline_41000 := SplineCreate (3);
     SplinePushPoint (spline_41000, 0.000000, -1.000000, -0.050000);
-    spline_41656 := CreateSpline (params, 3);
+    spline_41656 := SplineCreate (3);
     SplinePushPoint (spline_41656, 0.500000, -1.000000, -0.050000);
     SplinePushPoint (spline_41656, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_41656, 0.000000, 0.000000, 0.010000);
@@ -512,14 +535,14 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_41000, 0.000000, -0.400000, spline_41656);
     SplinePushPoint (spline_41000, 0.000000, 0.000000, 0.170000);
     SplinePushPoint (spline_34440, 0.000000, 0.550000, spline_41000);
-    spline_42312 := CreateSpline (params, 3);
+    spline_42312 := SplineCreate (3);
     SplinePushPoint (spline_42312, 0.500000, -1.000000, -0.050000);
     SplinePushPoint (spline_42312, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_42312, 0.000000, 0.000000, 0.010000);
     SplinePushPoint (spline_42312, 0.040000, 0.400000, 0.030000);
     SplinePushPoint (spline_42312, 0.049000, 1.000000, 0.100000);
     SplinePushPoint (spline_34440, 0.000000, 0.580000, spline_42312);
-    spline_42968 := CreateSpline (params, 3);
+    spline_42968 := SplineCreate (3);
     SplinePushPoint (spline_42968, 0.015000, -1.000000, -0.020000);
     SplinePushPoint (spline_42968, 0.000000, -0.400000, 0.010000);
     SplinePushPoint (spline_42968, 0.000000, 0.000000, 0.010000);
@@ -528,7 +551,7 @@ InitDefaultSurfaceSpline :: (using params : *SurfaceParams)
     SplinePushPoint (spline_34440, 0.000000, 0.700000, spline_42968);
     SplinePushPoint (spline_8856, 0.000000, 1.000000, spline_34440);
 
-    spline_y_range = CalculateSplineRange (spline);
+    params.spline_y_range = CalculateSplineRange (params.spline);
 }
 
 CalculateSplineRange :: (using spline : Spline) -> Vec2f
@@ -574,4 +597,15 @@ GeneratorInit :: inline (generator : *Generator, seed : u64)
     GenerateNoiseOffsets (generator);
 
     InitDefaultSurfaceSpline (*generator.surface_params);
+}
+
+GeneratorInit :: inline (generator : *Generator, seed : u64, surface_params : SurfaceParams)
+{
+    Initialize (generator);
+
+    generator.seed = seed;
+    GenerateNoiseOffsets (generator);
+
+    generator.surface_params = surface_params;
+    generator.spline = SplineClone (surface_params.spline);
 }

@@ -151,6 +151,30 @@ ChunkCleanup :: (chunk : *Chunk)
 {
     glDeleteVertexArrays (chunk.vaos.count, chunk.vaos.data);
     glDeleteBuffers (chunk.vbos.count, chunk.vbos.data);
+
+    if chunk.east
+    {
+        chunk.east.west = null;
+        chunk.east.is_dirty = true;
+    }
+
+    if chunk.west
+    {
+        chunk.west.east = null;
+        chunk.west.is_dirty = true;
+    }
+
+    if chunk.south
+    {
+        chunk.south.north = null;
+        chunk.south.is_dirty = true;
+    }
+
+    if chunk.north
+    {
+        chunk.north.south = null;
+        chunk.north.is_dirty = true;
+    }
 }
 
 ChunkPositionFromWorldPosition :: inline (x : s64, z : s64) -> x : s64, z : s64
@@ -458,6 +482,27 @@ WorldInit :: inline (world : *World, seed : u64)
 
     GeneratorInit (world, seed);
     world.all_loaded_chunks.allocator = context.allocator;
+}
+
+WorldInit :: inline (world : *World, seed : u64, surface_params : SurfaceParams)
+{
+    Initialize (world);
+
+    GeneratorInit (world, seed, surface_params);
+    world.all_loaded_chunks.allocator = context.allocator;
+}
+
+WorldFree :: (using world : *World)
+{
+    for all_loaded_chunks
+    {
+        ChunkCleanup (it);
+        Free (it);
+    }
+
+    HashMapFree (*all_loaded_chunks);
+    SplineFree (surface_params.spline);
+    surface_params.spline = null;
 }
 
 WorldGetChunk :: inline (world : *World, x : s64, z : s64) -> *Chunk #must

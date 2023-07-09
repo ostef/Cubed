@@ -409,10 +409,24 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
 
     ImGui.SameLine ();
 
-    if ImGui.Button ("Randomize") || !texture_handle
+    if !texture_handle
+        generator.seed = g_world.seed;
+
+    if ImGui.Button ("Randomize")
     {
-        generator.seed = RandomGetU64 (*context.random_number_generator);
+        rng : RNG;
+        RandomSeed (*rng, Basic.current_time_monotonic ().low);
+
+        generator.seed = RandomGetU64 (*rng);
         should_generate = true;
+    }
+
+    ImGui.SameLine ();
+
+    if ImGui.Button ("Set World Params")
+    {
+        WorldFree (*g_world);
+        WorldInit (*g_world, generator.seed, generator.surface_params);
     }
 
     if should_generate
