@@ -356,12 +356,18 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
                     player_pos_scale := (texture_size / cast (float) size) / scale;
                     player_pos := (Vec2f.{g_camera.position.x, g_camera.position.z} - offset) * player_pos_scale;
                     player_pos += map_top_left;
+                    player_pos.x = Clamp (player_pos.x, map_top_left.x, map_top_left.x + xx texture_size);
+                    player_pos.y = Clamp (player_pos.y, map_top_left.y, map_top_left.y + xx texture_size);
 
-                    if player_pos.x >= map_top_left.x && player_pos.x < map_top_left.x + xx texture_size
-                    && player_pos.y >= map_top_left.y && player_pos.y < map_top_left.y + xx texture_size
-                    {
-                        draw_list.AddCircleFilled (draw_list, player_pos, 5, ImGui.GetColorU32 (.{1,1,1,1}));
-                    }
+                    p0 := Rotate (Vec2f.{0, -1}, -g_camera.euler_angles.yaw + PI * 0.5);
+                    p1 := Rotate (Vec2f.{2,  0}, -g_camera.euler_angles.yaw + PI * 0.5);
+                    p2 := Rotate (Vec2f.{0,  1}, -g_camera.euler_angles.yaw + PI * 0.5);
+
+                    draw_list.AddCircleFilled (draw_list, player_pos, 7, ImGui.GetColorU32 (.{0,0,0,1}));
+                    draw_list.AddTriangleFilled (draw_list, player_pos + p0 * 7, player_pos + p1 * 7, player_pos + p2 * 7, ImGui.GetColorU32 (.{0,0,0,1}));
+
+                    draw_list.AddCircleFilled (draw_list, player_pos, 5, ImGui.GetColorU32 (.{1,1,1,1}));
+                    draw_list.AddTriangleFilled (draw_list, player_pos + p0 * 5, player_pos + p1 * 5, player_pos + p2 * 5, ImGui.GetColorU32 (.{1,1,1,1}));
                 }
 
                 if ImGui.IsMouseDragging (.Left) && (ImGui.IsItemActive () || ImGui.IsItemHovered ())
