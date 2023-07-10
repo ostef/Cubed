@@ -237,7 +237,7 @@ LoadTextureAtlas :: (textures_dirname : string) -> bool
     return true;
 }
 
-DrawChunkMesh :: inline (chunk : *Chunk, camera : *Camera, mesh_type : ChunkMeshType)
+DrawChunkMesh :: inline (chunk : Chunk, camera : Camera, mesh_type : ChunkMeshType)
 {
     if chunk.vertex_counts[mesh_type] == 0
         return;
@@ -251,17 +251,21 @@ DrawChunkMesh :: inline (chunk : *Chunk, camera : *Camera, mesh_type : ChunkMesh
     glDrawArrays (GL_TRIANGLES, 0, xx chunk.vertex_counts[mesh_type]);
 }
 
-DrawWorld :: (world : *World, camera : *Camera)
+DrawWorld :: (world : *World, camera : Camera)
 {
+    view_frustum := MakeViewFrustum (camera);
+
     chunks_to_draw : [..]*Chunk;
     chunks_to_draw.allocator = Temp;
 
+    sqrd_render_distance := cast (float) (g_settings.render_distance * Chunk_Size);
+    sqrd_render_distance *= sqrd_render_distance;
     for world.all_loaded_chunks
     {
         camera_horizontal_pos := Vec2f.{camera.position.x, camera.position.z};
         world_chunk_pos := Vec2f.{xx (it.x * Chunk_Size), xx (it.z * Chunk_Size)};
 
-        if Distance (world_chunk_pos, camera_horizontal_pos) < xx (g_settings.render_distance * Chunk_Size)
+        if SqrdDistance (world_chunk_pos, camera_horizontal_pos) < sqrd_render_distance && ChunkIsInFrustum (it, view_frustum)
         {
             ChunkGenerateMeshes (it);
             ArrayPush (*chunks_to_draw, it);

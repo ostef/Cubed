@@ -266,14 +266,8 @@ main :: ()
         window_w, window_h : s32;
         SDL_GetWindowSize (g_window, *window_w, *window_h);
 
-        UpdateFlyingCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
-
         ImGuiSDL.NewFrame ();
         ImGui.NewFrame ();
-
-        // If we have a dockspace then ImGui will always ask to capture keyboard
-        // ImGui.DockSpaceOverViewport (null, .PassthruCentralNode);
-        UIUpdate ();
 
         UpdateIm3dKeys ();
 
@@ -285,51 +279,15 @@ main :: ()
             g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
         Im3d.NewFrame ();
 
+        UpdateFlyingCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
+
+        // If we have a dockspace then ImGui will always ask to capture
+        // the keyboard and we won't be able to move the camera
+        // ImGui.DockSpaceOverViewport (null, .PassthruCentralNode);
+        UIUpdate ();
+
         WorldHandleNewlyGeneratedChunks (*g_world);
         WorldGenerateAroundPosition (*g_world, g_camera.position, g_settings.render_distance);
-
-        /*
-        Im3d.GizmoTranslation ("Point", *point.n);
-
-        a_center := AABBCenter (a_aabb);
-        Im3d.GizmoTranslation ("A_Center", *a_center.n);
-        a_aabb = MakeAABBPositionHalfSize (a_center, AABBHalfSize (a_aabb));
-
-        b_center := AABBCenter (b_aabb);
-        Im3d.GizmoTranslation ("B_Center", *b_center.n);
-        b_aabb = MakeAABBPositionHalfSize (b_center, AABBHalfSize (b_aabb));
-
-        Im3d.DrawPoint (.{}, 10, Im3d.Color_White);
-        Im3d.DrawXyzAxes ();
-
-        if AABBIntersectsAABB (a_aabb, b_aabb)
-            Im3d.PushColor (Im3d.Color_Red);
-        else
-            Im3d.PushColor (Im3d.Color_Green);
-
-        Im3d.DrawAlignedBox (a_aabb.min, a_aabb.max);
-        Im3d.DrawAlignedBox (b_aabb.min, b_aabb.max);
-
-        Im3d.PushColor (Im3d.Color_White);
-        Im3d.DrawAlignedBox (b_aabb.min - AABBHalfSize (a_aabb), b_aabb.max + AABBHalfSize (a_aabb));
-        Im3d.PopColor ();
-
-        Im3d.DrawPoint (point, 15, Im3d.Color_White);
-
-        Im3d.DrawLine (AABBCenter (a_aabb), point, 1, Im3d.Color_White);
-
-        hit_result := SweptAABBIntersectsAABB (a_aabb, b_aabb, Normalized (point - AABBCenter (a_aabb)), Length (point - AABBCenter (a_aabb)));
-        if hit_result.hit
-        {
-            Im3d.DrawPoint (hit_result.position, 20, Im3d.Color_Red);
-        }
-
-        Im3d.PopColor ();
-        */
-
-        Im3d.EndFrame ();
-
-        ImGui.Render ();
 
         glViewport (0, 0, xx window_w, xx window_h);
         glClearColor (0.1, 0.1, 0.1, 1.0);
@@ -337,8 +295,10 @@ main :: ()
 
         DrawWorld (*g_world, *g_camera);
 
-        // Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
+        Im3d.EndFrame ();
+        Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
 
+        ImGui.Render ();
         ImGuiGL.RenderDrawData (ImGui.GetDrawData ());
 
         if io.ConfigFlags_ & .ViewportsEnable
