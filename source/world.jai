@@ -507,7 +507,7 @@ WorldInitBase :: inline (world : *World)
     thread_count := Clamp (System.get_number_of_processors (.ALL_LOGICAL) - 1, 2, 200);
     Threads.init (*world.chunk_generation_thread_group, thread_count, ChunkGenerationWorkerProc);
     world.chunk_generation_thread_group.name = "ChunkGeneration";
-    world.chunk_generation_thread_group.logging = true;
+    world.chunk_generation_thread_group.logging = false;
 
     Threads.start (*world.chunk_generation_thread_group);
 }
@@ -560,8 +560,7 @@ WorldCreateChunk :: (world : *World, x : s64, z : s64) -> *Chunk #must
 
 WorldAddChunk :: (world : *World, chunk : *Chunk)
 {
-    if WorldGetChunk (world, chunk.x, chunk.z)
-        Panic ("Tried adding a chunk that already exists at x:% z:%", chunk.x, chunk.z);
+    Panic (WorldGetChunk (world, chunk.x, chunk.z) == null, "Tried adding a chunk that already exists at x:% z:%", chunk.x, chunk.z);
 
     chunk.is_dirty = true;
     chunk.east  = WorldGetChunk (world, chunk.x + 1, chunk.z);
@@ -610,6 +609,9 @@ WorldHandleNewlyGeneratedChunks :: (using world : *World)
 
         Free (data);
     }
+
+    if completed.count > 0
+        LogMessage ("Generated % new chunks", completed.count);
 }
 
 WorldLaunchThreadedChunkGeneration :: inline (using world : *World, x : s64, z : s64)
