@@ -561,7 +561,7 @@ WorldCreateChunk :: (world : *World, x : s64, z : s64) -> *Chunk #must
 
 WorldAddChunk :: (world : *World, chunk : *Chunk)
 {
-    Panic (WorldGetChunk (world, chunk.x, chunk.z) == null, "Tried adding a chunk that already exists at x:% z:%", chunk.x, chunk.z);
+    Assert (WorldGetChunk (world, chunk.x, chunk.z) == null, "Tried adding a chunk that already exists at x:% z:%", chunk.x, chunk.z);
 
     chunk.is_dirty = true;
     chunk.east  = WorldGetChunk (world, chunk.x + 1, chunk.z);
