@@ -16,20 +16,23 @@ Println :: Fmt.println;
 #load "string.jai";
 #load "logging.jai";
 
-Common_Allocation_Leaves :: Basic.Procedure_To_Elide.[
-    .{"AllocNonNull", "Common"},
-    .{"Alloc", "Common"},
-    .{"AllocArray", "Common"},
-    .{"Realloc", "Common"},
-    .{"StringClone", "Common"},
-    .{"StringCloneToCString", "Common"},
-    .{"StringJoin", "Common"},
-    .{"FormatString", "Common"},
-    .{"FormatToCString", "Common"},
-    .{"ArrayReserve", "Array"},
-    .{"HashMapInit", "Hash_Map"},
-    .{"HashMapGrow", "Hash_Map"},
-];
+#if Basic.MEMORY_DEBUGGER
+{
+    Common_Allocation_Leaves :: Basic.Procedure_To_Elide.[
+        .{"AllocNonNull", "Common"},
+        .{"Alloc", "Common"},
+        .{"AllocArray", "Common"},
+        .{"Realloc", "Common"},
+        .{"StringClone", "Common"},
+        .{"StringCloneToCString", "Common"},
+        .{"StringJoin", "Common"},
+        .{"FormatString", "Common"},
+        .{"FormatToCString", "Common"},
+        .{"ArrayReserve", "Array"},
+        .{"HashMapInit", "Hash_Map"},
+        .{"HashMapGrow", "Hash_Map"},
+    ];
+}
 
 Assert :: (assertion : bool, fmt_str := "", args : ..Any, location := #caller_location) #expand
 {

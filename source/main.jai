@@ -1,6 +1,6 @@
 Enable_Chunk_Bounds_Check :: true;
 
-Basic :: #import "Basic" () (MEMORY_DEBUGGER = true);
+Basic :: #import "Basic" () (MEMORY_DEBUGGER = false);
 using, only (.["+", "-", "*", "/"]) Basic;
 
 #import "Common";
@@ -108,10 +108,13 @@ UpdateIm3dKeys :: ()
 
 main :: ()
 {
-    defer {
-        options : Basic.Leak_Report_Options;
-        options.known_allocation_leaves = Common_Allocation_Leaves;
-        Basic.report_memory_leaks (*options);
+    #if Basic.MEMORY_DEBUGGER
+    {
+        defer {
+            options : Basic.Leak_Report_Options;
+            options.known_allocation_leaves = Common_Allocation_Leaves;
+            Basic.report_memory_leaks (*options);
+        }
     }
 
     #if OS == .WINDOWS
@@ -215,16 +218,17 @@ main :: ()
     WorldInit (*g_world, Basic.current_time_monotonic ().low);
     defer WorldFree (*g_world);
 
-    Basic.allocations_before_this_call_will_not_be_considered_leaks ();
+    #if Basic.MEMORY_DEBUGGER
+        Basic.allocations_before_this_call_will_not_be_considered_leaks ();
 
     g_camera.position.y = xx g_world.surface_params.water_level + 10.0;
     delta_time := 1 / 60.0;
     quit := false;
     while !quit
     {
-        frame_start := Basic.current_time_monotonic ();
+        defer ResetTemporaryStorage ();
 
-        ResetTemporaryStorage ();
+        frame_start := Basic.current_time_monotonic ();
 
         g_mouse_delta = .{};
         event : SDL_Event;
@@ -353,9 +357,6 @@ main :: ()
         frame_end := Basic.current_time_monotonic ();
         delta_time = cast (float) Basic.to_float64_seconds (frame_end - frame_start);
     }
-
-    // Prevent the memory debugger from reporting leaks in the temp allocator
-    ResetTemporaryStorage ();
 }
 
 #run {
