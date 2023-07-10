@@ -18,6 +18,9 @@ Alloc :: inline (size : s64, allocator := context.allocator) -> *void #must
     ptr := allocator.proc (.ALLOCATE, size, 0, null, allocator.data);
     Assert (ptr != null, "Allocator % could not allocate % bytes", GetAllocatorName (allocator), size);
 
+    #if Basic.MEMORY_DEBUGGER
+        Basic.Memory_Debugger.check_alloc (allocator, ptr, size);
+
     return ptr;
 }
 
@@ -55,6 +58,9 @@ Free :: inline (ptr : *void, allocator := context.allocator)
     if !ptr
         return;
 
+    #if Basic.MEMORY_DEBUGGER
+        Basic.Memory_Debugger.check_free (allocator, ptr);
+
     allocator.proc (.FREE, 0, 0, ptr, allocator.data);
 }
 
@@ -64,6 +70,9 @@ Realloc :: inline (ptr : *void, old_size : s64, size : s64, allocator := context
 
     new_ptr := allocator.proc (.RESIZE, size, old_size, ptr, allocator.data);
     Assert (new_ptr != null, "Allocator % failed to reallocate % bytes (previous size was %)", GetAllocatorName (allocator), size, old_size);
+
+    #if Basic.MEMORY_DEBUGGER
+        Basic.Memory_Debugger.check_realloc (allocator, ptr, old_size, new_ptr, size);
 
     return new_ptr;
 }
