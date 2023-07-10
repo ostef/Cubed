@@ -535,6 +535,7 @@ WorldFree :: (using world : *World)
     }
 
     HashMapFree (*all_loaded_chunks);
+    HashMapFree (*chunks_being_generated);
     SplineFree (surface_params.spline);
     surface_params.spline = null;
     Threads.shutdown (*chunk_generation_thread_group);
