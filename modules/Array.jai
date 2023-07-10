@@ -21,7 +21,7 @@ ArrayReserve :: inline (arr : *[..]$T, new_capacity : s64)
     if new_capacity <= arr.allocated
         return;
 
-    new_data := cast (*T) Realloc (arr.data, arr.allocated * size_of (T), new_capacity * size_of (T));
+    new_data := cast (*T) Realloc (arr.data, arr.allocated * size_of (T), new_capacity * size_of (T), allocator = arr.allocator);
     arr.data = new_data;
     arr.allocated = new_capacity;
 }
