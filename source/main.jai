@@ -115,6 +115,8 @@ main :: ()
         timeBeginPeriod (1);
     }
 
+    logger_data := ConsoleLogger.{ report_filenames = false };
+    context.logger_data = *logger_data;
     context.logger = ConsoleLoggerProc;
 
     if SDL_Init (SDL_INIT_VIDEO) != 0

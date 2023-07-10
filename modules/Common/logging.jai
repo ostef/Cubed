@@ -6,10 +6,17 @@ SetContextLogger :: inline (data : *void, proc : Logger)
     context.logger = proc;
 }
 
+ConsoleLogger :: struct
+{
+    report_filenames := true;
+}
+
 ConsoleLoggerProc :: (message : string, data : *void, info : Log_Info)
 {
     if !message
         return;
+
+    using logger := cast (*ConsoleLogger) data;
 
     builder : StringBuilder;
     builder.allocator = Temp;
@@ -18,7 +25,8 @@ ConsoleLoggerProc :: (message : string, data : *void, info : Log_Info)
         StringBuilderAppend (*builder, "[%] ", info.section.name);
 
     // @Todo: reduce filename
-    StringBuilderAppend (*builder, "(%:%) ", info.location.fully_pathed_filename, info.location.line_number);
+    if report_filenames
+        StringBuilderAppend (*builder, "(%:%) ", info.location.fully_pathed_filename, info.location.line_number);
     StringBuilderAppend (*builder, message);
     if message[message.count - 1] != #char "\n"
         StringBuilderAppend (*builder, "\n");
