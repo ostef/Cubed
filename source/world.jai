@@ -252,18 +252,28 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
 
     defer chunk.is_generated = true;
 
+    surface_height_map : [Chunk_Size * Chunk_Size]float = ---;
+    for z : 0..Chunk_Size - 1
+    {
+        for x : 0..Chunk_Size - 1
+        {
+            sample_x := x + chunk.x * Chunk_Size;
+            sample_z := z + chunk.z * Chunk_Size;
+
+            index := ChunkBlockIndex (x, 0, z);
+            surface_height_map[index] = CalculateTerrainParam (world, .Surface_Height, xx sample_x, xx sample_z);
+        }
+    }
+
+
     for y : 0..Chunk_Height - 1
     {
         for z : 0..Chunk_Size - 1
         {
             for x : 0..Chunk_Size - 1
             {
-                sample_x := x + chunk.x * Chunk_Size;
-                sample_z := z + chunk.z * Chunk_Size;
-
                 index := ChunkBlockIndex (x, y, z);
-                surface_height := CalculateTerrainParam (world, .Surface_Height, xx sample_x, xx sample_z);
-                // Println ("% % % : %", sample_x, sample_z, y, surface_height);
+                surface_height := surface_height_map[ChunkBlockIndex (x, 0, z)];
 
                 if y == 0
                 {
