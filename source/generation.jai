@@ -165,41 +165,33 @@ CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x :
     if param < xx TerrainNoise.Count
     {
         val := CalculateTerrainNoise (generator, cast (TerrainNoise) param, x, y);
-        val *= surface_params.noise_amplitudes[xx param];
 
-        return val;
+        return val * surface_params.noise_amplitudes[xx param];
     }
     else if param == .Ridges
     {
         weirdness := CalculateTerrainParam (generator, .Weirdness, x, y);
-        // weirdness = Abs (3 * Abs (weirdness) - 2);
-        weirdness = 1 - Abs (3 * Abs (weirdness) - 2);
-        // weirdness = -3 * Abs (Abs (weirdness) - 2.0 / 3.0) - 1.0 / 3.0;
 
-        return weirdness;
+        return 1 - Abs (3 * Abs (weirdness) - 2);
     }
     else if param == .Depth
     {
-        First_Value :: cast (s64) TerrainParam.Continentalness;
-        Last_Value  :: cast (s64) TerrainParam.Ridges;
-
-        t_values : [Last_Value - First_Value + 1]float = ---;
-        for i : First_Value..Last_Value
+        t_values : [4]float = ---;
+        #no_abc
         {
-            if i == xx TerrainParam.Weirdness
-                continue;
-            t_values[i - First_Value] = CalculateTerrainParam (generator, cast (TerrainParam) i, x, y);
+            t_values[0] = CalculateTerrainParam (generator, .Continentalness, x, y);
+            t_values[1] = CalculateTerrainParam (generator, .Erosion, x, y);
+            t_values[2] = 0;
+            t_values[3] = CalculateTerrainParam (generator, .Ridges, x, y);
         }
 
-        Assert (surface_params.spline != null, "Surface spline is null (did you forget to call InitDefaultSurfaceSpline?)");
-        depth := HermiteCubicCalculate (surface_params.spline, t_values) - 0.015;
-        return depth;
+        return HermiteCubicCalculate (surface_params.spline, t_values) - 0.015;
     }
     else if param == .Surface_Height
     {
         depth := CalculateTerrainParam (generator, .Depth, x, y);
+
         return 128 + depth * 128;
-        // return (1 - (83.0 / 160.0) + depth) * (10000.0 / 76.0);
     }
 
     return 0;
