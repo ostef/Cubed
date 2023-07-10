@@ -2,19 +2,34 @@
 
 #scope_module
 
-fmt :: #import "Fmt";
+Fmt :: #import "Fmt";
 
 #scope_export
 
-FormatString :: fmt.format;
-FormatToCString :: fmt.format_to_cstring;
-Print :: fmt.print;
-Println :: fmt.println;
+FormatString :: Fmt.format;
+FormatToCString :: Fmt.format_to_cstring;
+Print :: Fmt.print;
+Println :: Fmt.println;
 
 #load "memory.jai";
 #load "array.jai";
 #load "string.jai";
 #load "logging.jai";
+
+Common_Allocation_Leaves :: Basic.Procedure_To_Elide.[
+    .{"AllocNonNull", "Common"},
+    .{"Alloc", "Common"},
+    .{"AllocArray", "Common"},
+    .{"Realloc", "Common"},
+    .{"StringClone", "Common"},
+    .{"StringCloneToCString", "Common"},
+    .{"StringJoin", "Common"},
+    .{"FormatString", "Common"},
+    .{"FormatToCString", "Common"},
+    .{"ArrayReserve", "Array"},
+    .{"HashMapInit", "Hash_Map"},
+    .{"HashMapGrow", "Hash_Map"},
+];
 
 Assert :: (assertion : bool, fmt_str := "", args : ..Any, location := #caller_location) #expand
 {

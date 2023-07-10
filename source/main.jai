@@ -108,7 +108,11 @@ UpdateIm3dKeys :: ()
 
 main :: ()
 {
-    defer Basic.report_memory_leaks ();
+    defer {
+        options : Basic.Leak_Report_Options;
+        options.known_allocation_leaves = Common_Allocation_Leaves;
+        Basic.report_memory_leaks (*options);
+    }
 
     #if OS == .WINDOWS
     {
