@@ -1,2 +1,1 @@
-* Do not render chunks that are not visible
 * Cache terrain values when generating chunks
