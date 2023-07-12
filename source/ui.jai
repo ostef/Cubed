@@ -478,10 +478,25 @@ UIShowTextureAtlasWindow :: (opened : *bool)
     ImGui.Image (cast (ImGui.ImTextureID) g_texture_atlas, .{avail_width, avail_width});
 }
 
+UIShowGameMetricsWindow :: (opened : *bool)
+{
+    defer ImGui.End ();
+    if !ImGui.Begin ("Game Metrics", opened)
+        return;
+
+    if ImGui.InputFloat3 ("XZY", *g_player.position.n, "%.3f")
+        g_player.velocity = .{};
+    ImGui.Checkbox ("Enable Collisions", *g_player.enable_collisions);
+    ImGui.LabelText ("World Seed", "%lld", g_world.seed);
+    ImGui.LabelText ("Loaded Chunks", "%lld", g_world.all_loaded_chunks.count);
+    ImGui.LabelText ("Chunks Being Generated", "%lld", g_world.chunks_being_generated.count);
+}
+
 g_ui_show_demo_window := false;
 g_ui_show_perlin_test_window := false;
 g_ui_show_terrain_generator_window := false;
 g_ui_show_texture_atlas_window := false;
+g_ui_show_game_metrics_window := true;
 
 UIUpdate :: ()
 {
@@ -495,6 +510,8 @@ UIUpdate :: ()
             g_ui_show_terrain_generator_window = true;
         if ImGui.MenuItem ("Texture Atlas")
             g_ui_show_texture_atlas_window = true;
+        if ImGui.MenuItem ("Game Metrics")
+            g_ui_show_game_metrics_window = true;
 
         ImGui.EndMainMenuBar ();
     }
@@ -510,4 +527,7 @@ UIUpdate :: ()
 
     if g_ui_show_texture_atlas_window
         UIShowTextureAtlasWindow (*g_ui_show_texture_atlas_window);
+
+    if g_ui_show_game_metrics_window
+        UIShowGameMetricsWindow (*g_ui_show_game_metrics_window);
 }
