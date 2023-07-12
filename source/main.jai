@@ -54,6 +54,31 @@ g_settings : struct
 }
 g_world : World;
 g_player : Player;
+g_physics_breakpoint_hit : bool;
+g_physics_step : bool;
+
+PhysicsDebugBreak :: inline ()
+{
+    if !g_physics_breakpoint_hit
+        Im3d.EndFrame ();
+
+    g_physics_breakpoint_hit = true;
+}
+
+PhysicsIsRunning :: inline () -> bool
+{
+    return !g_physics_breakpoint_hit || g_physics_step;
+}
+
+PhysicsStep :: inline ()
+{
+    g_physics_step = true;
+}
+
+PhysicsResume :: inline ()
+{
+    g_physics_breakpoint_hit = false;
+}
 
 GetMousePosition :: inline (window : *SDL_Window = null) -> Vec2f #must
 {
@@ -230,6 +255,7 @@ main :: ()
     while !quit
     {
         defer ResetTemporaryStorage ();
+        defer g_physics_step = false;
 
         frame_start := Basic.current_time_monotonic ();
 
@@ -243,6 +269,15 @@ main :: ()
             {
             case SDL_QUIT;
                 quit = true;
+
+            case SDL_KEYDOWN;
+                if event.key.keysym.sym ==
+                {
+                case SDLK_F5;
+                    PhysicsResume ();
+                case SDLK_F10;
+                    PhysicsStep ();
+                }
 
             case SDL_MOUSEMOTION;
                 g_mouse_delta.x = cast (float) event.motion.xrel;
@@ -272,22 +307,28 @@ main :: ()
         ImGuiSDL.NewFrame ();
         ImGui.NewFrame ();
 
-        // We need to have calculated the camera matrices before passing it to Im3d otherwise
-        // we'll have an annoying 1 frame delay. This means that we can't do Im3d calls in UpdatePlayer and UpdateCamera
-        UpdateIm3dKeys ();
+        if PhysicsIsRunning ()
+            UpdateIm3dKeys ();
 
         Im3dImpl.NewFrame (
             g_camera.fov_in_degrees,
             ifx !ImGui.GetIO ().WantCaptureMouse && !g_should_capture_mouse && SDL_GetMouseFocus () == g_window
                 then GetMousePosition (g_window)
                 else .{-Math.FLOAT32_MAX, -Math.FLOAT32_MAX},
-            g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
-        Im3d.NewFrame ();
+            g_camera.transform_matrix, g_camera.projection_matrix, delta_time
+        );
 
-        // UpdateFlyingCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
-        UpdatePlayer (*g_world, *g_player, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
-        // UpdateFPSCamera (*g_camera, g_player, delta_time);
-        UpdateTPSCamera (*g_camera, g_player, delta_time);
+        if PhysicsIsRunning ()
+        {
+            Im3d.NewFrame ();
+
+            UpdatePlayer (*g_world, *g_player, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
+        }
+
+        if !g_physics_breakpoint_hit
+            UpdateTPSCamera (*g_camera, g_player, delta_time);
+        else
+            UpdateFlyingCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
 
         // If we have a dockspace then ImGui will always ask to capture
         // the keyboard and we won't be able to move the camera
@@ -302,9 +343,12 @@ main :: ()
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         DrawWorld (*g_world, *g_camera);
-        DrawPlayer (g_world, g_player, g_camera);
+        if PhysicsIsRunning ()
+            DrawPlayer (g_world, g_player, g_camera);
 
-        Im3d.EndFrame ();
+        if PhysicsIsRunning ()
+            Im3d.EndFrame ();
+
         Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
 
         ImGui.Render ();

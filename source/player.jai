@@ -21,17 +21,25 @@ PlayerAABB :: inline (using player : Player) -> AABB #must
     return MakeAABBPositionHalfSize (position + .{0, Player_Height * 0.5, 0}, Vec3f.{Player_Size, Player_Height, Player_Size} * 0.5);
 }
 
+g_player_movement_input : Vec3f;
+
 UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, allow_movement := true)
 {
-    movement_input : Vec3f;
-    if allow_movement && (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0
+    if !g_physics_breakpoint_hit
     {
-        movement_input.x = xx (cast (s32) IsKeyDown (SDLK_d) - cast (s32) IsKeyDown (SDLK_a));
-        movement_input.z = xx (cast (s32) IsKeyDown (SDLK_w) - cast (s32) IsKeyDown (SDLK_s));
-        if flying
-            movement_input.y = xx (cast (s32) IsKeyDown (SDLK_SPACE) - cast (s32) IsKeyDown (SDLK_LCTRL));
+        if allow_movement && (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0
+        {
+            g_player_movement_input.x = xx (cast (s32) IsKeyDown (SDLK_d) - cast (s32) IsKeyDown (SDLK_a));
+            g_player_movement_input.z = xx (cast (s32) IsKeyDown (SDLK_w) - cast (s32) IsKeyDown (SDLK_s));
+            if flying
+                g_player_movement_input.y = xx (cast (s32) IsKeyDown (SDLK_SPACE) - cast (s32) IsKeyDown (SDLK_LCTRL));
 
-        movement_input = Normalized (movement_input);
+            g_player_movement_input = Normalized (g_player_movement_input);
+        }
+        else
+        {
+            g_player_movement_input = .{};
+        }
     }
 
     movement_speed := Player_Movement_Speed;
@@ -41,15 +49,15 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     if !flying
     {
         velocity.y -= Gravity;
-        velocity = RightVector (transform_matrix) * movement_input.x * movement_speed
-            + ForwardVector (transform_matrix) * movement_input.z * movement_speed
+        velocity = RightVector (transform_matrix) * g_player_movement_input.x * movement_speed
+            + ForwardVector (transform_matrix) * g_player_movement_input.z * movement_speed
             + .{0, velocity.y, 0};
     }
     else
     {
-        velocity = RightVector (transform_matrix) * movement_input.x * movement_speed
-            + UpVector (transform_matrix) * movement_input.y * movement_speed
-            + ForwardVector (transform_matrix) * movement_input.z * movement_speed;
+        velocity = RightVector (transform_matrix) * g_player_movement_input.x * movement_speed
+            + UpVector (transform_matrix) * g_player_movement_input.y * movement_speed
+            + ForwardVector (transform_matrix) * g_player_movement_input.z * movement_speed;
     }
 
     if g_should_capture_mouse
