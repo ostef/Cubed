@@ -242,7 +242,7 @@ main :: ()
     b_aabb := AABB.{.{2, 2, 2}, .{3, 3, 3}};
     point := Vec3f.{-1, 0.5, 0.7};
 
-    WorldInit (*g_world, 9136145540600000000);//Basic.current_time_monotonic ().low);
+    WorldInit (*g_world, Basic.current_time_monotonic ().low);
     defer WorldFree (*g_world);
 
     #if Basic.MEMORY_DEBUGGER
