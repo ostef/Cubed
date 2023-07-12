@@ -5,7 +5,7 @@ Camera :: struct
     rotation : Quatf;
     mouse_input : Vec2f;
 
-    base_movement_speed := 0.3;
+    base_movement_speed := 1 / 60.0;
     rotation_speed := 0.2;
     rotation_smoothing := 0.3;
 
