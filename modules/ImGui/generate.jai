@@ -4,8 +4,8 @@
 #import "String";
 bdgen :: #import "Bindings_Generator";
 
-#if OS != .WINDOWS
-    #assert false "Only Windows is supported for now.";
+#if OS != .WINDOWS && OS != .LINUX
+    #assert false "Only Windows and Linux are supported for now.";
 
 CPP_SOURCE_PATH :: "source";
 
@@ -17,7 +17,7 @@ TYPES_TO_OMIT :: string.[
     "ImDrawCallback"
 ];
 
-ALWAYS_COMPILE_CPP_SOURCE :: false;
+ALWAYS_COMPILE_CPP_SOURCE :: true;
 COMPILE_DEBUG :: true;
 INCLUDE_DEMO  :: true;
 
@@ -29,7 +29,12 @@ g_begin_end_string_args : [..]*bdgen.Declaration;
 
     set_build_options_dc (.{do_output = false});
 
-    if !file_exists ("win/ImGui.dll") || !file_exists ("win/ImGui.lib") || ALWAYS_COMPILE_CPP_SOURCE
+#if OS == .WINDOWS
+    compile_source := ALWAYS_COMPILE_CPP_SOURCE || !file_exists ("win/ImGui.dll") || !file_exists ("win/ImGui.lib");
+else #if OS == .LINUX
+    compile_source := ALWAYS_COMPILE_CPP_SOURCE || !file_exists ("linux/ImGui.so") || !file_exists ("linux/ImGui.a");
+
+    if compile_source
     {
         if !compile_cpp_source ()
         {
@@ -65,6 +70,12 @@ compile_cpp_source :: () -> bool
         // We set IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS. Otherwise all users of the ImGui module have to link against "imm32".
         success &&= build_cpp_static_lib ("win/ImGui", ..src_files, extra = .["/DIMGUI_API=__declspec(dllexport)", "/DIMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS"], debug = COMPILE_DEBUG);
     }
+    else #if OS == .LINUX
+    {
+        make_directory_if_it_does_not_exist ("linux");
+        success &&= build_cpp_dynamic_lib ("linux/ImGui", ..src_files, debug = COMPILE_DEBUG);
+        success &&= build_cpp_static_lib ("linux/ImGui", ..src_files, extra = .["-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics"], debug = COMPILE_DEBUG);
+    }
 
     return success;
 }
@@ -73,11 +84,15 @@ generate_bindings :: () -> bool
 {
     #if OS == .WINDOWS
         output_filename := "windows.jai";
+    else #if OS == .LINUX
+        output_filename := "linux.jai";
 
     opts : bdgen.Generate_Bindings_Options;
 
     #if OS == .WINDOWS
         array_add (*opts.libpaths, "win");
+    else #if OS == .LINUX
+        array_add (*opts.libpaths, "linux");
 
     array_add (*opts.libnames, "ImGui");
     array_add (*opts.system_include_paths, bdgen.GENERATOR_DEFAULT_SYSTEM_INCLUDE_PATH);

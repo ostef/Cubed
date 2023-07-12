@@ -10,4 +10,9 @@ Mat4 :: Linalg.Mat4f;
 
 #scope_export
 
-#load "windows.jai";
+#if OS == .WINDOWS
+    #load "windows.jai";
+else #if OS == .LINUX
+    #load "linux.jai";
+else
+    #assert false "Unsupported OS";

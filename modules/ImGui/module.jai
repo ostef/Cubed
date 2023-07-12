@@ -17,6 +17,14 @@ size_t :: u64;
 
     user32 :: #system_library "User32";	// Needed unless ImGui is compiled with IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCS
 }
+else #if OS == .LINUX
+{
+    #load "linux.jai";
+}
+else
+{
+    #assert false "Unsupported OS";
+}
 
 ImVec2 :: Linalg.Vec2f;
 ImVec4 :: Linalg.Vec4f;

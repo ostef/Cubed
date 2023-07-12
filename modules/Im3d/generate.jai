@@ -4,8 +4,8 @@
 #import "String";
 #import "Bindings_Generator";
 
-#if OS != .WINDOWS
-    #assert false "Only Windows is supported for now.";
+#if OS != .WINDOWS && OS != .LINUX
+    #assert false "Only Windows and Linux are supported for now.";
 
 CPP_SOURCE_PATH :: "source";
 
@@ -17,7 +17,7 @@ TYPES_TO_OMIT :: string.[
     "Mat4"
 ];
 
-ALWAYS_COMPILE_CPP_SOURCE :: false;
+ALWAYS_COMPILE_CPP_SOURCE :: true;
 COMPILE_DEBUG :: true;
 
 #run
@@ -26,7 +26,12 @@ COMPILE_DEBUG :: true;
 
     set_build_options_dc (.{do_output = false});
 
-    if !file_exists ("win/Im3d.dll") || !file_exists ("win/Im3d.lib") || ALWAYS_COMPILE_CPP_SOURCE
+    #if OS == .WINDOWS
+        compile := ALWAYS_COMPILE_CPP_SOURCE || !file_exists ("win/Im3d.dll") || !file_exists ("win/Im3d.lib");
+    else #if OS == .LINUX
+        compile := ALWAYS_COMPILE_CPP_SOURCE || !file_exists ("linux/Im3d.so") || !file_exists ("linux/Im3d.a");
+
+    if compile
     {
         if !compile_cpp_source ()
         {
@@ -56,6 +61,12 @@ compile_cpp_source :: () -> bool
         success &&= build_cpp_dynamic_lib ("win/Im3d", ..src_files, extra = .["/DIM3D_API=__declspec(dllexport)"], debug = COMPILE_DEBUG);
         success &&= build_cpp_static_lib ("win/Im3d", ..src_files, extra = .["/DIM3D_API=__declspec(dllexport)"], debug = COMPILE_DEBUG);
     }
+    else #if OS == .LINUX
+    {
+        make_directory_if_it_does_not_exist ("linux");
+        success &&= build_cpp_dynamic_lib ("linux/Im3d", ..src_files, extra = .["-DIM3D_API=__attribute__ ((visibility (\"default\")))"], debug = COMPILE_DEBUG);
+        success &&= build_cpp_static_lib ("linux/Im3d", ..src_files, extra = .["-DIM3D_API=__attribute__ ((visibility (\"default\")))", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics"], debug = COMPILE_DEBUG);
+    }
 
     return success;
 }
@@ -64,11 +75,15 @@ generate_bindings :: () -> bool
 {
     #if OS == .WINDOWS
         output_filename := "windows.jai";
+   else #if OS == .LINUX
+        output_filename := "linux.jai";
 
     opts : Generate_Bindings_Options;
 
     #if OS == .WINDOWS
         array_add (*opts.libpaths, "win");
+   else #if OS == .LINUX
+        array_add (*opts.libpaths, "linux");
 
     array_add (*opts.libnames, "Im3d");
     array_add (*opts.system_include_paths, GENERATOR_DEFAULT_SYSTEM_INCLUDE_PATH);
