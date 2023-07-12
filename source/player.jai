@@ -15,7 +15,7 @@ Player_Movement_Speed :: 1 / 60.0;
 Player_Jump_Height :: 1.0;
 Player_Rotation_Speed :: 0.2;
 Gravity :: 1.0;
-Penetration_Threshold :: 0.01;
+Penetration_Threshold :: 0.001;
 
 PlayerAABB :: inline (using player : Player) -> AABB #must
 {
@@ -66,7 +66,8 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
 
     // Because all collidable things are axis aligned boxes, the wall sliding
     // is limited to 3-axes, meaning we do not need to do more than 3 iterations
-    // of collision resolution
+    // of collision resolution. If we have less than 3 iterations, we'll be able
+    // to go through blocks when sliding along walls
     if enable_collisions
     {
         for 1..3
@@ -77,10 +78,10 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
 
             if hit_result.hit
             {
-                intermediate_velocity := velocity_dir * hit_result.distance;
+                intermediate_velocity := velocity_dir * hit_result.distance + hit_result.normal * Penetration_Threshold;
                 position += intermediate_velocity;
                 velocity -= intermediate_velocity;
-                velocity -= hit_result.normal * Dot (velocity, hit_result.normal);
+                velocity -= hit_result.normal * (Dot (velocity, hit_result.normal) - Penetration_Threshold);
             }
         }
     }
