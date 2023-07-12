@@ -119,3 +119,4 @@ Conjugate :: Linalg.conjugate;
 NLerp :: Linalg.nlerp;
 
 EulerAngles :: Linalg.Euler_Angles;
+EulerAnglesFromQuat :: Linalg.euler_angles_from_quat;

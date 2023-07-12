@@ -308,7 +308,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Ve
 g_ui_terrain_generator : struct
 {
     offset : Vec2f;
-    scale : float = 16;
+    scale : float = 1;
     generator : Generator;
     texture_handle : GLuint;
     size : s32 = 1024;
@@ -354,14 +354,14 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
                 if show_player_position
                 {
                     player_pos_scale := (texture_size / cast (float) size) / scale;
-                    player_pos := (Vec2f.{g_camera.position.x, g_camera.position.z} - offset) * player_pos_scale;
+                    player_pos := (Vec2f.{g_player.position.x, g_player.position.z} - offset) * player_pos_scale;
                     player_pos += map_top_left;
                     player_pos.x = Clamp (player_pos.x, map_top_left.x, map_top_left.x + xx texture_size);
                     player_pos.y = Clamp (player_pos.y, map_top_left.y, map_top_left.y + xx texture_size);
 
-                    p0 := Rotate (Vec2f.{0, -1}, -g_camera.euler_angles.yaw + PI * 0.5);
-                    p1 := Rotate (Vec2f.{2,  0}, -g_camera.euler_angles.yaw + PI * 0.5);
-                    p2 := Rotate (Vec2f.{0,  1}, -g_camera.euler_angles.yaw + PI * 0.5);
+                    p0 := Rotate (Vec2f.{0, -1}, -g_player.orientation + PI * 0.5);
+                    p1 := Rotate (Vec2f.{2,  0}, -g_player.orientation + PI * 0.5);
+                    p2 := Rotate (Vec2f.{0,  1}, -g_player.orientation + PI * 0.5);
 
                     draw_list.AddCircleFilled (draw_list, player_pos, 7, ImGui.GetColorU32 (.{0,0,0,1}));
                     draw_list.AddTriangleFilled (draw_list, player_pos + p0 * 7, player_pos + p1 * 7, player_pos + p2 * 7, ImGui.GetColorU32 (.{0,0,0,1}));

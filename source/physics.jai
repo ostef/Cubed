@@ -17,6 +17,12 @@ HitResult :: struct
     normal : Vec3f;
     position : Vec3f;
     distance : float;
+
+    chunk_x, chunk_z : s64;
+    chunk : *Chunk;
+    block_x, block_y, block_z : s64;
+    block : Block;
+    block_face : BlockFace;
 }
 
 MakeAABBPositionHalfSize :: inline (position : Vec3f, half_size : Vec3f) -> AABB #must
@@ -138,8 +144,6 @@ SweptAABBIntersectsAABB :: inline (a : AABB, b : AABB, direction : Vec3f, length
 
 RayIntersectsAABB :: (ray : Ray, aabb : AABB) -> HitResult #must, t_near : float, t_far : float
 {
-    // @Todo: ensure correctness when ray.direction has zero components
-
     result : HitResult;
 
     inv_dir := Vec3f.{1 / ray.direction.x, 1 / ray.direction.y, 1 / ray.direction.z};
@@ -155,8 +159,8 @@ RayIntersectsAABB :: (ray : Ray, aabb : AABB) -> HitResult #must, t_near : float
 
     if distance > 0 && distance < ray.length
     {
-        result.position = ray.origin + ray.direction * distance;
         result.hit = true;
+        result.position = ray.origin + ray.direction * distance;
         result.distance = distance;
 
         dist_to_center := result.position - AABBCenter (aabb);
@@ -171,4 +175,87 @@ RayIntersectsAABB :: (ray : Ray, aabb : AABB) -> HitResult #must, t_near : float
     }
 
     return result, t_near, t_far;
+}
+
+SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, length : float) -> HitResult #must
+{
+    center := AABBCenter (aabb);
+    half_size := AABBHalfSize (aabb);
+    min_x, max_x := MinMax (center.x, center.x + direction.x * length);
+    min_y, max_y := MinMax (center.y, center.y + direction.y * length);
+    min_z, max_z := MinMax (center.z, center.z + direction.z * length);
+
+    min_x = Floor (min_x - half_size.x);
+    min_y = Floor (min_y - half_size.y);
+    min_z = Floor (min_z - half_size.z);
+
+    max_x = Ceil (max_x + half_size.x);
+    max_y = Ceil (max_y + half_size.y);
+    max_z = Ceil (max_z + half_size.z);
+
+    chunk_x, chunk_z := ChunkPositionFromWorldPosition (cast (int) min_x, cast (int)  min_z);
+    chunk := WorldGetChunk (world, chunk_x, chunk_z);
+
+    closest_hit : HitResult;
+    closest_hit.distance = Math.FLOAT32_MAX;
+    for z : cast (int) min_z..cast (int) max_z
+    {
+        for y : cast (int) min_y..cast (int) max_y
+        {
+            for x : cast (int) min_x..cast (int) max_x
+            {
+                curr_chunk_x, curr_chunk_z := ChunkPositionFromWorldPosition (x, z);
+                if chunk_x != curr_chunk_x || chunk_z != curr_chunk_z
+                {
+                    chunk_x = curr_chunk_x;
+                    chunk_z = curr_chunk_z;
+                    chunk = WorldGetChunk (world, chunk_x, chunk_z);
+                }
+
+                if !chunk
+                {
+                    chunk_aabb := ChunkAABB (x / Chunk_Size, z / Chunk_Size);
+                    result := SweptAABBIntersectsAABB (aabb, chunk_aabb, direction, length);
+                    if result.hit && result.distance < closest_hit.distance
+                    {
+                        closest_hit = result;
+                        closest_hit.chunk = null;
+                        closest_hit.chunk_x = chunk_x;
+                        closest_hit.chunk_z = chunk_z;
+                    }
+
+                    continue;
+                }
+
+                rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, x, z);
+                block_aabb := BlockAABB (x, y, z);
+
+                block := ChunkGetBlockInChunk (chunk, rel_x, y, rel_z);
+                if block.kind == .Air || block.kind == .Water
+                    continue;
+
+                result := SweptAABBIntersectsAABB (aabb, block_aabb, direction, length);
+                if result.hit
+                {
+                    Im3d.PushColor (Im3d.Color_Red);
+                    Im3d.DrawAlignedBox (block_aabb.min, block_aabb.max);
+                    Im3d.PopColor ();
+
+                    if result.distance < closest_hit.distance
+                    {
+                        closest_hit = result;
+                        closest_hit.chunk = null;
+                        closest_hit.chunk_x = chunk_x;
+                        closest_hit.chunk_z = chunk_z;
+                        closest_hit.block = block;
+                        closest_hit.block_x = x;
+                        closest_hit.block_y = y;
+                        closest_hit.block_z = z;
+                    }
+                }
+            }
+        }
+    }
+
+    return closest_hit;
 }

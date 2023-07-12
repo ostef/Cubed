@@ -5,9 +5,12 @@ Camera :: struct
     rotation : Quatf;
     mouse_input : Vec2f;
 
-    base_movement_speed := 10.0;
+    base_movement_speed := 0.3;
     rotation_speed := 0.2;
     rotation_smoothing := 0.3;
+
+    distance_to_target := 4.0;
+    look_at_offset := Vec2f.{0, 1.5};
 
     fov_in_degrees := 60.0;
     z_near := 0.01;
@@ -26,11 +29,11 @@ Plane :: struct
 
 Frustum :: struct
 {
-    far_face, near_face : Plane;
-    left_face, right_face : Plane;
-    top_face, bottom_face : Plane;
+    far_plane, near_plane : Plane;
+    left_plane, right_plane : Plane;
+    top_plane, bottom_plane : Plane;
 
-    #place far_face;
+    #place far_plane;
     planes : [6]Plane;
 }
 
@@ -56,11 +59,12 @@ UpdateFlyingCamera :: (using cam : *Camera, delta_time : float, allow_movement :
         base_movement_speed = Max (base_movement_speed * 0.9, 1);
     else if IsKeyDown (SDLK_UP)
         base_movement_speed = Min (base_movement_speed * 1.1, 50);
+
     speed := base_movement_speed;
     if IsKeyDown (SDLK_LSHIFT)
         speed *= 10;
 
-    position += speed * delta_time * (
+    position += speed * delta_time * 60 * (
         RightVector (transform_matrix)   * movement_input.x +
         UpVector (transform_matrix)      * movement_input.y +
         ForwardVector (transform_matrix) * movement_input.z
@@ -74,6 +78,42 @@ UpdateFlyingCamera :: (using cam : *Camera, delta_time : float, allow_movement :
     euler_angles.pitch = Clamp (euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
 
     rotation = QuatfFromEulerAngles (euler_angles);
+}
+
+UpdateFPSCamera :: (using camera : *Camera, player : Player, delta_time : float)
+{
+    defer CalculateCameraMatrices (camera);
+
+    position = player.position + .{0, 1.5, 0};
+
+    euler_angles.yaw = player.orientation;
+
+    mouse_delta := ifx g_should_capture_mouse then g_mouse_delta else .{};
+    mouse_input = Lerp (mouse_input, mouse_delta, rotation_smoothing);
+    rotation_delta := mouse_input * rotation_speed;
+
+    euler_angles.pitch += ToRadians (rotation_delta.y);
+    euler_angles.pitch = Clamp (euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
+
+    rotation = QuatfFromEulerAngles (euler_angles);
+}
+
+UpdateTPSCamera :: (using camera : *Camera, player : Player, delta_time : float)
+{
+    defer CalculateCameraMatrices (camera);
+
+    mouse_delta := ifx g_should_capture_mouse then g_mouse_delta else .{};
+    mouse_input = Lerp (mouse_input, mouse_delta, rotation_smoothing);
+    rotation_delta := mouse_input * rotation_speed;
+    euler_angles.yaw   = player.orientation;
+    euler_angles.pitch += ToRadians (rotation_delta.y);
+    euler_angles.pitch = Clamp (euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
+
+    rotation = QuatfFromEulerAngles (euler_angles);
+
+    position = player.position + RightVector (transform_matrix) * look_at_offset.x
+        + .{0, look_at_offset.y, 0}
+        - ForwardVector (transform_matrix) * distance_to_target;
 }
 
 CalculateCameraMatrices :: inline (using cam : *Camera)
@@ -130,66 +170,39 @@ MakeViewFrustum :: (using camera : Camera) -> Frustum #must
     forward := ForwardVector (transform_matrix);
 
     using result : Frustum = ---;
-    near_face   = MakePlane (position + z_near * forward, forward);
-    far_face    = MakePlane (position + z_far * forward, -forward);
+    near_plane   = MakePlane (position + z_near * forward, forward);
+    far_plane    = MakePlane (position + z_far * forward, -forward);
 
     far_center := z_far * forward;
-    right_face  = MakePlane (position, Cross (far_center + right * half_h_side, up));
-    left_face   = MakePlane (position, Cross (up, far_center - right * half_h_side));
-    top_face    = MakePlane (position, Cross (right, far_center + up * half_v_side));
-    bottom_face = MakePlane (position, Cross (far_center - up * half_v_side, right));
+    right_plane  = MakePlane (position, Cross (up, far_center + right * half_h_side));
+    left_plane   = MakePlane (position, Cross (far_center - right * half_h_side, up));
+    top_plane    = MakePlane (position, Cross (far_center + up * half_v_side, right));
+    bottom_plane = MakePlane (position, Cross (right, far_center - up * half_v_side));
 
     return result;
 }
 
 AABBIsInFrustum :: inline (aabb : AABB, using frustum : Frustum) -> bool #must
 {
-    // for planes
-    // {
-    //     axis_vert : Vec3f = ---;
-    //     if it.normal.x < 0
-    //         axis_vert.x = aabb.min.x;
-    //     else
-    //         axis_vert.x = aabb.max.x;
-
-    //     if it.normal.y < 0
-    //         axis_vert.y = aabb.min.y;
-    //     else
-    //         axis_vert.y = aabb.max.y;
-
-    //     if it.normal.z < 0
-    //         axis_vert.z = aabb.min.z;
-    //     else
-    //         axis_vert.z = aabb.max.z;
-
-    //     if Dot (it.normal, axis_vert) + it.distance < 0
-    //         return false;
-    // }
-
-    // return true;
-    return AABBIsInFrontOrOnPlane (aabb, left_face)
-        && AABBIsInFrontOrOnPlane (aabb, right_face)
-        && AABBIsInFrontOrOnPlane (aabb, top_face)
-        && AABBIsInFrontOrOnPlane (aabb, bottom_face)
-        && AABBIsInFrontOrOnPlane (aabb, near_face)
-        && AABBIsInFrontOrOnPlane (aabb, far_face);
+    return AABBIsInFrontOrOnPlane (aabb, left_plane)
+        && AABBIsInFrontOrOnPlane (aabb, right_plane)
+        && AABBIsInFrontOrOnPlane (aabb, top_plane)
+        && AABBIsInFrontOrOnPlane (aabb, bottom_plane)
+        && AABBIsInFrontOrOnPlane (aabb, near_plane)
+        && AABBIsInFrontOrOnPlane (aabb, far_plane);
 }
 
 PointIsInFrustum :: inline (point : Vec3f, using frustum : Frustum) -> bool #must
 {
-    return SignedDistanceToPlane (point, left_face) >= 0
-        && SignedDistanceToPlane (point, right_face) >= 0
-        && SignedDistanceToPlane (point, top_face) >= 0
-        && SignedDistanceToPlane (point, bottom_face) >= 0
-        && SignedDistanceToPlane (point, near_face) >= 0
-        && SignedDistanceToPlane (point, far_face) >= 0;
+    return SignedDistanceToPlane (point, left_plane) >= 0
+        && SignedDistanceToPlane (point, right_plane) >= 0
+        && SignedDistanceToPlane (point, top_plane) >= 0
+        && SignedDistanceToPlane (point, bottom_plane) >= 0
+        && SignedDistanceToPlane (point, near_plane) >= 0
+        && SignedDistanceToPlane (point, far_plane) >= 0;
 }
 
 ChunkIsInFrustum :: inline (chunk : Chunk, frustum : Frustum) -> bool #must
 {
-    aabb : AABB = ---;
-    aabb.min = .{xx (chunk.x * Chunk_Size), 0, xx (chunk.z * Chunk_Size)};
-    aabb.max = aabb.min + .{xx Chunk_Size, xx Chunk_Height, xx Chunk_Size};
-
-    return AABBIsInFrustum (aabb, frustum);
+    return AABBIsInFrustum (ChunkAABB (chunk.x, chunk.z), frustum);
 }

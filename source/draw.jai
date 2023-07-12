@@ -265,7 +265,7 @@ DrawWorld :: (world : *World, camera : Camera)
         camera_horizontal_pos := Vec2f.{camera.position.x, camera.position.z};
         world_chunk_pos := Vec2f.{xx (it.x * Chunk_Size), xx (it.z * Chunk_Size)};
 
-        if SqrdDistance (world_chunk_pos, camera_horizontal_pos) < sqrd_render_distance && ChunkIsInFrustum (it, view_frustum)
+        if SqrdDistance (world_chunk_pos, camera_horizontal_pos) < sqrd_render_distance //&& ChunkIsInFrustum (it, view_frustum)
         {
             ChunkGenerateMeshes (it);
             ArrayPush (*chunks_to_draw, it);

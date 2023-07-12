@@ -180,11 +180,34 @@ ChunkCleanup :: (chunk : *Chunk)
     }
 }
 
+ChunkAABB :: inline (x : s64, z : s64) -> AABB #must
+{
+    result : AABB = ---;
+    result.min = .{xx (x / Chunk_Size), 0, xx (z / Chunk_Size)};
+    result.max = result.min + .{xx Chunk_Size, xx Chunk_Height, xx Chunk_Size};
+
+    return result;
+}
+
+BlockAABB :: inline (x : s64, y : s64, z : s64) -> AABB #must
+{
+    result : AABB = ---;
+    result.min = .{xx x, xx y, xx z};
+    result.max = result.min + .{1, 1, 1};
+
+    return result;
+}
+
+ChunkAbsoluteToRelativeCoordinates :: inline (chunk_x : s64, chunk_z : s64, x : s64, z : s64) -> x : s64, z : s64
+{
+    return cast (int) (x - chunk_x * Chunk_Size), cast (int) (z - chunk_z * Chunk_Size);
+}
+
 ChunkPositionFromWorldPosition :: inline (x : s64, z : s64) -> x : s64, z : s64
 {
     return
-        x / Chunk_Size - cast (s64) (x < 0),
-        z / Chunk_Size - cast (s64) (z < 0);
+        (x + cast (s64) (x < 0)) / Chunk_Size - cast (s64) (x < 0),
+        (z + cast (s64) (z < 0)) / Chunk_Size - cast (s64) (z < 0);
 }
 
 ChunkBlockIndex :: inline (x : s64, y : s64, z : s64) -> s64 #must
@@ -300,127 +323,127 @@ PushBlockVertices :: (vertices : *[..]Vertex, block : BlockKind, position : Vec3
     if visible_faces & .East
     {
         v := ArrayPush (vertices, .{position, .East, .Bottom_Left, xx block});
-        v.position += .{0.5, -0.5, -0.5};
+        v.position += .{1, 0, 0};
 
         v = ArrayPush (vertices, .{position, .East, .Top_Left, xx block});
-        v.position += .{0.5, 0.5, -0.5};
+        v.position += .{1, 1, 0};
 
         v = ArrayPush (vertices, .{position, .East, .Top_Right, xx block});
-        v.position += .{0.5, 0.5, 0.5};
+        v.position += .{1, 1, 1};
 
         v = ArrayPush (vertices, .{position, .East, .Bottom_Left, xx block});
-        v.position += .{0.5, -0.5, -0.5};
+        v.position += .{1, 0, 0};
 
         v = ArrayPush (vertices, .{position, .East, .Top_Right, xx block});
-        v.position += .{0.5, 0.5, 0.5};
+        v.position += .{1, 1, 1};
 
         v = ArrayPush (vertices, .{position, .East, .Bottom_Right, xx block});
-        v.position += .{0.5, -0.5, 0.5};
+        v.position += .{1, 0, 1};
     }
 
     if visible_faces & .West
     {
         v := ArrayPush (vertices, .{position, .West, .Bottom_Right, xx block});
-        v.position += .{-0.5, -0.5, -0.5};
+        v.position += .{0, 0, 0};
 
         v = ArrayPush (vertices, .{position, .West, .Top_Left, xx block});
-        v.position += .{-0.5, 0.5, 0.5};
+        v.position += .{0, 1, 1};
 
         v = ArrayPush (vertices, .{position, .West, .Top_Right, xx block});
-        v.position += .{-0.5, 0.5, -0.5};
+        v.position += .{0, 1, 0};
 
         v = ArrayPush (vertices, .{position, .West, .Bottom_Right, xx block});
-        v.position += .{-0.5, -0.5, -0.5};
+        v.position += .{0, 0, 0};
 
         v = ArrayPush (vertices, .{position, .West, .Bottom_Left, xx block});
-        v.position += .{-0.5, -0.5, 0.5};
+        v.position += .{0, 0, 1};
 
         v = ArrayPush (vertices, .{position, .West, .Top_Left, xx block});
-        v.position += .{-0.5, 0.5, 0.5};
+        v.position += .{0, 1, 1};
     }
 
     if visible_faces & .Above
     {
         v := ArrayPush (vertices, .{position, .Above, .Bottom_Left, xx block});
-        v.position += .{-0.5, 0.5, -0.5};
+        v.position += .{0, 1, 0};
 
         v = ArrayPush (vertices, .{position, .Above, .Top_Right, xx block});
-        v.position += .{0.5, 0.5, 0.5};
+        v.position += .{1, 1, 1};
 
         v = ArrayPush (vertices, .{position, .Above, .Bottom_Right, xx block});
-        v.position += .{0.5, 0.5, -0.5};
+        v.position += .{1, 1, 0};
 
         v = ArrayPush (vertices, .{position, .Above, .Bottom_Left, xx block});
-        v.position += .{-0.5, 0.5, -0.5};
+        v.position += .{0, 1, 0};
 
         v = ArrayPush (vertices, .{position, .Above, .Top_Left, xx block});
-        v.position += .{-0.5, 0.5, 0.5};
+        v.position += .{0, 1, 1};
 
         v = ArrayPush (vertices, .{position, .Above, .Top_Right, xx block});
-        v.position += .{0.5, 0.5, 0.5};
+        v.position += .{1, 1, 1};
     }
 
     if visible_faces & .Below
     {
         v := ArrayPush (vertices, .{position, .Below, .Top_Left, xx block});
-        v.position += .{-0.5, -0.5, -0.5};
+        v.position += .{0, 0, 0};
 
         v = ArrayPush (vertices, .{position, .Below, .Top_Right, xx block});
-        v.position += .{0.5, -0.5, -0.5};
+        v.position += .{1, 0, 0};
 
         v = ArrayPush (vertices, .{position, .Below, .Bottom_Right, xx block});
-        v.position += .{0.5, -0.5, 0.5};
+        v.position += .{1, 0, 1};
 
         v = ArrayPush (vertices, .{position, .Below, .Top_Left, xx block});
-        v.position += .{-0.5, -0.5, -0.5};
+        v.position += .{0, 0, 0};
 
         v = ArrayPush (vertices, .{position, .Below, .Bottom_Right, xx block});
-        v.position += .{0.5, -0.5, 0.5};
+        v.position += .{1, 0, 1};
 
         v = ArrayPush (vertices, .{position, .Below, .Bottom_Left, xx block});
-        v.position += .{-0.5, -0.5, 0.5};
+        v.position += .{0, 0, 1};
     }
 
     if visible_faces & .North
     {
         v := ArrayPush (vertices, .{position, .North, .Bottom_Right, xx block});
-        v.position += .{-0.5, -0.5, 0.5};
+        v.position += .{0, 0, 1};
 
         v = ArrayPush (vertices, .{position, .North, .Bottom_Left, xx block});
-        v.position += .{0.5, -0.5, 0.5};
+        v.position += .{1, 0, 1};
 
         v = ArrayPush (vertices, .{position, .North, .Top_Left, xx block});
-        v.position += .{0.5, 0.5, 0.5};
+        v.position += .{1, 1, 1};
 
         v = ArrayPush (vertices, .{position, .North, .Bottom_Right, xx block});
-        v.position += .{-0.5, -0.5, 0.5};
+        v.position += .{0, 0, 1};
 
         v = ArrayPush (vertices, .{position, .North, .Top_Left, xx block});
-        v.position += .{0.5, 0.5, 0.5};
+        v.position += .{1, 1, 1};
 
         v = ArrayPush (vertices, .{position, .North, .Top_Right, xx block});
-        v.position += .{-0.5, 0.5, 0.5};
+        v.position += .{0, 1, 1};
     }
 
     if visible_faces & .South
     {
         v := ArrayPush (vertices, .{position, .South, .Bottom_Left, xx block});
-        v.position += .{-0.5, -0.5, -0.5};
+        v.position += .{0, 0, 0};
 
         v = ArrayPush (vertices, .{position, .South, .Top_Right, xx block});
-        v.position += .{0.5, 0.5, -0.5};
+        v.position += .{1, 1, 0};
 
         v = ArrayPush (vertices, .{position, .South, .Bottom_Right, xx block});
-        v.position += .{0.5, -0.5, -0.5};
+        v.position += .{1, 0, 0};
 
         v = ArrayPush (vertices, .{position, .South, .Bottom_Left, xx block});
-        v.position += .{-0.5, -0.5, -0.5};
+        v.position += .{0, 0, 0};
 
         v = ArrayPush (vertices, .{position, .South, .Top_Left, xx block});
-        v.position += .{-0.5, 0.5, -0.5};
+        v.position += .{0, 1, 0};
 
         v = ArrayPush (vertices, .{position, .South, .Top_Right, xx block});
-        v.position += .{0.5, 0.5, -0.5};
+        v.position += .{1, 1, 0};
     }
 }
 
@@ -621,8 +644,8 @@ WorldHandleNewlyGeneratedChunks :: (using world : *World)
         Free (data);
     }
 
-    if completed.count > 0
-        LogMessage ("Generated % new chunks", completed.count);
+    // if completed.count > 0
+    //     LogMessage ("Generated % new chunks", completed.count);
 }
 
 WorldLaunchThreadedChunkGeneration :: inline (using world : *World, x : s64, z : s64)

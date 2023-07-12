@@ -142,6 +142,15 @@ Max :: (a : $T, b : T) -> T #must #expand
     return ifx a > b then a else b;
 }
 
+MinMax :: (a : $T, b : T) -> min : T, max : T #must #expand
+#modify { return IsNumeric (T); }
+{
+    if a < b
+        return a, b;
+    else
+        return b, a;
+}
+
 Clamp :: (x : $T, min : T, max : T) -> T #must #expand
 #modify { return IsNumeric (T); }
 {

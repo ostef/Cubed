@@ -42,6 +42,7 @@ Ceil :: Math.ceil;
 #load "world.jai";
 #load "generation.jai";
 #load "ui.jai";
+#load "player.jai";
 
 g_window : *SDL_Window;
 g_camera : Camera;
@@ -49,9 +50,10 @@ g_mouse_delta : Vec2f;
 g_should_capture_mouse : bool;
 g_settings : struct
 {
-    render_distance := 12;
+    render_distance := 6;
 }
 g_world : World;
+g_player : Player;
 
 GetMousePosition :: inline (window : *SDL_Window = null) -> Vec2f #must
 {
@@ -215,13 +217,14 @@ main :: ()
     b_aabb := AABB.{.{2, 2, 2}, .{3, 3, 3}};
     point := Vec3f.{-1, 0.5, 0.7};
 
-    WorldInit (*g_world, Basic.current_time_monotonic ().low);
+    WorldInit (*g_world, 9136145540600000000);//Basic.current_time_monotonic ().low);
     defer WorldFree (*g_world);
 
     #if Basic.MEMORY_DEBUGGER
         Basic.allocations_before_this_call_will_not_be_considered_leaks ();
 
     g_camera.position.y = xx g_world.surface_params.water_level + 10.0;
+    g_player.position.y = xx g_world.surface_params.water_level + 10.0;
     delta_time := 1 / 60.0;
     quit := false;
     while !quit
@@ -269,6 +272,8 @@ main :: ()
         ImGuiSDL.NewFrame ();
         ImGui.NewFrame ();
 
+        // We need to have calculated the camera matrices before passing it to Im3d otherwise
+        // we'll have an annoying 1 frame delay. This means that we can't do Im3d calls in UpdatePlayer and UpdateCamera
         UpdateIm3dKeys ();
 
         Im3dImpl.NewFrame (
@@ -279,7 +284,10 @@ main :: ()
             g_camera.transform_matrix, g_camera.projection_matrix, delta_time);
         Im3d.NewFrame ();
 
-        UpdateFlyingCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
+        // UpdateFlyingCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
+        UpdatePlayer (*g_world, *g_player, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
+        // UpdateFPSCamera (*g_camera, g_player, delta_time);
+        UpdateTPSCamera (*g_camera, g_player, delta_time);
 
         // If we have a dockspace then ImGui will always ask to capture
         // the keyboard and we won't be able to move the camera
@@ -294,6 +302,7 @@ main :: ()
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         DrawWorld (*g_world, *g_camera);
+        DrawPlayer (g_world, g_player, g_camera);
 
         Im3d.EndFrame ();
         Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
