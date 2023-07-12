@@ -6,11 +6,12 @@ Player :: struct
     flying := true;
     transform_matrix : Mat4f;
     hit_result : HitResult;
+    enable_collisions := true;
 }
 
 Player_Height :: 1.8;
 Player_Size :: 0.7;
-Player_Movement_Speed :: 0.1;
+Player_Movement_Speed :: 1 / 60.0;
 Player_Jump_Height :: 1.0;
 Player_Rotation_Speed :: 0.2;
 Gravity :: 1.0;
@@ -66,26 +67,21 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     // Because all collidable things are axis aligned boxes, the wall sliding
     // is limited to 3-axes, meaning we do not need to do more than 3 iterations
     // of collision resolution
-    for 1..3
+    if enable_collisions
     {
-        player_aabb := PlayerAABB (player);
-        velocity_dir, velocity_len := Normalized (velocity);
-        hit_result = SweptAABBIntersectsWorld (world, player_aabb, velocity_dir, velocity_len);
+        for 1..3
+        {
+            player_aabb := PlayerAABB (player);
+            velocity_dir, velocity_len := Normalized (velocity);
+            hit_result = SweptAABBIntersectsWorld (world, player_aabb, velocity_dir, velocity_len);
 
-        if hit_result.hit
-        {
-            // new_dist := Distance (AABBCenter (player_aabb), hit_result.position);
-            // Assert (Abs (new_dist - hit_result.distance) < 0.0001, "% %", new_dist, hit_result.distance);
-            // stopped_velocity := velocity_dir * hit_result.distance;
-            // new_position := position + velocity - hit_result.normal * Dot (velocity, hit_result.normal);
-            // position = hit_result.position - .{0, Player_Height * 0.5, 0};
-            // velocity = new_position - position;
-            velocity -= hit_result.normal * Dot (velocity, hit_result.normal);
-            // velocity = .{};
-        }
-        else
-        {
-            break;
+            if hit_result.hit
+            {
+                intermediate_velocity := velocity_dir * hit_result.distance;
+                position += intermediate_velocity;
+                velocity -= intermediate_velocity;
+                velocity -= hit_result.normal * Dot (velocity, hit_result.normal);
+            }
         }
     }
 
@@ -98,5 +94,5 @@ DrawPlayer :: (world : World, using player : Player, camera : Camera)
 {
     aabb := PlayerAABB (player);
     Im3d.DrawAlignedBox (aabb.min, aabb.max);
-    Im3d.DrawArrow (position, position + velocity);
+    Im3d.DrawArrow (position, position + velocity * 60);
 }

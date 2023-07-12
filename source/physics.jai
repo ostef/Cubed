@@ -133,45 +133,49 @@ AABBIntersectsAABB :: inline (a : AABB, b : AABB) -> bool #must
         a.max.z >= b.min.z;
 }
 
-SweptAABBIntersectsAABB :: inline (a : AABB, b : AABB, direction : Vec3f, length : float) -> HitResult #must
+SweptAABBIntersectsAABB :: inline (a : AABB, b : AABB, direction : Vec3f, length : float, $return_tnear_when_inside := true) -> HitResult #must
 {
     b_padded := MakeAABBPositionHalfSize (AABBCenter (b), AABBHalfSize (a) + AABBHalfSize (b));
 
-    ray := Ray.{ origin = AABBCenter (a), direction = direction, length = length};
+    ray := Ray.{ origin = AABBCenter (a), direction = direction, length = length };
 
-    return RayIntersectsAABB (ray, b_padded);
+    return RayIntersectsAABB (ray, b_padded, return_tnear_when_inside);
 }
 
-RayIntersectsAABB :: (ray : Ray, aabb : AABB) -> HitResult #must, t_near : float, t_far : float
+// return_tnear_when_inside will always return a hit with a distance of t_near when the ray
+// origin is inside of the AABB. This is useful for collision resolution, to push entities outside
+// of solid objects in the opposite direction they're going
+RayIntersectsAABB :: (ray : Ray, aabb : AABB, $return_tnear_when_inside := true) -> HitResult #must, t_near : float, t_far : float
 {
+    if ApproxZero (ray.direction, 0.00001)
+        return .{}, 0, 0;
+
     result : HitResult;
 
     inv_dir := Vec3f.{1 / ray.direction.x, 1 / ray.direction.y, 1 / ray.direction.z};
-    t_min := Scale (aabb.min - ray.origin, inv_dir);
-    t_max := Scale (aabb.max - ray.origin, inv_dir);
+    t1 := Scale (aabb.min - ray.origin, inv_dir);
+    t2 := Scale (aabb.max - ray.origin, inv_dir);
 
-    t1 := Linalg.min (t_min, t_max);
-    t2 := Linalg.max (t_min, t_max);
+    t_min := Linalg.min (t1, t2);
+    t_max := Linalg.max (t1, t2);
 
-    t_near := Max (Max (t1.x, t1.y), t1.z);
-    t_far  := Min (Min (t2.x, t2.y), t2.z);
-    distance := ifx t_near < 0 then t_far else t_near;
+    t_near := Max (Max (t_min.x, t_min.y), t_min.z);
+    t_far  := Min (Min (t_max.x, t_max.y), t_max.z);
+#if return_tnear_when_inside
+    intersects := (t_far > t_near && t_near >= 0 && t_near < ray.length) || (t_near < 0 && t_far > 0);
+else
+    intersects := t_far > t_near && t_near >= 0 && t_near < ray.length;
 
-    if distance > 0 && distance < ray.length
+    if intersects
     {
         result.hit = true;
-        result.position = ray.origin + ray.direction * distance;
-        result.distance = distance;
-
-        dist_to_center := result.position - AABBCenter (aabb);
-        dist_to_sides := AABBHalfSize (aabb) - Linalg.abs (dist_to_center);
-
-        if dist_to_sides.x < dist_to_sides.y
-            result.normal.x = Sign (dist_to_center.x);
-        else if dist_to_sides.y < dist_to_sides.z
-            result.normal.y = Sign (dist_to_center.y);
-        else
-            result.normal.z = Sign (dist_to_center.z);
+        result.position = ray.origin + ray.direction * t_near;
+        result.distance = t_near;
+        result.normal = .{
+            cast (float) (t_near == t_min.x || t_near == t_max.x) * Sign (-inv_dir.x),
+            cast (float) (t_near == t_min.y || t_near == t_max.y) * Sign (-inv_dir.y),
+            cast (float) (t_near == t_min.z || t_near == t_max.z) * Sign (-inv_dir.z)
+        };
     }
 
     return result, t_near, t_far;
@@ -196,11 +200,16 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
     chunk_x, chunk_z := ChunkPositionFromWorldPosition (cast (int) min_x, cast (int)  min_z);
     chunk := WorldGetChunk (world, chunk_x, chunk_z);
 
+    // This is not supposed to happen. If it does, it will provoke an infinite loop, so we debug break
+    // to debug it when we'll encounter that case
+    if max_x < min_x || max_y < min_y || max_z < min_z
+        debug_break ();
+
     closest_hit : HitResult;
     closest_hit.distance = Math.FLOAT32_MAX;
-    for z : cast (int) min_z..cast (int) max_z
+    for y : cast (int) min_y..cast (int) max_y
     {
-        for y : cast (int) min_y..cast (int) max_y
+        for z : cast (int) min_z..cast (int) max_z
         {
             for x : cast (int) min_x..cast (int) max_x
             {
@@ -215,7 +224,7 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
                 if !chunk
                 {
                     chunk_aabb := ChunkAABB (x / Chunk_Size, z / Chunk_Size);
-                    result := SweptAABBIntersectsAABB (aabb, chunk_aabb, direction, length);
+                    result := SweptAABBIntersectsAABB (aabb, chunk_aabb, direction, length, return_tnear_when_inside = false);
                     if result.hit && result.distance < closest_hit.distance
                     {
                         closest_hit = result;
@@ -237,9 +246,7 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
                 result := SweptAABBIntersectsAABB (aabb, block_aabb, direction, length);
                 if result.hit
                 {
-                    Im3d.PushColor (Im3d.Color_Red);
-                    Im3d.DrawAlignedBox (block_aabb.min, block_aabb.max);
-                    Im3d.PopColor ();
+                    b_padded := MakeAABBPositionHalfSize (AABBCenter (block_aabb), AABBHalfSize (aabb) + AABBHalfSize (block_aabb));
 
                     if result.distance < closest_hit.distance
                     {
