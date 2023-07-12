@@ -330,6 +330,15 @@ main :: ()
         else
             UpdateFlyingCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
 
+        // Update the Im3d matrices otherwise all drawn things will be delayed by one frame
+        Im3dImpl.NewFrame (
+            g_camera.fov_in_degrees,
+            ifx !ImGui.GetIO ().WantCaptureMouse && !g_should_capture_mouse && SDL_GetMouseFocus () == g_window
+                then GetMousePosition (g_window)
+                else .{-Math.FLOAT32_MAX, -Math.FLOAT32_MAX},
+            g_camera.transform_matrix, g_camera.projection_matrix, delta_time
+        );
+
         // If we have a dockspace then ImGui will always ask to capture
         // the keyboard and we won't be able to move the camera
         // ImGui.DockSpaceOverViewport (null, .PassthruCentralNode);
