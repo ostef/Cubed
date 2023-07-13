@@ -43,6 +43,7 @@ Ceil :: Math.ceil;
 #load "generation.jai";
 #load "ui.jai";
 #load "player.jai";
+#load "biomes.jai";
 
 g_window : *SDL_Window;
 g_camera : Camera;

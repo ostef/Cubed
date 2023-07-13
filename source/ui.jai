@@ -196,8 +196,10 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Ve
             {
                 for x : working_x..working_x + working_w - 1
                 {
-                    surface_level := cast (float) CalculateTerrainParam (generator, param, offset.x + x * scale, offset.y + y * scale);
-                    buffer[y * width + x] = GetSurfaceColor (surface_params, surface_level);
+                    // surface_level := cast (float) CalculateTerrainParam (generator, param, offset.x + x * scale, offset.y + y * scale);
+                    biome_id := GetBiomeAtLocation (generator, offset.x + x * scale, offset.y + y * scale);
+                    biome := Biomes[biome_id];
+                    buffer[y * width + x] = ImGui.GetColorU32 (biome.color);
                 }
             }
         }
@@ -314,6 +316,7 @@ g_ui_terrain_generator : struct
     size : s32 = 1024;
     texture_size : s32 = 512;
     selected_param := TerrainParam.Surface_Height;
+    selected_biome := BiomeID.Ocean;
     show_param := TerrainParam.Surface_Height;
     use_threads := true;
     show_player_position := true;
@@ -334,7 +337,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
 
     should_generate := false;
 
-    lines := 9;
+    lines := 11;
     if selected_param < xx TerrainNoise.Count
         lines += 5;
     child_height := cast (float) ImGui.GetContentRegionAvail ().y - lines * ImGui.GetFrameHeightWithSpacing ();
@@ -416,6 +419,26 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     ImGui.SameLine ();
 
     ImGui.Checkbox ("Show Player Position", *show_player_position);
+
+    biome_names := Alloc (*u8, cast (s64) BiomeID.Count, Temp);
+    for i : 0..xx BiomeID.Count - 1
+        biome_names[i] = StringCloneToCString (Biomes[i].name, Temp);
+
+    selected_biome_s32 := cast (s32) selected_biome;
+    ImGui.Combo ("Edit Biome Color", *selected_biome_s32, biome_names, xx BiomeID.Count);
+    selected_biome = xx selected_biome_s32;
+
+    ImGui.SameLine ();
+
+    biome := *Biomes[selected_biome];
+    ImGui.ColorEdit4 ("Biome Color", *biome.color.n, .NoInputs | .NoLabel);
+    if ImGui.Button ("Print Biome Colors")
+    {
+        for i : 0..xx BiomeID.Count - 1
+        {
+            Println (".{{ {:.2}, {:.2}, {:.2}, 1}", Biomes[i].color.r, Biomes[i].color.g, Biomes[i].color.b);
+        }
+    }
 
     should_generate |= ImGui.Button ("Generate");
 

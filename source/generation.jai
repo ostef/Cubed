@@ -152,25 +152,25 @@ SurfaceParams :: struct
     ];
 }
 
-CalculateTerrainNoise :: inline (using generator : Generator, noise : TerrainNoise, x : float, y : float) -> float #must
+CalculateTerrainNoise :: inline (using generator : Generator, noise : TerrainNoise, x : float, z : float) -> float #must
 {
     max_val := cast (float) PerlinFractalMax (noise_params[noise].octaves, noise_params[noise].persistance);
-    val := cast (float) PerlinFractalNoise (noise_params[noise], noise_offsets[noise], x, y);
+    val := cast (float) PerlinFractalNoise (noise_params[noise], noise_offsets[noise], x, z);
 
     return val / max_val;
 }
 
-CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x : float, y : float) -> float #must
+CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x : float, z : float) -> float #must
 {
     if param < xx TerrainNoise.Count
     {
-        val := CalculateTerrainNoise (generator, cast (TerrainNoise) param, x, y);
+        val := CalculateTerrainNoise (generator, cast (TerrainNoise) param, x, z);
 
         return val * surface_params.noise_amplitudes[xx param];
     }
     else if param == .Ridges
     {
-        weirdness := CalculateTerrainParam (generator, .Weirdness, x, y);
+        weirdness := CalculateTerrainParam (generator, .Weirdness, x, z);
 
         return 1 - Abs (3 * Abs (weirdness) - 2);
     }
@@ -179,17 +179,17 @@ CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x :
         t_values : [4]float = ---;
         #no_abc
         {
-            t_values[0] = CalculateTerrainParam (generator, .Continentalness, x, y);
-            t_values[1] = CalculateTerrainParam (generator, .Erosion, x, y);
+            t_values[0] = CalculateTerrainParam (generator, .Continentalness, x, z);
+            t_values[1] = CalculateTerrainParam (generator, .Erosion, x, z);
             t_values[2] = 0;
-            t_values[3] = CalculateTerrainParam (generator, .Ridges, x, y);
+            t_values[3] = CalculateTerrainParam (generator, .Ridges, x, z);
         }
 
         return HermiteCubicCalculate (surface_params.spline, t_values) - 0.015;
     }
     else if param == .Surface_Height
     {
-        depth := CalculateTerrainParam (generator, .Depth, x, y);
+        depth := CalculateTerrainParam (generator, .Depth, x, z);
 
         return 128 + depth * 128;
     }
