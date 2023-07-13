@@ -7,7 +7,7 @@ Biome :: struct
     has_precipitations := true;
 }
 
-Biomes := Biome.[
+Biomes :: Biome.[
     .{
         name="Void",
         color=.{ 0, 0, 0, 1},
