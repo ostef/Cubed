@@ -111,9 +111,9 @@ UpdateTPSCamera :: (using camera : *Camera, player : Player, delta_time : float)
 
     rotation = QuatfFromEulerAngles (euler_angles);
 
-    position = player.position + RightVector (transform_matrix) * look_at_offset.x
+    position = player.position + RightVector (rotation) * look_at_offset.x
         + .{0, look_at_offset.y, 0}
-        - ForwardVector (transform_matrix) * distance_to_target;
+        - ForwardVector (rotation) * distance_to_target;
 }
 
 CalculateCameraMatrices :: inline (using cam : *Camera)
