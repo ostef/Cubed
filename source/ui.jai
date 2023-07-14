@@ -378,6 +378,24 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
 
                     should_generate = true;
                 }
+
+                if ImGui.IsItemHovered ()
+                {
+                    pos := ImGui.GetMousePos () - map_top_left;
+                    pos_scale := (texture_size / cast (float) size) / scale;
+                    sample_pos := pos / pos_scale + offset;
+                    biome_id := GetBiomeAtLocation (generator, sample_pos.x, sample_pos.y);
+                    t := cast (int) CalculateBiomeParam (generator, .Temperature, sample_pos.x, sample_pos.y);
+                    h := cast (int) CalculateBiomeParam (generator, .Humidity, sample_pos.x, sample_pos.y);
+                    c := cast (int) CalculateBiomeParam (generator, .Continentalness, sample_pos.x, sample_pos.y);
+                    e := cast (int) CalculateBiomeParam (generator, .Erosion, sample_pos.x, sample_pos.y);
+                    pv := cast (int) CalculateBiomeParam (generator, .Peaks_And_Valleys, sample_pos.x, sample_pos.y);
+                    ImGui.SetTooltip (
+                        "%.*s\nT: %d H: %d C: %d E: %d PV: %d",
+                        Biomes[biome_id].name.count, Biomes[biome_id].name.data,
+                        t, h, c, e, pv
+                    );
+                }
             }
         }
         ImGui.EndChild ();
