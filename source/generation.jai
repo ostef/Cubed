@@ -137,18 +137,18 @@ SurfaceParams :: struct
     spline_y_range : Vec2f;
     water_level : s32 = 127;
     noise_amplitudes := float.[
-        2.31,   // Temperature
+        1.33,   // Temperature
         1.76,   // Humidity
         2.13,   // Continentalness
         2.52,   // Erosion
         2.97    // Weirdness
     ];
     noise_params : [TerrainNoise.Count]NoiseParams = .[
-        .{scale=0.00041, octaves=3, persistance=0.023, lacunarity=2.379},
-        .{scale=0.00145, octaves=4, persistance=0.139, lacunarity=3.476},
-        .{scale=0.00013, octaves=6, persistance=0.250, lacunarity=4.085},
-        .{scale=0.00161, octaves=5, persistance=0.168, lacunarity=3.897},
-        .{scale=0.00106, octaves=4, persistance=0.267, lacunarity=4.824},
+        .{scale=0.00041, octaves=3, persistance=0.081, lacunarity=3.139}, // T
+        .{scale=0.00065, octaves=4, persistance=0.139, lacunarity=2.333}, // H
+        .{scale=0.00113, octaves=6, persistance=0.196, lacunarity=4.085}, // C
+        .{scale=0.00096, octaves=5, persistance=0.168, lacunarity=3.897}, // E
+        .{scale=0.00106, octaves=4, persistance=0.267, lacunarity=4.824}, // W
     ];
 }
 
