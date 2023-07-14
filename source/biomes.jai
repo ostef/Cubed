@@ -282,7 +282,7 @@ CalculateBiomeParam :: (using generator : Generator, param : BiomeParam, x : flo
                 return it_index;
         }
 
-        return N - 1;
+        return N;
     }
 
     Temperature_Intervals :: float.[-0.45, -0.15, 0.2, 0.55];
