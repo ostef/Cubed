@@ -5,6 +5,11 @@ Biome :: struct
     temperature : float;
     downfall : float;
     has_precipitations := true;
+
+    surface_block : BlockID;
+    fluid_block := BlockID.Water;
+    surface_layer_thickness := 5.0;
+    surface_layer_fluctuation := 3.0;
 }
 
 Biomes :: Biome.[
@@ -20,84 +25,98 @@ Biomes :: Biome.[
         color=.{ 0.18, 0.4, 0.94, 1},
         temperature=0.5,
         downfall=0.5,
+        surface_block=.Gravel,
     },
     .{
         name="Deep Ocean",
         color=.{ 0.1, 0.14, 0.62, 1},
         temperature=0.5,
         downfall=0.5,
+        surface_block=.Gravel,
     },
     .{
         name="Warm Ocean",
         color=.{ 0.06, 0.16, 0.95, 1},
         temperature=0.5,
         downfall=0.5,
+        surface_block=.Gravel,
     },
     .{
         name="Cold Ocean",
         color=.{ 0.16, 0.58, 0.98, 1},
         temperature=0.5,
         downfall=0.5,
+        surface_block=.Gravel,
     },
     .{
         name="Deep Cold Ocean",
         color=.{ 0.03, 0.29, 0.53, 1},
         temperature=0.5,
         downfall=0.5,
+        surface_block=.Gravel,
     },
     .{
         name="Frozen Ocean",
         color=.{ 0.51, 0.84, 1, 1},
         temperature=0,
         downfall=0.5,
+        surface_block=.Gravel,
     },
     .{
         name="Deep Frozen Ocean",
         color=.{ 0.03, 0.27, 0.62, 1},
         temperature=0,
         downfall=0.5,
+        surface_block=.Gravel,
     },
     .{
         name="River",
         color=.{ 0.17, 0.45, 0.97, 1},
         temperature=0.5,
         downfall=0.5,
+        surface_block=.Sand,
     },
     .{
         name="Frozen River",
         color=.{ 0.55, 0.83, 0.99, 1},
         temperature=0,
         downfall=0.5,
+        surface_block=.Sand,
     },
     .{
         name="Stony Shore",
         color=.{ 0.49, 0.49, 0.49, 1},
         temperature=0.2,
         downfall=0.3,
+        surface_block=.Stone,
     },
     .{
         name="Beach",
         color=.{ 1, 0.99, 0.6, 1},
         temperature=0.8,
         downfall=0.4,
+        surface_block=.Sand,
     },
     .{
         name="Snowy Beach",
         color=.{ 1, 0.93, 0.78, 1},
         temperature=0,
         downfall=0.3,
+        surface_block=.Sand,
     },
     .{
         name="Plain",
         color=.{ 0.58, 0.9, 0.35, 1},
         temperature=0.8,
         downfall=0.4,
+        surface_block=.Grass,
     },
     .{
         name="Snowy Plain",
         color=.{ 0.99, 1, 0.95, 1},
         temperature=0,
         downfall=0.5,
+        surface_block=.Snowy_Grass,
     },
     .{
         name="Desert",
@@ -105,6 +124,7 @@ Biomes :: Biome.[
         temperature=2,
         downfall=0,
         has_precipitations=false,
+        surface_block=.Sand,
     },
     .{
         name="Savanna",
@@ -112,42 +132,49 @@ Biomes :: Biome.[
         temperature=1.2,
         downfall=0,
         has_precipitations=false,
+        surface_block=.Grass,
     },
     .{
         name="Forest",
         color=.{ 0.23, 0.61, 0.2, 1},
         temperature=0.7,
         downfall=0.8,
+        surface_block=.Grass,
     },
     .{
         name="Birch Forest",
         color=.{ 0.79, 0.94, 0.48, 1},
         temperature=0.6,
         downfall=0.6,
+        surface_block=.Grass,
     },
     .{
         name="Taiga",
         color=.{ 0.35, 0.58, 0.25, 1},
         temperature=0.25,
         downfall=0.8,
+        surface_block=.Grass,
     },
     .{
         name="Dark Forest",
         color=.{ 0.17, 0.38, 0.14, 1},
         temperature=0.7,
         downfall=0.8,
+        surface_block=.Grass,
     },
     .{
         name="Jungle",
         color=.{ 0.54, 0.74, 0.17, 1},
         temperature=0.95,
         downfall=0.9,
+        surface_block=.Grass,
     },
     .{
         name="Swamp",
         color=.{ 0.39, 0.45, 0.07, 1},
         temperature=0.8,
         downfall=0.9,
+        surface_block=.Grass,
     },
     .{
         name="Badland",
@@ -155,30 +182,35 @@ Biomes :: Biome.[
         temperature=2,
         downfall=0,
         has_precipitations=false,
+        surface_block=.Red_Sand,
     },
     .{
         name="Snowy Peaks",
         color=.{ 1, 1, 1, 1},
         temperature=-0.5,
         downfall=0.9,
+        surface_block=.Snow,
     },
     .{
         name="Frozen Peaks",
         color=.{ 0.82, 0.96, 1, 1},
         temperature=-0.7,
         downfall=0.9,
+        surface_block=.Snow,
     },
     .{
         name="Stony Peaks",
         color=.{ 0.83, 0.83, 0.83, 1},
         temperature=1.0,
         downfall=0.3,
+        surface_block=.Stone,
     },
     .{
         name="Mid Island",
         color=.{ 0.95, 0.76, 1, 1},
         temperature=0.9,
         downfall=1.0,
+        surface_block=.Sand,
     },
 ];
 

@@ -240,7 +240,7 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
                 block_aabb := BlockAABB (x, y, z);
 
                 block := ChunkGetBlockInChunk (chunk, rel_x, y, rel_z);
-                if block.kind == .Air || block.kind == .Water
+                if block.id == .Air || block.id == .Water
                     continue;
 
                 result := SweptAABBIntersectsAABB (aabb, block_aabb, direction, length);

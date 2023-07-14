@@ -26,7 +26,7 @@ BlockFaceCorner :: enum u8
     Bottom_Right;
 }
 
-BlockKind :: enum u8
+BlockID :: enum u8
 {
     Air;
     Water;
@@ -34,11 +34,16 @@ BlockKind :: enum u8
     Bedrock;
     Dirt;
     Grass;
+    Sand;
+    Gravel;
+    Red_Sand;
+    Snow;
+    Snowy_Grass;
 }
 
 Block :: struct
 {
-    #as kind : BlockKind;
+    #as id : BlockID;
 }
 
 Chunk_Size :: 16;
@@ -106,7 +111,7 @@ Vertex :: struct
     block_id : u8;
 }
 
-GetBlockMeshType :: inline (block : BlockKind) -> ChunkMeshType #must
+GetBlockMeshType :: inline (block : BlockID) -> ChunkMeshType #must
 {
     if block ==
     {
@@ -250,7 +255,7 @@ ChunkGetBlockInChunk :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> Bl
     }
 
     if y < 0 || y >= Chunk_Height
-        return .{kind = .Air};
+        return .{id = .Air};
 
     return chunk.blocks[ChunkBlockIndex (x, y, z)];
 }
@@ -258,11 +263,11 @@ ChunkGetBlockInChunk :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> Bl
 ChunkGetBlock :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> Block #must
 {
     if y < 0 || y >= Chunk_Height
-        return .{kind = .Air};
+        return .{id = .Air};
 
     chunk, x, z = ChunkGetAtRelativeCoordinates (chunk, x, z);
     if !chunk
-        return .{kind = .Air};
+        return .{id = .Air};
 
     return ChunkGetBlockInChunk (chunk, x, y, z);
 }
@@ -275,7 +280,12 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
 
     defer chunk.is_generated = true;
 
-    surface_height_map : [Chunk_Size * Chunk_Size]float = ---;
+    TerrainValue :: struct
+    {
+        biome_id : BiomeID;
+        height : float;
+    }
+    surface_map : [Chunk_Size * Chunk_Size]TerrainValue = ---;
     for z : 0..Chunk_Size - 1
     {
         for x : 0..Chunk_Size - 1
@@ -284,7 +294,8 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
             sample_z := z + chunk.z * Chunk_Size;
 
             index := ChunkBlockIndex (x, 0, z);
-            surface_height_map[index] = CalculateTerrainParam (world, .Surface_Height, xx sample_x, xx sample_z);
+            surface_map[index].height = CalculateTerrainParam (world, .Surface_Height, xx sample_x, xx sample_z);
+            surface_map[index].biome_id = GetBiomeAtLocation (world, xx sample_x, xx sample_z);
         }
     }
 
@@ -296,29 +307,35 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
             for x : 0..Chunk_Size - 1
             {
                 index := ChunkBlockIndex (x, y, z);
-                surface_height := surface_height_map[ChunkBlockIndex (x, 0, z)];
+                surface_height := surface_map[ChunkBlockIndex (x, 0, z)].height;
+                biome_id := surface_map[ChunkBlockIndex (x, 0, z)].biome_id;
+                biome := *Biomes[biome_id];
 
                 if y == 0
                 {
-                    chunk.blocks[index].kind = .Bedrock;
+                    chunk.blocks[index].id = .Bedrock;
                 }
                 else if y > cast (int) surface_height
                 {
                     if y <= world.surface_params.water_level
-                        chunk.blocks[index].kind = .Water;
+                        chunk.blocks[index].id = biome.fluid_block;
                     else
-                        chunk.blocks[index].kind = .Air;
+                        chunk.blocks[index].id = .Air;
+                }
+                else if y > cast (int) surface_height - 5
+                {
+                    chunk.blocks[index].id = biome.surface_block;
                 }
                 else
                 {
-                    chunk.blocks[index].kind = .Stone;
+                    chunk.blocks[index].id = .Stone;
                 }
             }
         }
     }
 }
 
-PushBlockVertices :: (vertices : *[..]Vertex, block : BlockKind, position : Vec3f, visible_faces : BlockFaceFlags)
+PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f, visible_faces : BlockFaceFlags)
 {
     if visible_faces & .East
     {
