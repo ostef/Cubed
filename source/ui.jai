@@ -196,10 +196,8 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Ve
             {
                 for x : working_x..working_x + working_w - 1
                 {
-                    // surface_level := cast (float) CalculateTerrainParam (generator, param, offset.x + x * scale, offset.y + y * scale);
                     biome_id := GetBiomeAtLocation (generator, offset.x + x * scale, offset.y + y * scale);
-                    biome := Biomes[biome_id];
-                    buffer[y * width + x] = ImGui.GetColorU32 (biome.color);
+                    buffer[y * width + x] = ImGui.GetColorU32 (Biomes[biome_id].color);
                 }
             }
         }
