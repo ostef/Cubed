@@ -185,7 +185,7 @@ CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x :
             t_values[3] = CalculateTerrainParam (generator, .Ridges, x, z);
         }
 
-        return HermiteCubicCalculate (surface_params.spline, t_values) - 0.015;
+        return HermiteCubicCalculate (surface_params.spline, t_values);
     }
     else if param == .Surface_Height
     {
