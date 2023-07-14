@@ -5,7 +5,6 @@ Player :: struct
     velocity : Vec3f;
     flying := true;
     transform_matrix : Mat4f;
-    hit_result : HitResult;
     enable_collisions := true;
 }
 
@@ -13,7 +12,7 @@ Player_Height :: 1.8;
 Player_Size :: 0.7;
 Player_Movement_Speed :: 1 / 60.0;
 Player_Jump_Height :: 1.0;
-Player_Rotation_Speed :: 0.2;
+Player_Rotation_Speed :: 1.0;
 Gravity :: 1.0;
 Penetration_Threshold :: 0.001;
 
@@ -74,7 +73,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
         {
             player_aabb := PlayerAABB (player);
             velocity_dir, velocity_len := Normalized (velocity);
-            hit_result = SweptAABBIntersectsWorld (world, player_aabb, velocity_dir, velocity_len);
+            hit_result := SweptAABBIntersectsWorld (world, player_aabb, velocity_dir, velocity_len);
 
             if hit_result.hit
             {
