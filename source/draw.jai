@@ -160,10 +160,12 @@ LoadTextureAtlas :: (textures_dirname : string) -> bool
         "stone.png",
         "bedrock.png",
         "dirt.png",
-        "five.png",
-        "six.png",
-        "seven.png",
-        "eight.png",
+        "dirt.png",
+        "sand.png",
+        "gravel.png",
+        "red_sand.png",
+        "snow.png",
+        "snow.png",
     ];
 
     g_atlas_cell_count = cast (int) Ceil (Sqrt (Texture_Names.count + 1));
