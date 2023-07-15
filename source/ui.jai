@@ -190,7 +190,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Ve
     {
         using data := cast (*WorkerData) work;
 
-        if param == .Surface_Height
+        if param == .Surface_Height // This is actually the biomes, not the surface height
         {
             for y : working_y..working_y + working_h - 1
             {
@@ -203,11 +203,21 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Ve
         }
         else
         {
+            max : float;
+            if param < xx TerrainNoise.Count
+            {
+                max = xx PerlinFractalMax (noise_params[param]);
+                max *= noise_amplitudes[param];
+            }
+
             for y : working_y..working_y + working_h - 1
             {
                 for x : working_x..working_x + working_w - 1
                 {
                     val := cast (float) CalculateTerrainParam (generator, param, offset.x + x * scale, offset.y + y * scale);
+                    if param < xx TerrainNoise.Count
+                        val = (val + max) * 0.5;
+
                     buffer[y * width + x] = ImGui.GetColorU32 (.{val, val, val, 1});
                 }
             }
@@ -311,7 +321,7 @@ g_ui_terrain_generator : struct
     scale : float = 1;
     generator : Generator;
     texture_handle : GLuint;
-    size : s32 = 1024;
+    size : s32 = 512;
     texture_size : s32 = 512;
     selected_param := TerrainParam.Surface_Height;
     show_param := TerrainParam.Surface_Height;
