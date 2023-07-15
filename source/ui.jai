@@ -206,7 +206,7 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Ve
             max : float;
             if param < xx TerrainNoise.Count
             {
-                max = xx PerlinFractalMax (noise_params[param]);
+                max = xx PerlinFractalMax (noise_params[param].octaves, noise_params[param].persistance);
                 max *= noise_amplitudes[param];
             }
 
