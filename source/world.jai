@@ -69,6 +69,7 @@ Chunk :: struct
     vertex_counts : [ChunkMeshType.Count]s64;
     vaos : [ChunkMeshType.Count]GLuint;
     vbos : [ChunkMeshType.Count]GLuint;
+    biome_values : [Chunk_Size * Chunk_Size]BiomeValues;
     blocks : [Chunk_Size * Chunk_Size * Chunk_Height]Block;
 }
 
@@ -280,25 +281,23 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
 
     defer chunk.is_generated = true;
 
-    TerrainValue :: struct
+    surface_height_map : [Chunk_Size * Chunk_Size]float = ---;
     {
-        biome_id : BiomeID;
-        height : float;
-    }
-    surface_map : [Chunk_Size * Chunk_Size]TerrainValue = ---;
-    for z : 0..Chunk_Size - 1
-    {
-        for x : 0..Chunk_Size - 1
+        terrain_params : [TerrainParam.Count]float = ---;
+        for z : 0..Chunk_Size - 1
         {
-            sample_x := x + chunk.x * Chunk_Size;
-            sample_z := z + chunk.z * Chunk_Size;
+            for x : 0..Chunk_Size - 1
+            {
+                sample_x := x + chunk.x * Chunk_Size;
+                sample_z := z + chunk.z * Chunk_Size;
 
-            index := ChunkBlockIndex (x, 0, z);
-            surface_map[index].height = CalculateTerrainParam (world, .Surface_Height, xx sample_x, xx sample_z);
-            surface_map[index].biome_id = GetBiomeAtLocation (world, xx sample_x, xx sample_z);
+                index := ChunkBlockIndex (x, 0, z);
+                CalculateTerrainParams (world, *terrain_params, xx sample_x, xx sample_z);
+                chunk.biome_values[index] = CalculateBiomeValuesFromTerrainParams (terrain_params);
+                surface_height_map[index] = terrain_params[TerrainParam.Surface_Height];
+            }
         }
     }
-
 
     for y : 0..Chunk_Height - 1
     {
@@ -307,8 +306,8 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
             for x : 0..Chunk_Size - 1
             {
                 index := ChunkBlockIndex (x, y, z);
-                surface_height := surface_map[ChunkBlockIndex (x, 0, z)].height;
-                biome_id := surface_map[ChunkBlockIndex (x, 0, z)].biome_id;
+                surface_height := surface_height_map[ChunkBlockIndex (x, 0, z)];
+                biome_id := chunk.biome_values[ChunkBlockIndex (x, 0, z)].biome_id;
                 biome := *Biomes[biome_id];
 
                 if y == 0

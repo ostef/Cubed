@@ -192,31 +192,27 @@ GenerateTerrainTexture :: (tex : *GLuint, width : s32, height : s32, offset : Ve
 
         if param == .Surface_Height // This is actually the biomes, not the surface height
         {
+            terrain_params : [TerrainParam.Count]float = ---;
+
             for y : working_y..working_y + working_h - 1
             {
                 for x : working_x..working_x + working_w - 1
                 {
-                    biome_id := GetBiomeAtLocation (generator, offset.x + x * scale, offset.y + y * scale);
+                    CalculateTerrainParams (generator, *terrain_params, offset.x + x * scale, offset.y + y * scale);
+                    biome_id := CalculateBiomeValuesFromTerrainParams (terrain_params).biome_id;
                     buffer[y * width + x] = ImGui.GetColorU32 (Biomes[biome_id].color);
                 }
             }
         }
         else
         {
-            max : float;
-            if param < xx TerrainNoise.Count
-            {
-                max = xx PerlinFractalMax (noise_params[param].octaves, noise_params[param].persistance);
-                max *= noise_amplitudes[param];
-            }
-
             for y : working_y..working_y + working_h - 1
             {
                 for x : working_x..working_x + working_w - 1
                 {
                     val := cast (float) CalculateTerrainParam (generator, param, offset.x + x * scale, offset.y + y * scale);
                     if param < xx TerrainNoise.Count
-                        val = (val + max) * 0.5;
+                        val = (val + noise_amplitudes[param]) * 0.5;
 
                     buffer[y * width + x] = ImGui.GetColorU32 (.{val, val, val, 1});
                 }
@@ -394,16 +390,15 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
                     pos := ImGui.GetMousePos () - map_top_left;
                     pos_scale := (texture_size / cast (float) size) / scale;
                     sample_pos := pos / pos_scale + offset;
-                    biome_id := GetBiomeAtLocation (generator, sample_pos.x, sample_pos.y);
-                    t := cast (int) CalculateBiomeParam (generator, .Temperature, sample_pos.x, sample_pos.y);
-                    h := cast (int) CalculateBiomeParam (generator, .Humidity, sample_pos.x, sample_pos.y);
-                    c := cast (int) CalculateBiomeParam (generator, .Continentalness, sample_pos.x, sample_pos.y);
-                    e := cast (int) CalculateBiomeParam (generator, .Erosion, sample_pos.x, sample_pos.y);
-                    pv := cast (int) CalculateBiomeParam (generator, .Peaks_And_Valleys, sample_pos.x, sample_pos.y);
+
+                    terrain_params : [TerrainParam.Count]float = ---;
+                    CalculateTerrainParams (generator, *terrain_params, sample_pos.x, sample_pos.y);
+                    values := CalculateBiomeValuesFromTerrainParams (terrain_params);
+
                     ImGui.SetTooltip (
-                        "%.*s\nT: %d H: %d C: %d E: %d PV: %d",
-                        Biomes[biome_id].name.count, Biomes[biome_id].name.data,
-                        t, h, c, e, pv
+                        "%.*s\nT: %d H: %d C: %d E: %d W: %d PV: %d",
+                        Biomes[values.biome_id].name.count, Biomes[values.biome_id].name.data,
+                        values.t, values.h, values.c, values.e, values.w, values.pv
                     );
                 }
             }

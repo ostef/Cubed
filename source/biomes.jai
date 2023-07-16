@@ -267,19 +267,36 @@ BiomeParam :: enum
     Erosion;
     Weirdness;
     Peaks_And_Valleys;
-    Depth;
 
     Count;
 }
 
-CalculateBiomeParam :: (using generator : Generator, param : BiomeParam, x : float, z : float) -> float #must
+BiomeValues :: struct
 {
-    GetIntervalValue :: (val : float, $intervals : [$N]float) -> int #expand
+    biome_id : BiomeID;
+
+    t, h, c, e, w, pv : s8;
+
+    #place t;
+    temperature : s8;
+    humidity : s8;
+    continentalness : s8;
+    erosion : s8;
+    weirdness : s8;
+    peaks_and_valleys : s8;
+
+    #place t;
+    params : [BiomeParam.Count]s8;
+}
+
+CalculateBiomeValuesFromTerrainParams :: inline (terrain_params : [TerrainParam.Count]float) -> BiomeValues #must
+{
+    GetIntervalValue :: (val : float, $intervals : [$N]float) -> s8 #expand
     {
         for intervals
         {
             if val < it
-                return it_index;
+                return cast (s8) it_index;
         }
 
         return N;
@@ -291,34 +308,28 @@ CalculateBiomeParam :: (using generator : Generator, param : BiomeParam, x : flo
     Erosion_Intervals :: float.[-0.78, -0.375, -0.2225, 0.05, 0.45, 0.55];
     Peaks_And_Valleys_Intervals :: float.[-0.85, -0.6, 0.2, 0.7];
 
-    val := CalculateTerrainParam (generator, cast (TerrainParam) param, x, z);
+    result : BiomeValues = ---;
+    result.temperature = GetIntervalValue (xx terrain_params[TerrainParam.Temperature], Temperature_Intervals);
+    result.humidity = GetIntervalValue (xx terrain_params[TerrainParam.Humidity], Humidity_Intervals);
+    result.continentalness = GetIntervalValue (xx terrain_params[TerrainParam.Continentalness], Continentalness_Intervals);
+    result.erosion = GetIntervalValue (xx terrain_params[TerrainParam.Erosion], Erosion_Intervals);
+    result.weirdness = cast (s8) Sign (terrain_params[TerrainParam.Weirdness]);
+    result.peaks_and_valleys = GetIntervalValue (xx terrain_params[TerrainParam.Ridges], Peaks_And_Valleys_Intervals);
+    result.biome_id = GetBiome (result.params);
 
-    if param == .Temperature
-        return xx GetIntervalValue (val, Temperature_Intervals);
-
-    if param == .Humidity
-        return xx GetIntervalValue (val, Humidity_Intervals);
-
-    if param == .Continentalness
-        return xx GetIntervalValue (val, Continentalness_Intervals);
-
-    if param == .Erosion
-        return xx GetIntervalValue (val, Erosion_Intervals);
-
-    if param == .Peaks_And_Valleys
-        return xx GetIntervalValue (val, Peaks_And_Valleys_Intervals);
-
-    return val;
+    return result;
 }
 
-GetBiomeAtLocation :: (generator : Generator, x : float, z : float) -> BiomeID #must
+GetBiome :: (params : [BiomeParam.Count]s8) -> BiomeID #must
 {
-    c := cast (ContinentalnessValue) CalculateBiomeParam (generator, .Continentalness, x, z);
+    t, h, e, w := params[0], params[1], params[3], params[4];
+    c := cast (ContinentalnessValue) params[2];
+    pv := cast (PeaksAndValleysValue) params[5];
+
     if #complete c ==
     {
     case .Mid_Island; return .Mid_Island;
     case .Ocean;
-        t := cast (int) CalculateBiomeParam (generator, .Temperature, x, z);
         if t ==
         {
         case 0; return .Frozen_Ocean;
@@ -328,7 +339,6 @@ GetBiomeAtLocation :: (generator : Generator, x : float, z : float) -> BiomeID #
         }
 
     case .Deep_Ocean;
-        t := cast (int) CalculateBiomeParam (generator, .Temperature, x, z);
         if t ==
         {
         case 0; return .Deep_Frozen_Ocean;
@@ -337,53 +347,51 @@ GetBiomeAtLocation :: (generator : Generator, x : float, z : float) -> BiomeID #
         }
 
     case .Coast;
-        return GetCoastBiome (generator, x, z);
+        return GetCoastBiome (params);
 
     case .Near_Inland;
-        return GetNearInlandBiome (generator, x, z);
+        return GetNearInlandBiome (params);
 
     case .Mid_Inland;
-        return GetMidOrFarInlandBiome (generator, x, z);
+        return GetMidOrFarInlandBiome (params);
 
     case .Far_Inland;
-        return GetMidOrFarInlandBiome (generator, x, z);
+        return GetMidOrFarInlandBiome (params);
     }
 }
 
-GetCoastBiome :: (generator : Generator, x : float, z : float) -> BiomeID #must
+GetCoastBiome :: (params : [BiomeParam.Count]s8) -> BiomeID #must
 {
-    t := cast (int) CalculateBiomeParam (generator, .Temperature, x, z);
-    pv := cast (PeaksAndValleysValue) CalculateBiomeParam (generator, .Peaks_And_Valleys, x, z);
-    e := cast (int) CalculateBiomeParam (generator, .Erosion, x, z);
+    t, h, e, w := params[0], params[1], params[3], params[4];
+    c := cast (ContinentalnessValue) params[2];
+    pv := cast (PeaksAndValleysValue) params[5];
+
     if pv ==
     {
     case .Valleys; return ifx t == 0 then .Frozen_River else .River;
     case .Low_Slice;
-        h := cast (int) CalculateBiomeParam (generator, .Humidity, x, z);
         if e < 3
             return .Stony_Shore;
         else if e < 5
-            return GetBeachBiome (generator, t, x, z);
+            return GetBeachBiome (params);
         else if e == 5
-            return ifx t < 2 || h == 4 then GetMiddleBiome (generator, t, h, x, z) else .Savanna;
+            return ifx t < 2 || h == 4 then GetMiddleBiome (params) else .Savanna;
         else
-            return GetBeachBiome (generator, t, x, z);
+            return GetBeachBiome (params);
 
     case .Mid_Slice;
-        h := cast (int) CalculateBiomeParam (generator, .Humidity, x, z);
         if e < 3
             return .Stony_Shore;
         else if e == 5
-            return ifx t < 2 || h == 4 then GetMiddleBiome (generator, t, h, x, z) else .Savanna;
+            return ifx t < 2 || h == 4 then GetMiddleBiome (params) else .Savanna;
         else
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
 
     case .High_Slice;
-        h := cast (int) CalculateBiomeParam (generator, .Humidity, x, z);
         if e == 5 && t > 1 && h < 4
             return .Savanna;
         else
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
 
     case .Peaks;
         if e == 0
@@ -395,29 +403,30 @@ GetCoastBiome :: (generator : Generator, x : float, z : float) -> BiomeID #must
             else if t == 3
                 return .Stony_Peaks;
             else
-                return GetBadlandBiome (generator, x, z);
+                return GetBadlandBiome (params);
         }
         else if e == 1
         {
             if t < 4
-                return GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z);
+                return GetMiddleBiome (params);
             else
-                return GetBadlandBiome (generator, x, z);
+                return GetBadlandBiome (params);
         }
         else if e == 5
             return .Savanna;
         else
-            return GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z);
+            return GetMiddleBiome (params);
     }
 
     return .Void;
 }
 
-GetNearInlandBiome :: (generator : Generator, x : float, z : float) -> BiomeID #must
+GetNearInlandBiome :: (params : [BiomeParam.Count]s8) -> BiomeID #must
 {
-    t := cast (int) CalculateBiomeParam (generator, .Temperature, x, z);
-    pv := cast (PeaksAndValleysValue) CalculateBiomeParam (generator, .Peaks_And_Valleys, x, z);
-    e := cast (int) CalculateBiomeParam (generator, .Erosion, x, z);
+    t, h, e, w := params[0], params[1], params[3], params[4];
+    c := cast (ContinentalnessValue) params[2];
+    pv := cast (PeaksAndValleysValue) params[5];
+
     if #complete pv ==
     {
     case .Valleys;
@@ -427,41 +436,38 @@ GetNearInlandBiome :: (generator : Generator, x : float, z : float) -> BiomeID #
             return ifx t == 0 then .Frozen_River else .Swamp;
 
     case .Low_Slice;
-        h := cast (int) CalculateBiomeParam (generator, .Humidity, x, z);
         if e < 2
-            return ifx t < 4 then GetMiddleBiome (generator, t, h, x, z) else GetBadlandBiome (generator, x, z);
+            return ifx t < 4 then GetMiddleBiome (params) else GetBadlandBiome (params);
         else if e < 5
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
         else if t < 2 || h == 4
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
         else
             return .Savanna;
 
     case .Mid_Slice;
-        h := cast (int) CalculateBiomeParam (generator, .Humidity, x, z);
         if e == 0
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
         else if e == 1
-            return ifx t == 4 then GetBadlandBiome (generator, x, z) else GetMiddleBiome (generator, t, h, x, z);
+            return ifx t == 4 then GetBadlandBiome (params) else GetMiddleBiome (params);
         else if e < 5
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
         else if e == 5
-            return ifx t < 2 || h == 4 then GetMiddleBiome (generator, t, h, x, z) else .Savanna;
+            return ifx t < 2 || h == 4 then GetMiddleBiome (params) else .Savanna;
         else
-            return ifx t == 0 then GetMiddleBiome (generator, t, h, x, z) else .Swamp;
+            return ifx t == 0 then GetMiddleBiome (params) else .Swamp;
 
     case .High_Slice;
-        h := cast (int) CalculateBiomeParam (generator, .Humidity, x, z);
         if e == 0
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
         else if e == 1
-            return ifx t == 4 then GetBadlandBiome (generator, x, z) else GetMiddleBiome (generator, t, h, x, z);
+            return ifx t == 4 then GetBadlandBiome (params) else GetMiddleBiome (params);
         else if e < 5
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
         else if e == 5
-            return ifx t < 2 || h == 4 then GetMiddleBiome (generator, t, h, x, z) else .Savanna;
+            return ifx t < 2 || h == 4 then GetMiddleBiome (params) else .Savanna;
         else
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
 
     case .Peaks;
         if e == 0
@@ -473,32 +479,33 @@ GetNearInlandBiome :: (generator : Generator, x : float, z : float) -> BiomeID #
             else if t == 3
                 return .Stony_Peaks;
             else
-                return GetBadlandBiome (generator, x, z);
+                return GetBadlandBiome (params);
         }
         else if e == 1
         {
             if t < 4
-                return GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z);
+                return GetMiddleBiome (params);
             else
-                return GetBadlandBiome (generator, x, z);
+                return GetBadlandBiome (params);
         }
         else if e == 5
             return .Savanna;
         else
-            return GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z);
+            return GetMiddleBiome (params);
     }
 }
 
-GetMidOrFarInlandBiome :: (generator : Generator, x : float, z : float) -> BiomeID #must
+GetMidOrFarInlandBiome :: (params : [BiomeParam.Count]s8) -> BiomeID #must
 {
-    t := cast (int) CalculateBiomeParam (generator, .Temperature, x, z);
-    pv := cast (PeaksAndValleysValue) CalculateBiomeParam (generator, .Peaks_And_Valleys, x, z);
-    e := cast (int) CalculateBiomeParam (generator, .Erosion, x, z);
+    t, h, e, w := params[0], params[1], params[3], params[4];
+    c := cast (ContinentalnessValue) params[2];
+    pv := cast (PeaksAndValleysValue) params[5];
+
     if #complete pv ==
     {
     case .Valleys;
         if e < 2
-            return ifx t == 4 then GetBadlandBiome (generator, x, z) else GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z);
+            return ifx t == 4 then GetBadlandBiome (params) else GetMiddleBiome (params);
         else if e < 6
             return ifx t == 0 then .Frozen_River else .River;
         else
@@ -506,30 +513,29 @@ GetMidOrFarInlandBiome :: (generator : Generator, x : float, z : float) -> Biome
 
     case .Low_Slice;
         if e < 4
-            return ifx t < 4 then GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z) else GetBadlandBiome (generator, x, z);
+            return ifx t < 4 then GetMiddleBiome (params) else GetBadlandBiome (params);
         else if e < 6
-            return GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z);
+            return GetMiddleBiome (params);
         else
-            return ifx t == 0 then GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z) else .Swamp;
+            return ifx t == 0 then GetMiddleBiome (params) else .Swamp;
 
     case .Mid_Slice;
-        h := cast (int) CalculateBiomeParam (generator, .Humidity, x, z);
         if e == 0
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
         else if e == 1
-            return ifx t == 4 then GetBadlandBiome (generator, x, z) else GetMiddleBiome (generator, t, h, x, z);
+            return ifx t == 4 then GetBadlandBiome (params) else GetMiddleBiome (params);
         else if e < 5
-            return GetMiddleBiome (generator, t, h, x, z);
+            return GetMiddleBiome (params);
         else if e == 5
-            return ifx t < 2 || h == 4 then GetMiddleBiome (generator, t, h, x, z) else .Savanna;
+            return ifx t < 2 || h == 4 then GetMiddleBiome (params) else .Savanna;
         else
-            return ifx t == 0 then GetMiddleBiome (generator, t, h, x, z) else .Swamp;
+            return ifx t == 0 then GetMiddleBiome (params) else .Swamp;
 
     case .High_Slice;
         if e == 3 || e == 4
-            return ifx t == 4 then GetBadlandBiome (generator, x, z) else GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z);
+            return ifx t == 4 then GetBadlandBiome (params) else GetMiddleBiome (params);
         else
-            return GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z);
+            return GetMiddleBiome (params);
 
     case .Peaks;
         if e < 2
@@ -541,17 +547,19 @@ GetMidOrFarInlandBiome :: (generator : Generator, x : float, z : float) -> Biome
             else if t == 3
                 return .Stony_Peaks;
             else
-                return GetBadlandBiome (generator, x, z);
+                return GetBadlandBiome (params);
         }
         else if e == 3 || e == 4
-            return ifx t == 4 then GetBadlandBiome (generator, x, z) else GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z);
+            return ifx t == 4 then GetBadlandBiome (params) else GetMiddleBiome (params);
         else
-            return GetMiddleBiome (generator, t, xx CalculateBiomeParam (generator, .Humidity, x, z), x, z);
+            return GetMiddleBiome (params);
     }
 }
 
-GetBeachBiome :: inline (generator : Generator, t : int, x : float, z : float) -> BiomeID #must
+GetBeachBiome :: inline (params : [BiomeParam.Count]s8) -> BiomeID #must
 {
+    t := params[0];
+
     if t == 0
         return .Snowy_Beach;
     else if t < 4
@@ -560,13 +568,17 @@ GetBeachBiome :: inline (generator : Generator, t : int, x : float, z : float) -
         return .Desert;
 }
 
-GetBadlandBiome :: inline (generator : Generator, x : float, z : float) -> BiomeID #must
+GetBadlandBiome :: inline (params : [BiomeParam.Count]s8) -> BiomeID #must
 {
     return .Badland;
 }
 
-GetMiddleBiome :: (generator: Generator, t : int, h : int, x : float, z : float) -> BiomeID #must
+GetMiddleBiome :: (params : [BiomeParam.Count]s8) -> BiomeID #must
 {
+    t, h, e, w := params[0], params[1], params[3], params[4];
+    c := cast (ContinentalnessValue) params[2];
+    pv := cast (PeaksAndValleysValue) params[5];
+
     if t == 0
     {
         return .Snowy_Plain;

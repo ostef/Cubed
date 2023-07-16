@@ -197,6 +197,26 @@ CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x :
     return 0;
 }
 
+CalculateTerrainParams :: (using generator : Generator, params : *[TerrainParam.Count]float, x : float, z : float)
+{
+    params.*[TerrainParam.Temperature] = CalculateTerrainNoise (generator, .Temperature, x, z) * surface_params.noise_amplitudes[TerrainParam.Temperature];
+    params.*[TerrainParam.Humidity] = CalculateTerrainNoise (generator, .Humidity, x, z) * surface_params.noise_amplitudes[TerrainParam.Humidity];
+    params.*[TerrainParam.Continentalness] = CalculateTerrainNoise (generator, .Continentalness, x, z) * surface_params.noise_amplitudes[TerrainParam.Continentalness];
+    params.*[TerrainParam.Erosion] = CalculateTerrainNoise (generator, .Erosion, x, z) * surface_params.noise_amplitudes[TerrainParam.Erosion];
+    params.*[TerrainParam.Weirdness] = CalculateTerrainNoise (generator, .Weirdness, x, z) * surface_params.noise_amplitudes[TerrainParam.Weirdness];
+    params.*[TerrainParam.Ridges] = 1 - Abs (3 * Abs (params.*[TerrainParam.Weirdness]) - 2);
+
+    t_values := float.[
+        params.*[TerrainParam.Continentalness],
+        params.*[TerrainParam.Erosion],
+        params.*[TerrainParam.Weirdness],
+        params.*[TerrainParam.Ridges]
+    ];
+
+    params.*[TerrainParam.Depth] = HermiteCubicCalculate (surface_params.spline, t_values);
+    params.*[TerrainParam.Surface_Height] = 128 + params.*[TerrainParam.Depth] * 128;
+}
+
 Generator :: struct
 {
     seed : u64;
