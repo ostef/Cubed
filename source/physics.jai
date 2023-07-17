@@ -246,8 +246,6 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
                 result := SweptAABBIntersectsAABB (aabb, block_aabb, direction, length);
                 if result.hit
                 {
-                    b_padded := MakeAABBPositionHalfSize (AABBCenter (block_aabb), AABBHalfSize (aabb) + AABBHalfSize (block_aabb));
-
                     if result.distance < closest_hit.distance
                     {
                         closest_hit = result;
@@ -264,5 +262,25 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
         }
     }
 
+    if closest_hit.hit
+        closest_hit.block_face = BlockFaceFromNormal (closest_hit.normal);
+
     return closest_hit;
+}
+
+BlockFaceFromNormal :: inline (normal : Vec3f) -> BlockFace #must
+{
+    if ApproxEquals (normal, .{1, 0, 0}, 0.00001)
+        return .East;
+    else if ApproxEquals (normal, .{-1, 0, 0}, 0.00001)
+        return .West;
+    else if ApproxEquals (normal, .{0, 1, 0}, 0.00001)
+        return .Above;
+    else if ApproxEquals (normal, .{0, -1, 0}, 0.00001)
+        return .Below;
+    else if ApproxEquals (normal, .{0, 0, 1}, 0.00001)
+        return .North;
+    else if ApproxEquals (normal, .{0, 0, -1}, 0.00001)
+        return .South;
+    return .East;
 }
