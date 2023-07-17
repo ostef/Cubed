@@ -1,12 +1,13 @@
 Camera :: struct
 {
     position : Vec3f;
+    target_euler_angles : EulerAngles;
     euler_angles : EulerAngles;
     rotation : Quatf;
     mouse_input : Vec2f;
 
-    base_movement_speed := 1 / 60.0;
-    rotation_speed := 1;
+    base_movement_speed := 1.0;
+    rotation_speed := 60.0; // in degrees per second
     rotation_smoothing := 0.3;
 
     distance_to_target := 4.0;
@@ -64,18 +65,21 @@ UpdateFlyingCamera :: (using cam : *Camera, delta_time : float, allow_movement :
     if IsKeyDown (SDLK_LSHIFT)
         speed *= 10;
 
-    position += speed * delta_time * 60 * (
+    position += speed * delta_time * (
         RightVector (transform_matrix)   * movement_input.x +
         UpVector (transform_matrix)      * movement_input.y +
         ForwardVector (transform_matrix) * movement_input.z
     );
 
     mouse_delta := ifx g_should_capture_mouse then g_mouse_delta else .{};
-    mouse_input = Lerp (mouse_input, mouse_delta, rotation_smoothing);
-    rotation_delta := mouse_input * rotation_speed;
-    euler_angles.yaw   += ToRadians (rotation_delta.x);
-    euler_angles.pitch += ToRadians (rotation_delta.y);
-    euler_angles.pitch = Clamp (euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
+    rotation_delta := mouse_delta * rotation_speed * delta_time;
+
+    target_euler_angles.pitch += ToRadians (rotation_delta.y);
+    target_euler_angles.pitch = Clamp (target_euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
+    target_euler_angles.yaw   += ToRadians (rotation_delta.x);
+
+    euler_angles.pitch = Lerp (euler_angles.pitch, target_euler_angles.pitch, rotation_smoothing);
+    euler_angles.yaw = Lerp (euler_angles.yaw, target_euler_angles.yaw, rotation_smoothing);
 
     rotation = QuatfFromEulerAngles (euler_angles);
 }
@@ -89,11 +93,13 @@ UpdateFPSCamera :: (using camera : *Camera, player : Player, delta_time : float)
     euler_angles.yaw = player.orientation;
 
     mouse_delta := ifx g_should_capture_mouse then g_mouse_delta else .{};
-    mouse_input = Lerp (mouse_input, mouse_delta, rotation_smoothing);
-    rotation_delta := mouse_input * rotation_speed;
+    rotation_delta := mouse_delta * rotation_speed * delta_time;
 
-    euler_angles.pitch += ToRadians (rotation_delta.y);
-    euler_angles.pitch = Clamp (euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
+    target_euler_angles.pitch += ToRadians (rotation_delta.y);
+    target_euler_angles.pitch = Clamp (target_euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
+
+    euler_angles.pitch = Lerp (euler_angles.pitch, target_euler_angles.pitch, rotation_smoothing);
+    euler_angles.yaw = player.orientation;
 
     rotation = QuatfFromEulerAngles (euler_angles);
 }
@@ -103,11 +109,13 @@ UpdateTPSCamera :: (using camera : *Camera, player : Player, delta_time : float)
     defer CalculateCameraMatrices (camera);
 
     mouse_delta := ifx g_should_capture_mouse then g_mouse_delta else .{};
-    mouse_input = Lerp (mouse_input, mouse_delta, rotation_smoothing);
-    rotation_delta := mouse_input * rotation_speed;
-    euler_angles.yaw   = player.orientation;
-    euler_angles.pitch += ToRadians (rotation_delta.y);
-    euler_angles.pitch = Clamp (euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
+    rotation_delta := mouse_delta * rotation_speed * delta_time;
+
+    target_euler_angles.pitch += ToRadians (rotation_delta.y);
+    target_euler_angles.pitch = Clamp (target_euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
+
+    euler_angles.pitch = Lerp (euler_angles.pitch, target_euler_angles.pitch, rotation_smoothing);
+    euler_angles.yaw = player.orientation;
 
     rotation = QuatfFromEulerAngles (euler_angles);
 

@@ -1,6 +1,7 @@
 Player :: struct
 {
     position : Vec3f;
+    target_orientation : float;
     orientation : float;
     velocity : Vec3f;
     flying := true;
@@ -13,11 +14,11 @@ Player :: struct
 Player_Fly_Toggle_Timer := 0.5; // seconds
 Player_Height :: 1.8;
 Player_Size :: 0.7;
-Player_Movement_Speed :: 1 / 60.0;
+Player_Movement_Speed :: 1.0;
 Player_Jump_Height :: 1.01;
-Player_Rotation_Speed :: 1.0;
-Gravity :: 0.8 / 60.0;
-Player_Jump_Force :: #run CalculateJumpForce (Player_Jump_Height, Gravity);
+Player_Rotation_Speed :: 60.0;  // in degrees per second
+Player_Rotation_Smoothing :: 0.3;
+Gravity :: 0.8;
 Penetration_Threshold :: 0.001;
 Ground_Test_Threshold :: 0.01;
 
@@ -58,7 +59,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     }
 
     if !flying
-        velocity.y -= Gravity;
+        velocity.y -= Gravity * delta_time;
 
     if IsKeyPressed (SDLK_SPACE)
     {
@@ -71,13 +72,14 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
             fly_toggle_timer = Player_Fly_Toggle_Timer;
 
             if !flying && is_on_ground
-                velocity.y = Player_Jump_Force;
+                velocity.y = CalculateJumpForce (Player_Jump_Height, Gravity * Fixed_Delta_Time);
         }
     }
 
     movement_speed := Player_Movement_Speed;
     if IsKeyDown (SDLK_LSHIFT)
         movement_speed *= 10;
+    movement_speed *= delta_time;
 
     if !flying
     {
@@ -93,7 +95,9 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     }
 
     if g_should_capture_mouse
-        orientation += ToRadians (g_mouse_delta.x * Player_Rotation_Speed);
+        target_orientation += ToRadians (g_mouse_delta.x * Player_Rotation_Speed * delta_time);
+
+    orientation = Lerp (orientation, target_orientation, Player_Rotation_Smoothing);
 
     // Because all collidable things are axis aligned boxes, the wall sliding
     // is limited to 3-axes, meaning we do not need to do more than 3 iterations
@@ -136,5 +140,5 @@ DrawPlayer :: (world : World, using player : Player, camera : Camera)
 {
     aabb := PlayerAABB (player);
     Im3d.DrawAlignedBox (aabb.min, aabb.max);
-    Im3d.DrawArrow (position, position + velocity * 60);
+    // Im3d.DrawArrow (position, position + velocity * 60);
 }
