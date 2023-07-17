@@ -6,15 +6,20 @@ Player :: struct
     flying := true;
     transform_matrix : Mat4f;
     enable_collisions := true;
+    was_on_ground, is_on_ground : bool;
+    fly_toggle_timer : float;
 }
 
+Player_Fly_Toggle_Timer := 0.5; // seconds
 Player_Height :: 1.8;
 Player_Size :: 0.7;
 Player_Movement_Speed :: 1 / 60.0;
 Player_Jump_Height :: 1.0;
 Player_Rotation_Speed :: 1.0;
-Gravity :: 1.0;
+Gravity :: 1.0 / 60.0;
+Player_Jump_Force :: #run Sqrt (2 * Gravity * Player_Jump_Height);
 Penetration_Threshold :: 0.001;
+Ground_Test_Threshold :: 0.01;
 
 PlayerAABB :: inline (using player : Player) -> AABB #must
 {
@@ -25,6 +30,11 @@ g_player_movement_input : Vec3f;
 
 UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, allow_movement := true)
 {
+    if fly_toggle_timer < 0 || is_on_ground
+        fly_toggle_timer = 0;
+    else
+        fly_toggle_timer -= delta_time;
+
     if !g_physics_breakpoint_hit
     {
         if allow_movement && (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0
@@ -42,13 +52,30 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
         }
     }
 
+    if !flying
+        velocity.y -= Gravity;
+
+    if IsKeyPressed (SDLK_SPACE)
+    {
+        if fly_toggle_timer > 0
+        {
+            flying = !flying;
+        }
+        else
+        {
+            fly_toggle_timer = Player_Fly_Toggle_Timer;
+
+            if !flying && is_on_ground
+                velocity.y = Player_Jump_Force;
+        }
+    }
+
     movement_speed := Player_Movement_Speed;
     if IsKeyDown (SDLK_LSHIFT)
         movement_speed *= 10;
 
     if !flying
     {
-        velocity.y -= Gravity;
         velocity = RightVector (transform_matrix) * g_player_movement_input.x * movement_speed
             + ForwardVector (transform_matrix) * g_player_movement_input.z * movement_speed
             + .{0, velocity.y, 0};
@@ -87,6 +114,15 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     }
 
     position += velocity;
+
+    was_on_ground = is_on_ground;
+    is_on_ground = false;
+    {
+        player_aabb := PlayerAABB (player);
+        ground_test := SweptAABBIntersectsWorld (world, player_aabb, .{0, -1, 0}, Ground_Test_Threshold);
+        if ground_test.hit && ground_test.block_face == .Above
+            is_on_ground = true;
+    }
 
     transform_matrix = Mat4fTranslate (position) * Mat4fRotate (.{0, 1, 0}, orientation);
 }
