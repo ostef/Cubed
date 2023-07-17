@@ -334,7 +334,7 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
     }
 }
 
-PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f, visible_faces : BlockFaceFlags)
+PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f, visible_faces : BlockFaceFlags, block_height := 1.0)
 {
     if visible_faces & .East
     {
@@ -342,16 +342,16 @@ PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f,
         v.position += .{1, 0, 0};
 
         v = ArrayPush (vertices, .{position, .East, .Top_Left, xx block});
-        v.position += .{1, 1, 0};
+        v.position += .{1, block_height, 0};
 
         v = ArrayPush (vertices, .{position, .East, .Top_Right, xx block});
-        v.position += .{1, 1, 1};
+        v.position += .{1, block_height, 1};
 
         v = ArrayPush (vertices, .{position, .East, .Bottom_Left, xx block});
         v.position += .{1, 0, 0};
 
         v = ArrayPush (vertices, .{position, .East, .Top_Right, xx block});
-        v.position += .{1, 1, 1};
+        v.position += .{1, block_height, 1};
 
         v = ArrayPush (vertices, .{position, .East, .Bottom_Right, xx block});
         v.position += .{1, 0, 1};
@@ -363,10 +363,10 @@ PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f,
         v.position += .{0, 0, 0};
 
         v = ArrayPush (vertices, .{position, .West, .Top_Left, xx block});
-        v.position += .{0, 1, 1};
+        v.position += .{0, block_height, 1};
 
         v = ArrayPush (vertices, .{position, .West, .Top_Right, xx block});
-        v.position += .{0, 1, 0};
+        v.position += .{0, block_height, 0};
 
         v = ArrayPush (vertices, .{position, .West, .Bottom_Right, xx block});
         v.position += .{0, 0, 0};
@@ -375,28 +375,28 @@ PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f,
         v.position += .{0, 0, 1};
 
         v = ArrayPush (vertices, .{position, .West, .Top_Left, xx block});
-        v.position += .{0, 1, 1};
+        v.position += .{0, block_height, 1};
     }
 
     if visible_faces & .Above
     {
         v := ArrayPush (vertices, .{position, .Above, .Bottom_Left, xx block});
-        v.position += .{0, 1, 0};
+        v.position += .{0, block_height, 0};
 
         v = ArrayPush (vertices, .{position, .Above, .Top_Right, xx block});
-        v.position += .{1, 1, 1};
+        v.position += .{1, block_height, 1};
 
         v = ArrayPush (vertices, .{position, .Above, .Bottom_Right, xx block});
-        v.position += .{1, 1, 0};
+        v.position += .{1, block_height, 0};
 
         v = ArrayPush (vertices, .{position, .Above, .Bottom_Left, xx block});
-        v.position += .{0, 1, 0};
+        v.position += .{0, block_height, 0};
 
         v = ArrayPush (vertices, .{position, .Above, .Top_Left, xx block});
-        v.position += .{0, 1, 1};
+        v.position += .{0, block_height, 1};
 
         v = ArrayPush (vertices, .{position, .Above, .Top_Right, xx block});
-        v.position += .{1, 1, 1};
+        v.position += .{1, block_height, 1};
     }
 
     if visible_faces & .Below
@@ -429,16 +429,16 @@ PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f,
         v.position += .{1, 0, 1};
 
         v = ArrayPush (vertices, .{position, .North, .Top_Left, xx block});
-        v.position += .{1, 1, 1};
+        v.position += .{1, block_height, 1};
 
         v = ArrayPush (vertices, .{position, .North, .Bottom_Right, xx block});
         v.position += .{0, 0, 1};
 
         v = ArrayPush (vertices, .{position, .North, .Top_Left, xx block});
-        v.position += .{1, 1, 1};
+        v.position += .{1, block_height, 1};
 
         v = ArrayPush (vertices, .{position, .North, .Top_Right, xx block});
-        v.position += .{0, 1, 1};
+        v.position += .{0, block_height, 1};
     }
 
     if visible_faces & .South
@@ -447,7 +447,7 @@ PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f,
         v.position += .{0, 0, 0};
 
         v = ArrayPush (vertices, .{position, .South, .Top_Right, xx block});
-        v.position += .{1, 1, 0};
+        v.position += .{1, block_height, 0};
 
         v = ArrayPush (vertices, .{position, .South, .Bottom_Right, xx block});
         v.position += .{1, 0, 0};
@@ -456,10 +456,10 @@ PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f,
         v.position += .{0, 0, 0};
 
         v = ArrayPush (vertices, .{position, .South, .Top_Left, xx block});
-        v.position += .{0, 1, 0};
+        v.position += .{0, block_height, 0};
 
         v = ArrayPush (vertices, .{position, .South, .Top_Right, xx block});
-        v.position += .{1, 1, 0};
+        v.position += .{1, block_height, 0};
     }
 }
 
@@ -476,21 +476,30 @@ ChunkPushVertices :: (chunk : *Chunk, vertices : *[..]Vertex, mesh_type : ChunkM
                 if GetBlockMeshType (block) != mesh_type
                     continue;
 
+                top_block := ChunkGetBlock (chunk, x, y + 1, z);
+                bottom_block := ChunkGetBlock (chunk, x, y - 1, z);
+
+                block_height : float = ---;
+                if block.id == .Water && top_block.id != .Water
+                    block_height = 14.0 / 16.0;
+                else
+                    block_height = 1.0;
+
                 visible_faces : BlockFaceFlags;
                 if GetBlockMeshType (ChunkGetBlock (chunk, x + 1, y, z)) != mesh_type
                     visible_faces |= .East;
                 if GetBlockMeshType (ChunkGetBlock (chunk, x - 1, y, z)) != mesh_type
                     visible_faces |= .West;
-                if GetBlockMeshType (ChunkGetBlock (chunk, x, y + 1, z)) != mesh_type
+                if GetBlockMeshType (top_block) != mesh_type
                     visible_faces |= .Above;
-                if GetBlockMeshType (ChunkGetBlock (chunk, x, y - 1, z)) != mesh_type
+                if GetBlockMeshType (bottom_block) != mesh_type
                     visible_faces |= .Below;
                 if GetBlockMeshType (ChunkGetBlock (chunk, x, y, z + 1)) != mesh_type
                     visible_faces |= .North;
                 if GetBlockMeshType (ChunkGetBlock (chunk, x, y, z - 1)) != mesh_type
                     visible_faces |= .South;
 
-                PushBlockVertices (vertices, block, position + Vec3f.{xx x, xx y, xx z}, visible_faces);
+                PushBlockVertices (vertices, block, position + Vec3f.{xx x, xx y, xx z}, visible_faces, block_height);
             }
         }
     }
