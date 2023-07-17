@@ -60,6 +60,8 @@ g_physics_breakpoint_hit : bool;
 g_physics_step : bool;
 g_prev_keyboard_state : [SDL_NUM_SCANCODES]bool;
 
+Fixed_Delta_Time :: 1 / 60.0;
+
 PhysicsDebugBreak :: inline ()
 {
     if !g_physics_breakpoint_hit
@@ -263,7 +265,7 @@ main :: ()
 
     g_camera.position.y = xx g_world.surface_params.water_level + 10.0;
     g_player.position.y = xx g_world.surface_params.water_level + 10.0;
-    delta_time := 1 / 60.0;
+    delta_time := Fixed_Delta_Time;
     quit := false;
     while !quit
     {
