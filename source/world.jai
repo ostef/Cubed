@@ -104,14 +104,6 @@ World :: struct
     chunk_generation_thread_group : Threads.Thread_Group;
 }
 
-Vertex :: struct
-{
-    position : Vec3f;
-    face : BlockFace;
-    corner : BlockFaceCorner;
-    block_id : u8;
-}
-
 GetBlockMeshType :: inline (block : BlockID) -> ChunkMeshType #must
 {
     if block ==
@@ -153,6 +145,9 @@ ChunkInit :: (chunk : *Chunk, x : s64, z : s64)
 
         glEnableVertexAttribArray (3);
         glVertexAttribIPointer (3, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "corner"));
+
+        glEnableVertexAttribArray (4);
+        glVertexAttribPointer (4, 1, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "block_height"));
     }
 }
 
@@ -338,127 +333,127 @@ PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f,
 {
     if visible_faces & .East
     {
-        v := ArrayPush (vertices, .{position, .East, .Bottom_Left, xx block});
+        v := ArrayPush (vertices, .{position, block_height, .East, .Bottom_Left, xx block});
         v.position += .{1, 0, 0};
 
-        v = ArrayPush (vertices, .{position, .East, .Top_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .East, .Top_Left, xx block});
         v.position += .{1, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, .East, .Top_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .East, .Top_Right, xx block});
         v.position += .{1, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, .East, .Bottom_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .East, .Bottom_Left, xx block});
         v.position += .{1, 0, 0};
 
-        v = ArrayPush (vertices, .{position, .East, .Top_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .East, .Top_Right, xx block});
         v.position += .{1, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, .East, .Bottom_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .East, .Bottom_Right, xx block});
         v.position += .{1, 0, 1};
     }
 
     if visible_faces & .West
     {
-        v := ArrayPush (vertices, .{position, .West, .Bottom_Right, xx block});
+        v := ArrayPush (vertices, .{position, block_height, .West, .Bottom_Right, xx block});
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, .West, .Top_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .West, .Top_Left, xx block});
         v.position += .{0, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, .West, .Top_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .West, .Top_Right, xx block});
         v.position += .{0, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, .West, .Bottom_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .West, .Bottom_Right, xx block});
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, .West, .Bottom_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .West, .Bottom_Left, xx block});
         v.position += .{0, 0, 1};
 
-        v = ArrayPush (vertices, .{position, .West, .Top_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .West, .Top_Left, xx block});
         v.position += .{0, block_height, 1};
     }
 
     if visible_faces & .Above
     {
-        v := ArrayPush (vertices, .{position, .Above, .Bottom_Left, xx block});
+        v := ArrayPush (vertices, .{position, block_height, .Above, .Bottom_Left, xx block});
         v.position += .{0, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, .Above, .Top_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .Above, .Top_Right, xx block});
         v.position += .{1, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, .Above, .Bottom_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .Above, .Bottom_Right, xx block});
         v.position += .{1, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, .Above, .Bottom_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .Above, .Bottom_Left, xx block});
         v.position += .{0, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, .Above, .Top_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .Above, .Top_Left, xx block});
         v.position += .{0, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, .Above, .Top_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .Above, .Top_Right, xx block});
         v.position += .{1, block_height, 1};
     }
 
     if visible_faces & .Below
     {
-        v := ArrayPush (vertices, .{position, .Below, .Top_Left, xx block});
+        v := ArrayPush (vertices, .{position, block_height, .Below, .Top_Left, xx block});
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, .Below, .Top_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .Below, .Top_Right, xx block});
         v.position += .{1, 0, 0};
 
-        v = ArrayPush (vertices, .{position, .Below, .Bottom_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .Below, .Bottom_Right, xx block});
         v.position += .{1, 0, 1};
 
-        v = ArrayPush (vertices, .{position, .Below, .Top_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .Below, .Top_Left, xx block});
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, .Below, .Bottom_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .Below, .Bottom_Right, xx block});
         v.position += .{1, 0, 1};
 
-        v = ArrayPush (vertices, .{position, .Below, .Bottom_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .Below, .Bottom_Left, xx block});
         v.position += .{0, 0, 1};
     }
 
     if visible_faces & .North
     {
-        v := ArrayPush (vertices, .{position, .North, .Bottom_Right, xx block});
+        v := ArrayPush (vertices, .{position, block_height, .North, .Bottom_Right, xx block});
         v.position += .{0, 0, 1};
 
-        v = ArrayPush (vertices, .{position, .North, .Bottom_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .North, .Bottom_Left, xx block});
         v.position += .{1, 0, 1};
 
-        v = ArrayPush (vertices, .{position, .North, .Top_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .North, .Top_Left, xx block});
         v.position += .{1, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, .North, .Bottom_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .North, .Bottom_Right, xx block});
         v.position += .{0, 0, 1};
 
-        v = ArrayPush (vertices, .{position, .North, .Top_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .North, .Top_Left, xx block});
         v.position += .{1, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, .North, .Top_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .North, .Top_Right, xx block});
         v.position += .{0, block_height, 1};
     }
 
     if visible_faces & .South
     {
-        v := ArrayPush (vertices, .{position, .South, .Bottom_Left, xx block});
+        v := ArrayPush (vertices, .{position, block_height, .South, .Bottom_Left, xx block});
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, .South, .Top_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .South, .Top_Right, xx block});
         v.position += .{1, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, .South, .Bottom_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .South, .Bottom_Right, xx block});
         v.position += .{1, 0, 0};
 
-        v = ArrayPush (vertices, .{position, .South, .Bottom_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .South, .Bottom_Left, xx block});
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, .South, .Top_Left, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .South, .Top_Left, xx block});
         v.position += .{0, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, .South, .Top_Right, xx block});
+        v = ArrayPush (vertices, .{position, block_height, .South, .Top_Right, xx block});
         v.position += .{1, block_height, 0};
     }
 }
@@ -483,7 +478,7 @@ ChunkPushVertices :: (chunk : *Chunk, vertices : *[..]Vertex, mesh_type : ChunkM
                 if block.id == .Water && top_block.id != .Water
                     block_height = 14.0 / 16.0;
                 else
-                    block_height = 1.0;
+                    block_height = 8.0 / 16.0;
 
                 visible_faces : BlockFaceFlags;
                 if GetBlockMeshType (ChunkGetBlock (chunk, x + 1, y, z)) != mesh_type

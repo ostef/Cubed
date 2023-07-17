@@ -8,6 +8,15 @@ Atlas_Cell_Size_No_Border :: 16;
 Atlas_Cell_Border_Size :: 4;
 Atlas_Cell_Size :: Atlas_Cell_Size_No_Border + Atlas_Cell_Border_Size * 2;
 
+Vertex :: struct
+{
+    position : Vec3f;
+    block_height : float;
+    face : BlockFace;
+    corner : BlockFaceCorner;
+    block_id : u8;
+}
+
 GL_Block_Shader_Header :: #string GLSL
 #version 330 core
 
@@ -23,6 +32,7 @@ layout (location = 0) in vec3 a_Position;
 layout (location = 1) in int a_Face;
 layout (location = 2) in int a_Block_Id;
 layout (location = 3) in int a_Face_Corner;
+layout (location = 4) in float a_Block_Height;
 
 const int Block_Face_East  = 0; // +X
 const int Block_Face_West  = 1; // -X
@@ -61,10 +71,19 @@ void main ()
     int atlas_tex_x = atlas_cell_x * Atlas_Cell_Size + Atlas_Cell_Border_Size;
     int atlas_tex_y = atlas_cell_y * Atlas_Cell_Size + Atlas_Cell_Border_Size;
 
+    bool is_side_face = a_Face != Block_Face_Above && a_Face != Block_Face_Below;
+
     switch (a_Face_Corner)
     {
-    case Block_Corner_Top_Left:     break;
-    case Block_Corner_Top_Right:    atlas_tex_x += Atlas_Cell_Size_No_Border; break;
+    case Block_Corner_Top_Left:
+        if (is_side_face)
+            atlas_tex_y += int ((1 - a_Block_Height) * Atlas_Cell_Size_No_Border);
+        break;
+    case Block_Corner_Top_Right:
+        if (is_side_face)
+            atlas_tex_y += int ((1 - a_Block_Height) * Atlas_Cell_Size_No_Border);
+        atlas_tex_x += Atlas_Cell_Size_No_Border;
+        break;
     case Block_Corner_Bottom_Left:  atlas_tex_y += Atlas_Cell_Size_No_Border; break;
     case Block_Corner_Bottom_Right: atlas_tex_x += Atlas_Cell_Size_No_Border; atlas_tex_y += Atlas_Cell_Size_No_Border; break;
     }
