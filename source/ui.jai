@@ -507,12 +507,19 @@ UIShowGameMetricsWindow :: (opened : *bool)
     if !ImGui.Begin ("Game Metrics", opened)
         return;
 
-    if ImGui.InputFloat3 ("XZY", *g_player.position.n, "%.3f")
-        g_player.velocity = .{};
-    ImGui.Checkbox ("Enable Collisions", *g_player.enable_collisions);
+    ImGui.SeparatorText ("World");
     ImGui.LabelText ("World Seed", "%lld", g_world.seed);
     ImGui.LabelText ("Loaded Chunks", "%lld", g_world.all_loaded_chunks.count);
     ImGui.LabelText ("Chunks Being Generated", "%lld", g_world.chunks_being_generated.count);
+
+    ImGui.SeparatorText ("Player");
+    if ImGui.InputFloat3 ("XYZ", *g_player.position.n, "%.3f")
+        g_player.velocity = .{};
+    ImGui.Checkbox ("Enable Collisions", *g_player.enable_collisions);
+    ImGui.Checkbox ("FPS Camera", *g_fps_camera);
+    ImGui.LabelText ("Is Flying", "%s", ifx g_player.flying then "true".data else "false".data);
+    ImGui.LabelText ("Is On Ground", "%s", ifx g_player.is_on_ground then "true".data else "false".data);
+    ImGui.LabelText ("Fly Toggle Timer", "%.3f", g_player.fly_toggle_timer);
 }
 
 g_ui_show_demo_window := false;

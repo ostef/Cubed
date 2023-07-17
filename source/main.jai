@@ -47,6 +47,7 @@ Ceil :: Math.ceil;
 
 g_window : *SDL_Window;
 g_camera : Camera;
+g_fps_camera : bool;
 g_mouse_delta : Vec2f;
 g_should_capture_mouse : bool;
 g_settings : struct
@@ -327,9 +328,16 @@ main :: ()
         }
 
         if !g_physics_breakpoint_hit
-            UpdateTPSCamera (*g_camera, g_player, delta_time);
+        {
+            if g_fps_camera
+                UpdateFPSCamera (*g_camera, g_player, delta_time);
+            else
+                UpdateTPSCamera (*g_camera, g_player, delta_time);
+        }
         else
+        {
             UpdateFlyingCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
+        }
 
         // Update the Im3d matrices otherwise all drawn things will be delayed by one frame
         Im3dImpl.NewFrame (
