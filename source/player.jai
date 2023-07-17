@@ -77,10 +77,11 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
 
             if hit_result.hit
             {
-                intermediate_velocity := velocity_dir * hit_result.distance + hit_result.normal * Penetration_Threshold;
+                intermediate_velocity := velocity_dir * (hit_result.distance - Penetration_Threshold);
                 position += intermediate_velocity;
                 velocity -= intermediate_velocity;
-                velocity -= hit_result.normal * (Dot (velocity, hit_result.normal) - Penetration_Threshold);
+                sliding_velocity := hit_result.normal * Dot (velocity, hit_result.normal);
+                velocity -= sliding_velocity;
             }
         }
     }
