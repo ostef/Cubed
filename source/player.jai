@@ -14,12 +14,17 @@ Player_Fly_Toggle_Timer := 0.5; // seconds
 Player_Height :: 1.8;
 Player_Size :: 0.7;
 Player_Movement_Speed :: 1 / 60.0;
-Player_Jump_Height :: 1.0;
+Player_Jump_Height :: 1.01;
 Player_Rotation_Speed :: 1.0;
-Gravity :: 1.0 / 60.0;
-Player_Jump_Force :: #run Sqrt (2 * Gravity * Player_Jump_Height);
+Gravity :: 0.8 / 60.0;
+Player_Jump_Force :: #run CalculateJumpForce (Player_Jump_Height, Gravity);
 Penetration_Threshold :: 0.001;
 Ground_Test_Threshold :: 0.01;
+
+CalculateJumpForce :: inline (jump_height : float, gravity : float) -> float #must
+{
+    return Sqrt (2 * gravity * jump_height);
+}
 
 PlayerAABB :: inline (using player : Player) -> AABB #must
 {
