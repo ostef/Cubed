@@ -58,6 +58,7 @@ g_world : World;
 g_player : Player;
 g_physics_breakpoint_hit : bool;
 g_physics_step : bool;
+g_prev_keyboard_state : [SDL_NUM_SCANCODES]bool;
 
 PhysicsDebugBreak :: inline ()
 {
@@ -102,6 +103,16 @@ IsKeyDown :: inline (key : SDL_Keycode) -> bool #must
     keyboard := SDL_GetKeyboardState (null);
 
     return xx keyboard[cast (s32) SDL_GetScancodeFromKey (key)];
+}
+
+IsKeyPressed :: inline (key : SDL_Keycode) -> bool #must
+{
+    return !g_prev_keyboard_state[cast (s32) SDL_GetScancodeFromKey (key)] && IsKeyDown (key);
+}
+
+IsKeyReleased :: inline (key : SDL_Keycode) -> bool #must
+{
+    return g_prev_keyboard_state[cast (s32) SDL_GetScancodeFromKey (key)] && !IsKeyDown (key);
 }
 
 IsMouseButtonDown :: inline (button : int) -> bool #must
@@ -260,6 +271,10 @@ main :: ()
         defer g_physics_step = false;
 
         frame_start := Basic.current_time_monotonic ();
+
+        keyboard_state_len : s32;
+        keyboard_state := SDL_GetKeyboardState (*keyboard_state_len);
+        memcpy (g_prev_keyboard_state.data, keyboard_state, keyboard_state_len);
 
         g_mouse_delta = .{};
         event : SDL_Event;
