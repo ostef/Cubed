@@ -3,6 +3,7 @@
 
 g_block_shader : GLuint;
 g_texture_atlas : GLuint;
+g_grass_overlay_texture : GLuint;
 g_all_texture_atlases : [6]GLuint; // We also have separate textures for each face, so we can display them using ImGui
 // Atlas is squared so below are both on X and Y axes
 g_texture_atlas_size : s64;
@@ -53,17 +54,6 @@ const vec3 Grass_Color_01 = vec3 (%, %, %);
 const vec3 Grass_Color_11 = vec3 (%, %, %);
 
 %
-GLSL
-
-GL_Block_Shader_Vertex :: #string GLSL
-layout (location = 0) in vec3 a_Position;
-layout (location = 1) in int a_Block_Id;
-layout (location = 2) in int a_Face;
-layout (location = 3) in int a_Face_Corner;
-layout (location = 4) in float a_Block_Height;
-layout (location = 5) in float a_Temperature;
-layout (location = 6) in float a_Humidity;
-
 const int Block_Face_East  = 0; // +X
 const int Block_Face_West  = 1; // -X
 const int Block_Face_Above = 2; // +Y
@@ -76,8 +66,22 @@ const int Block_Corner_Top_Right    = 1;
 const int Block_Corner_Bottom_Left  = 2;
 const int Block_Corner_Bottom_Right = 3;
 
+GLSL
+
+GL_Block_Shader_Vertex :: #string GLSL
+layout (location = 0) in vec3 a_Position;
+layout (location = 1) in int a_Block_Id;
+layout (location = 2) in int a_Face;
+layout (location = 3) in int a_Face_Corner;
+layout (location = 4) in float a_Block_Height;
+layout (location = 5) in float a_Temperature;
+layout (location = 6) in float a_Humidity;
+
+flat out int Block_ID;
+flat out int Block_Face;
 out vec3 Normal;
-centroid out vec3 Tex_Coords;
+centroid out vec3 Atlas_Tex_Coords;
+centroid out vec2 Block_Tex_Coords;
 out vec3 Grass_Color;
 
 uniform mat4 u_View_Projection_Matrix;
@@ -112,50 +116,84 @@ void main ()
 
     bool is_side_face = a_Face != Block_Face_Above && a_Face != Block_Face_Below;
 
-    if (a_Block_Id == Block_Grass && a_Face == Block_Face_Above)
-        Grass_Color = BilinearMix (Grass_Color_00, Grass_Color_10, Grass_Color_01, Grass_Color_11, a_Temperature, a_Humidity);
-    else
-        Grass_Color = vec3 (1, 1, 1);
+    Grass_Color = BilinearMix (Grass_Color_00, Grass_Color_10, Grass_Color_01, Grass_Color_11, a_Temperature, a_Humidity);
 
+    Block_Tex_Coords = vec2 (0, 0);
     switch (a_Face_Corner)
     {
     case Block_Corner_Top_Left:
         if (is_side_face)
+        {
             atlas_tex_y += int ((1 - a_Block_Height) * Atlas_Cell_Size_No_Border);
+            Block_Tex_Coords.y = 1 - a_Block_Height;
+        }
         break;
+
     case Block_Corner_Top_Right:
         if (is_side_face)
+        {
             atlas_tex_y += int ((1 - a_Block_Height) * Atlas_Cell_Size_No_Border);
+            Block_Tex_Coords.y = 1 - a_Block_Height;
+        }
+        Block_Tex_Coords.x = 1;
         atlas_tex_x += Atlas_Cell_Size_No_Border;
         break;
-    case Block_Corner_Bottom_Left:  atlas_tex_y += Atlas_Cell_Size_No_Border; break;
-    case Block_Corner_Bottom_Right: atlas_tex_x += Atlas_Cell_Size_No_Border; atlas_tex_y += Atlas_Cell_Size_No_Border; break;
+
+    case Block_Corner_Bottom_Left:
+        atlas_tex_y += Atlas_Cell_Size_No_Border;
+        Block_Tex_Coords.y = 1;
+        break;
+
+    case Block_Corner_Bottom_Right:
+        Block_Tex_Coords.x = 1;
+        Block_Tex_Coords.y = 1;
+        atlas_tex_x += Atlas_Cell_Size_No_Border;
+        atlas_tex_y += Atlas_Cell_Size_No_Border;
+        break;
     }
 
     ivec3 atlas_size = textureSize (u_Texture_Atlases, 0);
-    Tex_Coords.x = float (atlas_tex_x) / float (atlas_size.x);
-    Tex_Coords.y = float (atlas_tex_y) / float (atlas_size.y);
-    Tex_Coords.z = a_Face;
+    Atlas_Tex_Coords.x = float (atlas_tex_x) / float (atlas_size.x);
+    Atlas_Tex_Coords.y = float (atlas_tex_y) / float (atlas_size.y);
+    Atlas_Tex_Coords.z = a_Face;
+
+    Block_ID = a_Block_Id;
+    Block_Face = a_Face;
 }
 GLSL
 
 GL_Block_Shader_Fragment :: #string GLSL
+flat in int Block_ID;
+flat in int Block_Face;
 in vec3 Normal;
-centroid in vec3 Tex_Coords;
+centroid in vec3 Atlas_Tex_Coords;
+centroid in vec2 Block_Tex_Coords;
 in vec3 Grass_Color;
 
 out vec4 Frag_Color;
 
 uniform sampler2DArray u_Texture_Atlases;
+uniform sampler2D u_Grass_Overlay;
 
 void main ()
 {
     vec3 light_direction = normalize (vec3 (0.5, 1, 0.2));
-    vec4 sampled = texture (u_Texture_Atlases, Tex_Coords);
-    // vec4 sampled = textureLod (u_Texture_Atlas, Tex_Coords, 1);
-    Frag_Color.rgb = sampled.rgb * max (dot (Normal, light_direction), 0.25);
-    Frag_Color.rgb *= Grass_Color;
+    vec4 sampled = texture (u_Texture_Atlases, Atlas_Tex_Coords);
+
+    Frag_Color.rgb = sampled.rgb;
+    if (Block_ID == Block_Grass && Block_Face == Block_Face_Above)
+        Frag_Color.rgb *= Grass_Color;
     Frag_Color.a = sampled.a;
+
+    vec4 grass_overlay_sample = vec4 (0, 0, 0, 0);
+    if (Block_ID == Block_Grass && Block_Face != Block_Face_Above && Block_Face != Block_Face_Below)
+    {
+        grass_overlay_sample = texture (u_Grass_Overlay, Block_Tex_Coords);
+        grass_overlay_sample.rgb *= Grass_Color;
+        Frag_Color = mix (Frag_Color, grass_overlay_sample, grass_overlay_sample.a);
+    }
+
+    Frag_Color.rgb *= max (dot (Normal, light_direction), 0.25);
 }
 GLSL
 
@@ -255,6 +293,36 @@ ImageBlit :: (dest : *Image, src : Image, dest_x : int, dest_y : int, border : i
             ImageSetPixel (dest, dest_x + x, dest_y + y, pixel);
         }
     }
+}
+
+LoadSingleTexture :: (filename : *u8) -> GLuint #must
+{
+    w, h : s32;
+    data := stbi_load (filename, *w, *h, null, 4);
+    if !data
+        return 0;
+
+    defer stbi_image_free (data);
+
+    texture : GLuint;
+    glGenTextures (1, *texture);
+    if !texture
+        return 0;
+
+    glBindTexture (GL_TEXTURE_2D, texture);
+
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, xx w, xx h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, Atlas_Cell_Border_Size - 1);
+    glGenerateMipmap (GL_TEXTURE_2D);
+
+    return texture;
 }
 
 LoadTextureAtlases :: (textures_dirname : string) -> bool
@@ -375,7 +443,6 @@ LoadTextureAtlases :: (textures_dirname : string) -> bool
     atlas.data = Alloc (u32, g_texture_atlas_size * g_texture_atlas_size);
     defer Free (atlas.data);
 
-
     for face : 0..5
     {
         memset (atlas.data, 0, g_texture_atlas_size * g_texture_atlas_size * size_of (u32));
@@ -413,6 +480,13 @@ LoadTextureAtlases :: (textures_dirname : string) -> bool
     glTexParameteri (GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BASE_LEVEL, 0);
     glTexParameteri (GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, Atlas_Cell_Border_Size - 1);
     glGenerateMipmap (GL_TEXTURE_2D_ARRAY);
+
+    g_grass_overlay_texture = LoadSingleTexture (FormatToCString (Temp, "%/grass_block_side_overlay.png", textures_dirname));
+    if !g_grass_overlay_texture
+    {
+        LogError ("Could not load texture grass_block_side_overlay.png");
+        return false;
+    }
 
     LogContentMessage ("Loaded texture atlas: % cells, % by % pixels", g_atlas_cell_count, g_texture_atlas_size, g_texture_atlas_size);
 
@@ -503,24 +577,22 @@ DrawWorld :: (world : *World, camera : Camera)
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glFrontFace (GL_CW);
 
-    glActiveTexture (0);
+    glActiveTexture (GL_TEXTURE0);
     glBindTexture (GL_TEXTURE_2D_ARRAY, g_texture_atlas);
+
+    glActiveTexture (GL_TEXTURE1);
+    glBindTexture (GL_TEXTURE_2D, g_grass_overlay_texture);
+
     glUseProgram (g_block_shader);
 
     loc := glGetUniformLocation (g_block_shader, "u_View_Projection_Matrix");
     glUniformMatrix4fv (loc, 1, GL_TRUE, *camera.view_projection_matrix.r0c0);
 
-    loc = glGetUniformLocation (g_block_shader, "u_Grass_Color_00");
-    glUniform3f (loc, Grass_Color_00.r, Grass_Color_00.g, Grass_Color_00.b);
+    loc = glGetUniformLocation (g_block_shader, "u_Texture_Atlases");
+    glUniform1i (loc, 0);
 
-    loc = glGetUniformLocation (g_block_shader, "u_Grass_Color_10");
-    glUniform3f (loc, Grass_Color_10.r, Grass_Color_10.g, Grass_Color_10.b);
-
-    loc = glGetUniformLocation (g_block_shader, "u_Grass_Color_01");
-    glUniform3f (loc, Grass_Color_01.r, Grass_Color_01.g, Grass_Color_01.b);
-
-    loc = glGetUniformLocation (g_block_shader, "u_Grass_Color_11");
-    glUniform3f (loc, Grass_Color_11.r, Grass_Color_11.g, Grass_Color_11.b);
+    loc = glGetUniformLocation (g_block_shader, "u_Grass_Overlay");
+    glUniform1i (loc, 1);
 
     for mesh_type : 0..ChunkMeshType.Count - 1
     {

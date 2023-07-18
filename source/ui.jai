@@ -475,7 +475,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
 
 g_texture_atlas_window : struct
 {
-    selected_face : BlockFace;
+    selected_face : s32;
 };
 
 #scope_export
@@ -488,13 +488,12 @@ UIShowTextureAtlasWindow :: (opened : *bool)
     if !ImGui.Begin ("Texture Atlas", opened)
         return;
 
-    face_names := Alloc (*u8, 6, Temp);
+    face_names := Alloc (*u8, 7, Temp);
     for i : 0..5
         face_names[i] = StringCloneToCString (type_info (BlockFace).names[i], Temp);
+    face_names[6] = "Grass Side Overlay";
 
-    selected_face_s32 := cast (s32) selected_face;
-    ImGui.Combo ("Block Face", *selected_face_s32, face_names, 6);
-    selected_face = xx selected_face_s32;
+    ImGui.Combo ("Block Face", *selected_face, face_names, 7);
 
     draw_list := ImGui.GetWindowDrawList ();
     avail_width := ImGui.GetContentRegionAvail ().x;
@@ -517,7 +516,10 @@ UIShowTextureAtlasWindow :: (opened : *bool)
         }
     }
 
-    ImGui.Image (cast (ImGui.ImTextureID) g_all_texture_atlases[selected_face], .{avail_width, avail_width});
+    if selected_face < 6
+        ImGui.Image (cast (ImGui.ImTextureID) g_all_texture_atlases[selected_face], .{avail_width, avail_width});
+    else
+        ImGui.Image (cast (ImGui.ImTextureID) g_grass_overlay_texture, .{avail_width, avail_width});
 
     ImGui.ColorEdit3 ("Grass Tint T=0 H=0", *Grass_Color_00.n, .NoInputs);
     ImGui.ColorEdit3 ("Grass Tint T=1 H=0", *Grass_Color_10.n, .NoInputs);
