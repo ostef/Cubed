@@ -72,7 +72,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
             fly_toggle_timer = Player_Fly_Toggle_Timer;
 
             if !flying && is_on_ground
-                velocity.y = CalculateJumpForce (Player_Jump_Height, Gravity * Fixed_Delta_Time);
+                velocity.y = CalculateJumpForce (Player_Jump_Height, Gravity * delta_time);
         }
     }
 
