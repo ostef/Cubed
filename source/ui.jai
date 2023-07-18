@@ -471,11 +471,30 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     }
 }
 
+#scope_file
+
+g_texture_atlas_window : struct
+{
+    selected_face : BlockFace;
+};
+
+#scope_export
+
 UIShowTextureAtlasWindow :: (opened : *bool)
 {
+    using g_texture_atlas_window;
+
     defer ImGui.End ();
     if !ImGui.Begin ("Texture Atlas", opened)
         return;
+
+    face_names := Alloc (*u8, 6, Temp);
+    for i : 0..5
+        face_names[i] = StringCloneToCString (type_info (BlockFace).names[i], Temp);
+
+    selected_face_s32 := cast (s32) selected_face;
+    ImGui.Combo ("Block Face", *selected_face_s32, face_names, 6);
+    selected_face = xx selected_face_s32;
 
     draw_list := ImGui.GetWindowDrawList ();
     avail_width := ImGui.GetContentRegionAvail ().x;
@@ -498,7 +517,7 @@ UIShowTextureAtlasWindow :: (opened : *bool)
         }
     }
 
-    ImGui.Image (cast (ImGui.ImTextureID) g_texture_atlas, .{avail_width, avail_width});
+    ImGui.Image (cast (ImGui.ImTextureID) g_all_texture_atlases[selected_face], .{avail_width, avail_width});
 }
 
 UIShowGameMetricsWindow :: (opened : *bool)

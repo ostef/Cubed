@@ -134,20 +134,20 @@ ChunkInit :: (chunk : *Chunk, x : s64, z : s64)
         glBindVertexArray (chunk.vaos[i]);
         glBindBuffer (GL_ARRAY_BUFFER, chunk.vbos[i]);
 
-        glEnableVertexAttribArray (0);
-        glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "position"));
+        glEnableVertexAttribArray (g_block_shader_attribs.position);
+        glVertexAttribPointer (g_block_shader_attribs.position, 3, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "position"));
 
-        glEnableVertexAttribArray (1);
-        glVertexAttribIPointer (1, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "face"));
+        glEnableVertexAttribArray (g_block_shader_attribs.face);
+        glVertexAttribIPointer (g_block_shader_attribs.face, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "face"));
 
-        glEnableVertexAttribArray (2);
-        glVertexAttribIPointer (2, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "block_id"));
+        glEnableVertexAttribArray (g_block_shader_attribs.block_id);
+        glVertexAttribIPointer (g_block_shader_attribs.block_id, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "block_id"));
 
-        glEnableVertexAttribArray (3);
-        glVertexAttribIPointer (3, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "corner"));
+        glEnableVertexAttribArray (g_block_shader_attribs.face_corner);
+        glVertexAttribIPointer (g_block_shader_attribs.face_corner, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "corner"));
 
-        glEnableVertexAttribArray (4);
-        glVertexAttribPointer (4, 1, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "block_height"));
+        glEnableVertexAttribArray (g_block_shader_attribs.block_height);
+        glVertexAttribPointer (g_block_shader_attribs.block_height, 1, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "block_height"));
     }
 }
 
