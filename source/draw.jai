@@ -1,5 +1,5 @@
 // We use a texture array of 6 textures to store our texture atlas for each side
-// of the blocks atlas[BlockFace] is the texture atlas for a given block face
+// of the blocks. Atlas[BlockFace] is the texture atlas for a given block face
 
 g_block_shader : GLuint;
 g_texture_atlas : GLuint;
@@ -15,16 +15,25 @@ g_block_shader_attribs : struct
     face : GLuint;
     face_corner : GLuint;
     block_height : GLuint;
+    temperature : GLuint;
+    humidity : GLuint;
 };
 
 Atlas_Cell_Size_No_Border :: 16;
 Atlas_Cell_Border_Size :: 4;
 Atlas_Cell_Size :: Atlas_Cell_Size_No_Border + Atlas_Cell_Border_Size * 2;
 
+Grass_Color_00 := Vec3f.{0.5372, 0.6980, 0.6078};
+Grass_Color_10 := Vec3f.{0.7411, 0.7176, 0.3333};
+Grass_Color_01 := Vec3f.{0.3333, 0.7764, 0.2509};
+Grass_Color_11 := Vec3f.{0.3333, 0.7764, 0.2509};
+
 Vertex :: struct
 {
     position : Vec3f;
     block_height : float;
+    temperature : float;
+    humidity : float;
     face : BlockFace;
     corner : BlockFaceCorner;
     block_id : u8;
@@ -38,6 +47,12 @@ const int Atlas_Cell_Border_Size = %;
 const int Atlas_Cell_Size = Atlas_Cell_Size_No_Border + Atlas_Cell_Border_Size * 2;
 const int Atlas_Cell_Count = %;
 
+const vec3 Grass_Color_00 = vec3 (%, %, %);
+const vec3 Grass_Color_10 = vec3 (%, %, %);
+const vec3 Grass_Color_01 = vec3 (%, %, %);
+const vec3 Grass_Color_11 = vec3 (%, %, %);
+
+%
 GLSL
 
 GL_Block_Shader_Vertex :: #string GLSL
@@ -46,6 +61,8 @@ layout (location = 1) in int a_Block_Id;
 layout (location = 2) in int a_Face;
 layout (location = 3) in int a_Face_Corner;
 layout (location = 4) in float a_Block_Height;
+layout (location = 5) in float a_Temperature;
+layout (location = 6) in float a_Humidity;
 
 const int Block_Face_East  = 0; // +X
 const int Block_Face_West  = 1; // -X
@@ -61,9 +78,18 @@ const int Block_Corner_Bottom_Right = 3;
 
 out vec3 Normal;
 centroid out vec3 Tex_Coords;
+out vec3 Grass_Color;
 
 uniform mat4 u_View_Projection_Matrix;
 uniform sampler2DArray u_Texture_Atlases;
+
+vec3 BilinearMix (vec3 a, vec3 b, vec3 c, vec3 d, float s, float t)
+{
+    vec3 x = mix (a, b, s);
+    vec3 y = mix (c, d, s);
+
+    return mix (x, y, t);
+}
 
 void main ()
 {
@@ -85,6 +111,11 @@ void main ()
     int atlas_tex_y = atlas_cell_y * Atlas_Cell_Size + Atlas_Cell_Border_Size;
 
     bool is_side_face = a_Face != Block_Face_Above && a_Face != Block_Face_Below;
+
+    if (a_Block_Id == Block_Grass && a_Face == Block_Face_Above)
+        Grass_Color = BilinearMix (Grass_Color_00, Grass_Color_10, Grass_Color_01, Grass_Color_11, a_Temperature, a_Humidity);
+    else
+        Grass_Color = vec3 (1, 1, 1);
 
     switch (a_Face_Corner)
     {
@@ -111,6 +142,7 @@ GLSL
 GL_Block_Shader_Fragment :: #string GLSL
 in vec3 Normal;
 centroid in vec3 Tex_Coords;
+in vec3 Grass_Color;
 
 out vec4 Frag_Color;
 
@@ -122,9 +154,45 @@ void main ()
     vec4 sampled = texture (u_Texture_Atlases, Tex_Coords);
     // vec4 sampled = textureLod (u_Texture_Atlas, Tex_Coords, 1);
     Frag_Color.rgb = sampled.rgb * max (dot (Normal, light_direction), 0.25);
+    Frag_Color.rgb *= Grass_Color;
     Frag_Color.a = sampled.a;
 }
 GLSL
+
+ReloadShaders :: () -> bool
+{
+    block_ids_string : string;
+    {
+        builder : StringBuilder;
+        builder.allocator = Temp;
+
+        for i : 0..BlockID.Count
+            StringBuilderAppend (*builder, "const int Block_% = %;\n", i, cast (int) i);
+
+        block_ids_string = StringBuilderBuild (*builder, allocator = Temp);
+    }
+
+    shader_header := FormatString (GL_Block_Shader_Header,
+        Atlas_Cell_Size_No_Border, Atlas_Cell_Border_Size, g_atlas_cell_count,
+        Grass_Color_00.r, Grass_Color_00.g, Grass_Color_00.b,
+        Grass_Color_10.r, Grass_Color_10.g, Grass_Color_10.b,
+        Grass_Color_01.r, Grass_Color_01.g, Grass_Color_01.b,
+        Grass_Color_11.r, Grass_Color_11.g, Grass_Color_11.b,
+        block_ids_string
+    );
+
+    vertex_source   := StringJoin (shader_header, GL_Block_Shader_Vertex);
+    fragment_source := StringJoin (shader_header, GL_Block_Shader_Fragment);
+
+    new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source);
+    if !new_shader
+        return false;
+
+    glDeleteProgram (g_block_shader);
+    g_block_shader = new_shader;
+
+    return true;
+}
 
 DrawInit :: (textures_directory : string) -> bool
 {
@@ -134,11 +202,7 @@ DrawInit :: (textures_directory : string) -> bool
         return false;
     }
 
-    shader_header := FormatString (GL_Block_Shader_Header, Atlas_Cell_Size_No_Border, Atlas_Cell_Border_Size, g_atlas_cell_count);
-    vertex_source   := StringJoin (shader_header, GL_Block_Shader_Vertex);
-    fragment_source := StringJoin (shader_header, GL_Block_Shader_Fragment);
-    g_block_shader = GL_Utils.CreateShaderProgram (vertex_source, fragment_source);
-    if !g_block_shader
+    if !ReloadShaders ()
         return false;
 
     g_block_shader_attribs.position = xx glGetAttribLocation (g_block_shader, "a_Position");
@@ -146,6 +210,8 @@ DrawInit :: (textures_directory : string) -> bool
     g_block_shader_attribs.face = xx glGetAttribLocation (g_block_shader, "a_Face");
     g_block_shader_attribs.face_corner = xx glGetAttribLocation (g_block_shader, "a_Face_Corner");
     g_block_shader_attribs.block_height = xx glGetAttribLocation (g_block_shader, "a_Block_Height");
+    g_block_shader_attribs.temperature = xx glGetAttribLocation (g_block_shader, "a_Temperature");
+    g_block_shader_attribs.humidity = xx glGetAttribLocation (g_block_shader, "a_Humidity");
 
     return true;
 }
@@ -443,6 +509,18 @@ DrawWorld :: (world : *World, camera : Camera)
 
     loc := glGetUniformLocation (g_block_shader, "u_View_Projection_Matrix");
     glUniformMatrix4fv (loc, 1, GL_TRUE, *camera.view_projection_matrix.r0c0);
+
+    loc = glGetUniformLocation (g_block_shader, "u_Grass_Color_00");
+    glUniform3f (loc, Grass_Color_00.r, Grass_Color_00.g, Grass_Color_00.b);
+
+    loc = glGetUniformLocation (g_block_shader, "u_Grass_Color_10");
+    glUniform3f (loc, Grass_Color_10.r, Grass_Color_10.g, Grass_Color_10.b);
+
+    loc = glGetUniformLocation (g_block_shader, "u_Grass_Color_01");
+    glUniform3f (loc, Grass_Color_01.r, Grass_Color_01.g, Grass_Color_01.b);
+
+    loc = glGetUniformLocation (g_block_shader, "u_Grass_Color_11");
+    glUniform3f (loc, Grass_Color_11.r, Grass_Color_11.g, Grass_Color_11.b);
 
     for mesh_type : 0..ChunkMeshType.Count - 1
     {

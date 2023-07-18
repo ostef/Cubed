@@ -518,6 +518,13 @@ UIShowTextureAtlasWindow :: (opened : *bool)
     }
 
     ImGui.Image (cast (ImGui.ImTextureID) g_all_texture_atlases[selected_face], .{avail_width, avail_width});
+
+    ImGui.ColorEdit3 ("Grass Tint T=0 H=0", *Grass_Color_00.n, .NoInputs);
+    ImGui.ColorEdit3 ("Grass Tint T=1 H=0", *Grass_Color_10.n, .NoInputs);
+    ImGui.ColorEdit3 ("Grass Tint T=0 H=1", *Grass_Color_01.n, .NoInputs);
+    ImGui.ColorEdit3 ("Grass Tint T=1 H=1", *Grass_Color_11.n, .NoInputs);
+    if ImGui.Button ("Apply Color")
+        ReloadShaders ();
 }
 
 UIShowGameMetricsWindow :: (opened : *bool)

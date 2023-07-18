@@ -39,6 +39,8 @@ BlockID :: enum u8
     Red_Sand;
     Snow;
     Snowy_Grass;
+
+    Count;
 }
 
 Block :: struct
@@ -148,6 +150,12 @@ ChunkInit :: (chunk : *Chunk, x : s64, z : s64)
 
         glEnableVertexAttribArray (g_block_shader_attribs.block_height);
         glVertexAttribPointer (g_block_shader_attribs.block_height, 1, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "block_height"));
+
+        glEnableVertexAttribArray (g_block_shader_attribs.temperature);
+        glVertexAttribPointer (g_block_shader_attribs.temperature, 1, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "temperature"));
+
+        glEnableVertexAttribArray (g_block_shader_attribs.humidity);
+        glVertexAttribPointer (g_block_shader_attribs.humidity, 1, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "humidity"));
     }
 }
 
@@ -329,131 +337,153 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
     }
 }
 
-PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f, visible_faces : BlockFaceFlags, block_height := 1.0)
+PushBlockVertices :: (
+    vertices : *[..]Vertex,
+    block : BlockID,
+    position : Vec3f,
+    visible_faces : BlockFaceFlags,
+    block_height : float,
+    temperature : float,
+    humidity : float
+)
 {
+    PushVertex :: (face : BlockFace, corner : BlockFaceCorner) -> *Vertex #must #expand
+    {
+        v := ArrayPush (`vertices);
+        v.block_id = cast (u8) `block;
+        v.position = `position;
+        v.block_height = `block_height;
+        v.temperature = `temperature;
+        v.humidity = `humidity;
+        v.face = face;
+        v.corner = corner;
+
+        return v;
+    }
+
     if visible_faces & .East
     {
-        v := ArrayPush (vertices, .{position, block_height, .East, .Bottom_Left, xx block});
+        v := PushVertex (.East, .Bottom_Left);
         v.position += .{1, 0, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .East, .Top_Left, xx block});
+        v = PushVertex (.East, .Top_Left);
         v.position += .{1, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .East, .Top_Right, xx block});
+        v = PushVertex (.East, .Top_Right);
         v.position += .{1, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .East, .Bottom_Left, xx block});
+        v = PushVertex (.East, .Bottom_Left);
         v.position += .{1, 0, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .East, .Top_Right, xx block});
+        v = PushVertex (.East, .Top_Right);
         v.position += .{1, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .East, .Bottom_Right, xx block});
+        v = PushVertex (.East, .Bottom_Right);
         v.position += .{1, 0, 1};
     }
 
     if visible_faces & .West
     {
-        v := ArrayPush (vertices, .{position, block_height, .West, .Bottom_Right, xx block});
+        v := PushVertex (.West, .Bottom_Right);
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .West, .Top_Left, xx block});
+        v = PushVertex (.West, .Top_Left);
         v.position += .{0, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .West, .Top_Right, xx block});
+        v = PushVertex (.West, .Top_Right);
         v.position += .{0, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .West, .Bottom_Right, xx block});
+        v = PushVertex (.West, .Bottom_Right);
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .West, .Bottom_Left, xx block});
+        v = PushVertex (.West, .Bottom_Left);
         v.position += .{0, 0, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .West, .Top_Left, xx block});
+        v = PushVertex (.West, .Top_Left);
         v.position += .{0, block_height, 1};
     }
 
     if visible_faces & .Above
     {
-        v := ArrayPush (vertices, .{position, block_height, .Above, .Bottom_Left, xx block});
+        v := PushVertex (.Above, .Bottom_Left);
         v.position += .{0, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .Above, .Top_Right, xx block});
+        v = PushVertex (.Above, .Top_Right);
         v.position += .{1, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .Above, .Bottom_Right, xx block});
+        v = PushVertex (.Above, .Bottom_Right);
         v.position += .{1, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .Above, .Bottom_Left, xx block});
+        v = PushVertex (.Above, .Bottom_Left);
         v.position += .{0, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .Above, .Top_Left, xx block});
+        v = PushVertex (.Above, .Top_Left);
         v.position += .{0, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .Above, .Top_Right, xx block});
+        v = PushVertex (.Above, .Top_Right);
         v.position += .{1, block_height, 1};
     }
 
     if visible_faces & .Below
     {
-        v := ArrayPush (vertices, .{position, block_height, .Below, .Top_Left, xx block});
+        v := PushVertex (.Below, .Top_Left);
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .Below, .Top_Right, xx block});
+        v = PushVertex (.Below, .Top_Right);
         v.position += .{1, 0, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .Below, .Bottom_Right, xx block});
+        v = PushVertex (.Below, .Bottom_Right);
         v.position += .{1, 0, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .Below, .Top_Left, xx block});
+        v = PushVertex (.Below, .Top_Left);
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .Below, .Bottom_Right, xx block});
+        v = PushVertex (.Below, .Bottom_Right);
         v.position += .{1, 0, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .Below, .Bottom_Left, xx block});
+        v = PushVertex (.Below, .Bottom_Left);
         v.position += .{0, 0, 1};
     }
 
     if visible_faces & .North
     {
-        v := ArrayPush (vertices, .{position, block_height, .North, .Bottom_Right, xx block});
+        v := PushVertex (.North, .Bottom_Right);
         v.position += .{0, 0, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .North, .Bottom_Left, xx block});
+        v = PushVertex (.North, .Bottom_Left);
         v.position += .{1, 0, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .North, .Top_Left, xx block});
+        v = PushVertex (.North, .Top_Left);
         v.position += .{1, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .North, .Bottom_Right, xx block});
+        v = PushVertex (.North, .Bottom_Right);
         v.position += .{0, 0, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .North, .Top_Left, xx block});
+        v = PushVertex (.North, .Top_Left);
         v.position += .{1, block_height, 1};
 
-        v = ArrayPush (vertices, .{position, block_height, .North, .Top_Right, xx block});
+        v = PushVertex (.North, .Top_Right);
         v.position += .{0, block_height, 1};
     }
 
     if visible_faces & .South
     {
-        v := ArrayPush (vertices, .{position, block_height, .South, .Bottom_Left, xx block});
+        v := PushVertex (.South, .Bottom_Left);
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .South, .Top_Right, xx block});
+        v = PushVertex (.South, .Top_Right);
         v.position += .{1, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .South, .Bottom_Right, xx block});
+        v = PushVertex (.South, .Bottom_Right);
         v.position += .{1, 0, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .South, .Bottom_Left, xx block});
+        v = PushVertex (.South, .Bottom_Left);
         v.position += .{0, 0, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .South, .Top_Left, xx block});
+        v = PushVertex (.South, .Top_Left);
         v.position += .{0, block_height, 0};
 
-        v = ArrayPush (vertices, .{position, block_height, .South, .Top_Right, xx block});
+        v = PushVertex (.South, .Top_Right);
         v.position += .{1, block_height, 0};
     }
 }
@@ -520,8 +550,17 @@ ChunkPushVertices :: (chunk : *Chunk, vertices : *[..]Vertex, mesh_type : ChunkM
                     continue;
 
                 visible_faces, block_height := BlockGetVisibleFaces (chunk, block, x, y, z);
+                biome_values := chunk.biome_values[ChunkBlockIndex (x, 0, z)];
 
-                PushBlockVertices (vertices, block, position + Vec3f.{xx x, xx y, xx z}, visible_faces, block_height);
+                PushBlockVertices (
+                    vertices,
+                    block,
+                    position + Vec3f.{xx x, xx y, xx z},
+                    visible_faces,
+                    block_height,
+                    Min (biome_values.temperature / 3.0, 1.0),
+                    Min (biome_values.humidity / 3.0, 1.0)
+                );
             }
         }
     }
