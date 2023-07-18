@@ -178,6 +178,10 @@ main :: ()
 
     defer SDL_Quit ();
 
+    // Multisampling params must be set before creating the window
+    SDL_GL_SetAttribute (SDL_GL_MULTISAMPLEBUFFERS, 1);
+    SDL_GL_SetAttribute (SDL_GL_MULTISAMPLESAMPLES, 4);
+
     x, y : s32 = SDL_WINDOWPOS_UNDEFINED;
     w, h : s32 = 1280, 720;
     g_window = SDL_CreateWindow ("Minecraft", x, y, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
