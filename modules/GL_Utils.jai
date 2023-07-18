@@ -1,6 +1,58 @@
 #import "Common";
 #import "GL";
 
+#scope_file
+
+MakeShaderStringWithLineNumbers :: (shader : string) -> string #must
+{
+    #import "String_Builder";
+
+    line_count := 1;
+    for i : 0..shader.count - 1
+    {
+        if shader[i] == #char "\n"
+            line_count += 1;
+    }
+
+    line_count_len : int;
+    {
+        tmp := line_count;
+        while tmp || line_count_len == 0
+        {
+            tmp /= 10;
+            line_count_len += 1;
+        }
+    }
+
+    builder : StringBuilder;
+    builder.allocator = Temp;
+
+    line_str : string = ---;
+    line_str.data = shader.data;
+    for line : 1..line_count
+    {
+        line_str.count = 0;
+        while line_str.data + line_str.count < shader.data + shader.count
+        {
+            if line_str.data[line_str.count] == #char "\n"
+            {
+                line_str.count += 1;
+                break;
+            }
+
+            line_str.count += 1;
+        }
+
+        StringBuilderAppend (*builder, " {:*} | %", line_count_len, line, line_str);
+
+        line_str.data += line_str.count;
+    }
+
+    return StringBuilderBuild (*builder, allocator = Temp);
+}
+
+#scope_export
+
 CheckShader :: (handle : GLuint, desc : string, location := #caller_location) -> bool #must
 {
     status, log_length : GLint;
@@ -43,7 +95,7 @@ CheckShaderProgram :: (handle : GLuint, desc : string, location := #caller_locat
     return status != 0;
 }
 
-CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$geometry_source := "", location := #caller_location) -> GLuint #must
+CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$geometry_source := "", print_shader_on_error := true, location := #caller_location) -> GLuint #must
 {
     prev_allocator := context.allocator;
     context.allocator = Temp;
@@ -64,7 +116,12 @@ CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$
     glCompileShader (vertex_shader);
 
     if !CheckShader (vertex_shader, "Could not compile vertex shader", location = location)
+    {
+        if print_shader_on_error
+            LogMessage ("Here's the shader we tried to compile:\n%", MakeShaderStringWithLineNumbers (vertex_source));
+
         return 0;
+    }
 
     geometry_shader : GLuint;
     defer glDeleteShader (geometry_shader);
@@ -82,7 +139,12 @@ CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$
         glCompileShader (geometry_shader);
 
         if !CheckShader (geometry_shader, "Could not compile geometry shader", location = location)
+        {
+            if print_shader_on_error
+                LogMessage ("Here's the shader we tried to compile:\n%", MakeShaderStringWithLineNumbers (geometry_source));
+
             return 0;
+        }
     }
 
     fragment_shader := glCreateShader (GL_FRAGMENT_SHADER);
@@ -97,7 +159,12 @@ CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$
     glCompileShader (fragment_shader);
 
     if !CheckShader (fragment_shader, "Could not compile vertex shader", location = location)
+    {
+        if print_shader_on_error
+            LogMessage ("Here's the shader we tried to compile:\n%", MakeShaderStringWithLineNumbers (fragment_source));
+
         return 0;
+    }
 
     shader_program := glCreateProgram ();
 
