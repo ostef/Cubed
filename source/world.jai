@@ -104,7 +104,7 @@ World :: struct
     chunk_generation_thread_group : Threads.Thread_Group;
 }
 
-GetBlockMeshType :: inline (block : BlockID) -> ChunkMeshType #must
+BlockGetMeshType :: inline (block : BlockID) -> ChunkMeshType #must
 {
     if block ==
     {
@@ -458,6 +458,54 @@ PushBlockVertices :: (vertices : *[..]Vertex, block : BlockID, position : Vec3f,
     }
 }
 
+BlockGetHeight :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> float #must
+{
+    block := ChunkGetBlock (chunk, x, y, z);
+    above := ChunkGetBlock (chunk, x, y + 1, z);
+    if block.id == .Water && above.id != .Water
+            return 14.0 / 16.0;
+
+    return 1;
+}
+
+BlockGetHeight :: inline (chunk : *Chunk, block : Block, x : s64, y : s64, z : s64) -> float #must
+{
+    above := ChunkGetBlock (chunk, x, y + 1, z);
+    if block.id == .Water && above.id != .Water
+        return 14.0 / 16.0;
+
+    return 1;
+}
+
+BlockGetVisibleFaces :: inline (chunk : *Chunk, block : Block, x : s64, y : s64, z : s64) -> BlockFaceFlags #must, height : float
+{
+    mesh_type := BlockGetMeshType (block);
+    block_height := BlockGetHeight (chunk, block, x, y, z);
+
+    east  := ChunkGetBlock (chunk, x + 1, y, z);
+    west  := ChunkGetBlock (chunk, x - 1, y, z);
+    above := ChunkGetBlock (chunk, x, y + 1, z);
+    below := ChunkGetBlock (chunk, x, y - 1, z);
+    north := ChunkGetBlock (chunk, x, y, z + 1);
+    south := ChunkGetBlock (chunk, x, y, z - 1);
+
+    visible_faces : BlockFaceFlags;
+    if BlockGetMeshType (east) != mesh_type || BlockGetHeight (chunk, east, x + 1, y, z) != block_height
+        visible_faces |= .East;
+    if BlockGetMeshType (west) != mesh_type || BlockGetHeight (chunk, west, x - 1, y, z) != block_height
+        visible_faces |= .West;
+    if BlockGetMeshType (above) != mesh_type || block_height != 1
+        visible_faces |= .Above;
+    if BlockGetMeshType (below) != mesh_type || BlockGetHeight (chunk, below, x, y - 1, z) != 1
+        visible_faces |= .Below;
+    if BlockGetMeshType (north) != mesh_type || BlockGetHeight (chunk, north, x, y, z + 1) != block_height
+        visible_faces |= .North;
+    if BlockGetMeshType (south) != mesh_type || BlockGetHeight (chunk, south, x, y, z - 1) != block_height
+        visible_faces |= .South;
+
+    return visible_faces, block_height;
+}
+
 ChunkPushVertices :: (chunk : *Chunk, vertices : *[..]Vertex, mesh_type : ChunkMeshType)
 {
     position := Vec3f.{xx (chunk.x * Chunk_Size), 0, xx (chunk.z * Chunk_Size)};
@@ -468,31 +516,10 @@ ChunkPushVertices :: (chunk : *Chunk, vertices : *[..]Vertex, mesh_type : ChunkM
             for x : 0..Chunk_Size - 1
             {
                 block := ChunkGetBlockInChunk (chunk, x, y, z);
-                if GetBlockMeshType (block) != mesh_type
+                if BlockGetMeshType (block) != mesh_type
                     continue;
 
-                top_block := ChunkGetBlock (chunk, x, y + 1, z);
-                bottom_block := ChunkGetBlock (chunk, x, y - 1, z);
-
-                block_height : float = ---;
-                if block.id == .Water && top_block.id != .Water
-                    block_height = 14.0 / 16.0;
-                else
-                    block_height = 8.0 / 16.0;
-
-                visible_faces : BlockFaceFlags;
-                if GetBlockMeshType (ChunkGetBlock (chunk, x + 1, y, z)) != mesh_type
-                    visible_faces |= .East;
-                if GetBlockMeshType (ChunkGetBlock (chunk, x - 1, y, z)) != mesh_type
-                    visible_faces |= .West;
-                if GetBlockMeshType (top_block) != mesh_type
-                    visible_faces |= .Above;
-                if GetBlockMeshType (bottom_block) != mesh_type
-                    visible_faces |= .Below;
-                if GetBlockMeshType (ChunkGetBlock (chunk, x, y, z + 1)) != mesh_type
-                    visible_faces |= .North;
-                if GetBlockMeshType (ChunkGetBlock (chunk, x, y, z - 1)) != mesh_type
-                    visible_faces |= .South;
+                visible_faces, block_height := BlockGetVisibleFaces (chunk, block, x, y, z);
 
                 PushBlockVertices (vertices, block, position + Vec3f.{xx x, xx y, xx z}, visible_faces, block_height);
             }
