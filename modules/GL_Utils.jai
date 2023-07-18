@@ -118,7 +118,7 @@ CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$
     if !CheckShader (vertex_shader, "Could not compile vertex shader", location = location)
     {
         if print_shader_on_error
-            LogMessage ("Here's the shader we tried to compile:\n%", MakeShaderStringWithLineNumbers (vertex_source));
+            LogMessage ("Here's the shader we tried to compile:\n\n%", MakeShaderStringWithLineNumbers (vertex_source));
 
         return 0;
     }
@@ -141,7 +141,7 @@ CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$
         if !CheckShader (geometry_shader, "Could not compile geometry shader", location = location)
         {
             if print_shader_on_error
-                LogMessage ("Here's the shader we tried to compile:\n%", MakeShaderStringWithLineNumbers (geometry_source));
+                LogMessage ("Here's the shader we tried to compile:\n\n%", MakeShaderStringWithLineNumbers (geometry_source));
 
             return 0;
         }
@@ -161,7 +161,7 @@ CreateShaderProgram :: ($$vertex_source : string, $$fragment_source : string, $$
     if !CheckShader (fragment_shader, "Could not compile vertex shader", location = location)
     {
         if print_shader_on_error
-            LogMessage ("Here's the shader we tried to compile:\n%", MakeShaderStringWithLineNumbers (fragment_source));
+            LogMessage ("Here's the shader we tried to compile:\n\n%", MakeShaderStringWithLineNumbers (fragment_source));
 
         return 0;
     }
