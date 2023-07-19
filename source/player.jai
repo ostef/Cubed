@@ -154,7 +154,7 @@ UpdateBlockBreaking :: (world : *World, using camera : *Camera, player : *Player
         block_aabb := BlockAABB (hit_result.block_x, hit_result.block_y, hit_result.block_z);
         Im3d.DrawAlignedBox (block_aabb.min, block_aabb.max);
 
-        if IsMouseButtonPressed (SDL_BUTTON_LEFT)
+        if !ImGui.GetIO ().WantCaptureMouse && (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0 && IsMouseButtonPressed (SDL_BUTTON_LEFT)
         {
             block_x, block_z := ChunkAbsoluteToRelativeCoordinates (hit_result.chunk.x, hit_result.chunk.z, hit_result.block_x, hit_result.block_z);
             ChunkSetBlockInChunk (hit_result.chunk, block_x, hit_result.block_y, block_z, .{});

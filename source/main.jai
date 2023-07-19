@@ -321,12 +321,20 @@ main :: ()
 
             case SDL_WINDOWEVENT;
                 window := SDL_GetWindowFromID (event.window.windowID);
-                if event.window.event == SDL_WINDOWEVENT_CLOSE && window == g_window
-                    quit = true;
+                if window == g_window
+                {
+                    if event.window.event ==
+                    {
+                    case SDL_WINDOWEVENT_CLOSE;
+                        quit = true;
+                    case SDL_WINDOWEVENT_FOCUS_LOST;
+                        g_should_capture_mouse = false;
+                    }
+                }
             }
         }
 
-        if IsKeyPressed (SDLK_ESCAPE)
+        if (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0 && IsKeyPressed (SDLK_ESCAPE)
             g_should_capture_mouse = !g_should_capture_mouse;
 
         if g_should_capture_mouse
