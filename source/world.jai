@@ -299,6 +299,17 @@ ChunkGetBlock :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> Block #mu
     return ChunkGetBlockInChunk (chunk, x, y, z);
 }
 
+BiomeGetSurfaceBlock :: inline (world : World, chunk : *Chunk, biome : Biome, surface_height : float, x : s64, y : s64, z : s64) -> Block #must
+{
+    isurface_height := cast (int) surface_height;
+    if y < world.water_level
+        return .{id=biome.flooded_surface_block};
+    else if y == isurface_height
+        return .{id=biome.surface_top_block};
+    else
+        return .{id=biome.surface_block};
+}
+
 // Careful: this routine must be thread safe!
 ChunkGenerate :: (world : World, chunk : *Chunk)
 {
@@ -307,7 +318,11 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
 
     defer chunk.is_generated = true;
 
+    surface_thickness_rng : RNG;
+    RandomSeed (*surface_thickness_rng, world.seed + 57483593 + HashS64 (chunk.x) + HashS64 (chunk.z));
+
     surface_height_map : [Chunk_Size * Chunk_Size]float = ---;
+    surface_thickness_map : [Chunk_Size * Chunk_Size]float = ---;
     {
         terrain_params : [TerrainParam.Count]float = ---;
         for z : 0..Chunk_Size - 1
@@ -319,8 +334,12 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
 
                 index := ChunkBlockIndex (x, 0, z);
                 CalculateTerrainParams (world, *terrain_params, xx sample_x, xx sample_z);
+
                 chunk.biome_values[index] = CalculateBiomeValuesFromTerrainParams (terrain_params);
+                biome := *Biomes[chunk.biome_values[index].biome_id];
+
                 surface_height_map[index] = terrain_params[TerrainParam.Surface_Height];
+                surface_thickness_map[index] = biome.surface_layer_thickness + RandomRangeFloat (*surface_thickness_rng, -biome.surface_layer_fluctuation, biome.surface_layer_fluctuation);
             }
         }
     }
@@ -332,8 +351,10 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
             for x : 0..Chunk_Size - 1
             {
                 index := ChunkBlockIndex (x, y, z);
-                surface_height := surface_height_map[ChunkBlockIndex (x, 0, z)];
-                biome_id := chunk.biome_values[ChunkBlockIndex (x, 0, z)].biome_id;
+                surface_index := ChunkBlockIndex (x, 0, z);
+                surface_height := surface_height_map[surface_index];
+                surface_thickness := surface_thickness_map[surface_index];
+                biome_id := chunk.biome_values[surface_index].biome_id;
                 biome := *Biomes[biome_id];
 
                 if y == 0
@@ -347,11 +368,19 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
                     else
                         chunk.blocks[index].id = .Air;
                 }
-                else if y > cast (int) surface_height - 5
+                else if y > cast (int) (surface_height - surface_thickness)
                 {
-                    chunk.blocks[index].id = biome.surface_block;
+                    chunk.blocks[index] = BiomeGetSurfaceBlock (world, chunk, biome, surface_height, x, y, z);
                 }
                 else
+                // else if y == cast (int) surface_height
+                // {
+                //     chunk.blocks[index].id = biome.surface_block;
+                // }
+                // else if y > cast (int) surface_height - 5
+                // {
+                //     chunk.blocks[index].id = .Dirt;
+                // }
                 {
                     chunk.blocks[index].id = .Stone;
                 }
