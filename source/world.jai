@@ -310,6 +310,43 @@ BiomeGetSurfaceBlock :: inline (world : World, chunk : *Chunk, biome : Biome, su
         return .{id=biome.surface_block};
 }
 
+#no_reset
+Offsets : [Perlin_Fractal_Max_Octaves]Vec3f;
+#no_reset
+Offsets2 : [Perlin_Fractal_Max_Octaves]Vec3f;
+
+#run {
+    PerlinGenerateOffsets (*context.random_number_generator, Offsets);
+    PerlinGenerateOffsets (*context.random_number_generator, Offsets2);
+};
+
+Cheese_Cave_Noise_Params := NoiseParams.{
+    scale = 0.0478,
+    octaves = 4,
+    persistance = 0.545,
+    lacunarity = 0.323
+};
+
+Cheese_Cave_Threshold := 0.245;
+
+Spaggetti_Cave_Noise_Params := NoiseParams.{
+    scale = 0.03283,
+    octaves = 3,
+    persistance = 0.345,
+    lacunarity = 1.738
+};
+
+Spaggetti_Cave_Threshold := 0.245;
+
+Noodle_Cave_Noise_Params := NoiseParams.{
+    scale = 0.03283,
+    octaves = 3,
+    persistance = 0.345,
+    lacunarity = 1.738
+};
+
+Noodle_Cave_Threshold := 0.245;
+
 // Careful: this routine must be thread safe!
 ChunkGenerate :: (world : World, chunk : *Chunk)
 {
@@ -372,7 +409,6 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
                 {
                     chunk.blocks[index] = BiomeGetSurfaceBlock (world, chunk, biome, surface_height, x, y, z);
                 }
-                else
                 // else if y == cast (int) surface_height
                 // {
                 //     chunk.blocks[index].id = biome.surface_block;
@@ -381,8 +417,55 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
                 // {
                 //     chunk.blocks[index].id = .Dirt;
                 // }
+                else if y > cast (int) (surface_height - 15)
                 {
                     chunk.blocks[index].id = .Stone;
+                }
+                else
+                {
+                    // Noodle caves threshold ~ 0.1
+                    // Spaggetti caves threshold ~ 0.1
+
+                    sample_x := x + chunk.x * Chunk_Size;
+                    sample_z := z + chunk.z * Chunk_Size;
+
+                    is_air := false;
+                    cheese_cave_value := PerlinFractalNoise (Cheese_Cave_Noise_Params, Offsets, xx sample_x, xx y, xx sample_z);
+                    cheese_cave_value /= PerlinFractalMax (Cheese_Cave_Noise_Params.octaves, Cheese_Cave_Noise_Params.persistance);
+                    cheese_cave_value = (cheese_cave_value + 1) * 0.5;
+                    if cheese_cave_value < Cheese_Cave_Threshold
+                    {
+                        is_air = true;
+                    }
+                    else
+                    {
+                        spaggetti1 := PerlinFractalNoise (Spaggetti_Cave_Noise_Params, Offsets, xx sample_x, xx y, xx sample_z);
+                        spaggetti1 /= PerlinFractalMax (Spaggetti_Cave_Noise_Params.octaves, Spaggetti_Cave_Noise_Params.persistance);
+                        spaggetti2 := PerlinFractalNoise (Spaggetti_Cave_Noise_Params, Offsets, xx sample_x, xx y + 40.0, xx sample_z);
+                        spaggetti2 /= PerlinFractalMax (Spaggetti_Cave_Noise_Params.octaves, Spaggetti_Cave_Noise_Params.persistance);
+                        spaggetti_cave_value := (spaggetti1 * spaggetti1 + spaggetti2 * spaggetti2) / Spaggetti_Cave_Threshold;
+
+                        if spaggetti_cave_value < Spaggetti_Cave_Threshold
+                        {
+                            is_air = true;
+                        }
+                        else
+                        {
+                            noodle1 := PerlinFractalNoise (Noodle_Cave_Noise_Params, Offsets2, xx sample_x, xx y, xx sample_z);
+                            noodle1 /= PerlinFractalMax (Noodle_Cave_Noise_Params.octaves, Noodle_Cave_Noise_Params.persistance);
+                            noodle2 := PerlinFractalNoise (Noodle_Cave_Noise_Params, Offsets2, xx sample_x, xx y + 40.0, xx sample_z);
+                            noodle2 /= PerlinFractalMax (Noodle_Cave_Noise_Params.octaves, Noodle_Cave_Noise_Params.persistance);
+                            noodle_cave_value := (noodle1 * noodle1 + noodle2 * noodle2) / Noodle_Cave_Threshold;
+
+                            if noodle_cave_value < Noodle_Cave_Threshold
+                                is_air = true;
+                        }
+                    }
+
+                    if is_air
+                        chunk.blocks[index].id = .Air;
+                    else
+                        chunk.blocks[index].id = .Stone;
                 }
             }
         }

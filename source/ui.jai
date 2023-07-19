@@ -550,11 +550,68 @@ UIShowGameMetricsWindow :: (opened : *bool)
     ImGui.LabelText ("Fly Toggle Timer", "%.3f", g_player.fly_toggle_timer);
 }
 
+#scope_file
+
+g_cave_generation_window : struct
+{
+    cheese_cave_params := NoiseParams.{
+        scale = 0.0478,
+        octaves = 4,
+        persistance = 0.545,
+        lacunarity = 0.323
+    };
+    cheese_cave_threshold := 0.245;
+    spaggetti_cave_params := NoiseParams.{
+        scale = 0.0478,
+        octaves = 4,
+        persistance = 0.545,
+        lacunarity = 0.323
+    };
+    spaggetti_cave_threshold := 0.245;
+    noodle_cave_params := NoiseParams.{
+        scale = 0.0478,
+        octaves = 4,
+        persistance = 0.545,
+        lacunarity = 0.323
+    };
+    noodle_cave_threshold := 0.128;
+};
+
+#scope_export
+
+UIShowCaveGenerationWindow :: (opened : *bool)
+{
+    using g_cave_generation_window;
+
+    defer ImGui.End ();
+    if !ImGui.Begin ("Cave Generation", opened)
+        return;
+
+    ImGui.SeparatorText ("Cheese Caves");
+    UIShowNoiseParams (ImGui.GetID ("Cheese Noise Params"), *cheese_cave_params);
+    ImGui.SliderFloat ("Threshold##Cheese", *cheese_cave_threshold, 0, 1);
+
+    ImGui.SeparatorText ("Spaggetti Caves");
+    UIShowNoiseParams (ImGui.GetID ("Spaggetti Noise Params"), *spaggetti_cave_params);
+    ImGui.SliderFloat ("Threshold##Spaggetti", *spaggetti_cave_threshold, 0, 1);
+
+    if ImGui.Button ("Regenerate World")
+    {
+        Cheese_Cave_Noise_Params = cheese_cave_params;
+        Cheese_Cave_Threshold = cheese_cave_threshold;
+        Spaggetti_Cave_Noise_Params = spaggetti_cave_params;
+        Spaggetti_Cave_Threshold = spaggetti_cave_threshold;
+        WorldFree (*g_world);
+        WorldInit (*g_world, g_world.seed);
+    }
+}
+
 g_ui_show_demo_window := false;
 g_ui_show_perlin_test_window := false;
 g_ui_show_terrain_generator_window := false;
 g_ui_show_texture_atlas_window := false;
-g_ui_show_game_metrics_window := true;
+g_ui_show_game_metrics_window := false;
+g_ui_show_cave_generation_window := true;
 
 UIUpdate :: ()
 {
@@ -570,6 +627,8 @@ UIUpdate :: ()
             g_ui_show_texture_atlas_window = true;
         if ImGui.MenuItem ("Game Metrics")
             g_ui_show_game_metrics_window = true;
+        if ImGui.MenuItem ("Cave Generation")
+            g_ui_show_cave_generation_window = true;
 
         ImGui.EndMainMenuBar ();
     }
@@ -588,4 +647,7 @@ UIUpdate :: ()
 
     if g_ui_show_game_metrics_window
         UIShowGameMetricsWindow (*g_ui_show_game_metrics_window);
+
+    if g_ui_show_cave_generation_window
+        UIShowCaveGenerationWindow (*g_ui_show_cave_generation_window);
 }
