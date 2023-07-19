@@ -7,7 +7,7 @@ Camera :: struct
     mouse_input : Vec2f;
 
     base_movement_speed := 1.0;
-    rotation_speed := 60.0; // in degrees per second
+    rotation_speed := 50.0; // in degrees per second
     rotation_smoothing := 0.3;
 
     distance_to_target := 4.0;

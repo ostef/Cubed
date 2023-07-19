@@ -4,7 +4,7 @@ Player :: struct
     target_orientation : float;
     orientation : float;
     velocity : Vec3f;
-    flying := true;
+    flying := false;
     transform_matrix : Mat4f;
     enable_collisions := true;
     was_on_ground, is_on_ground : bool;
@@ -136,9 +136,35 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     transform_matrix = Mat4fTranslate (position) * Mat4fRotate (.{0, 1, 0}, orientation);
 }
 
+Block_Selection_Distance :: 4.0;
+
+UpdateBlockBreaking :: (world : *World, using camera : *Camera, player : *Player)
+{
+    hit_result := RayIntersectsWorld (
+        world,
+        .{
+            origin=player.position + .{0, 1.5, 0} + ForwardVector (transform_matrix) * Player_Size,
+            direction=ForwardVector (transform_matrix),
+            length=Block_Selection_Distance
+        }
+    );
+
+    if hit_result.hit
+    {
+        block_aabb := BlockAABB (hit_result.block_x, hit_result.block_y, hit_result.block_z);
+        Im3d.DrawAlignedBox (block_aabb.min, block_aabb.max);
+
+        if IsMouseButtonPressed (SDL_BUTTON_LEFT)
+        {
+            block_x, block_z := ChunkAbsoluteToRelativeCoordinates (hit_result.chunk.x, hit_result.chunk.z, hit_result.block_x, hit_result.block_z);
+            ChunkSetBlockInChunk (hit_result.chunk, block_x, hit_result.block_y, block_z, .{});
+        }
+    }
+}
+
 DrawPlayer :: (world : World, using player : Player, camera : Camera)
 {
-    aabb := PlayerAABB (player);
-    Im3d.DrawAlignedBox (aabb.min, aabb.max);
+    // aabb := PlayerAABB (player);
+    // Im3d.DrawAlignedBox (aabb.min, aabb.max);
     // Im3d.DrawArrow (position, position + velocity * 60);
 }

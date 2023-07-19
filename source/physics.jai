@@ -181,6 +181,74 @@ else
     return result, t_near, t_far;
 }
 
+RayIntersectsWorld :: (world : *World, ray : Ray) -> HitResult #must
+{
+    min_x, max_x := MinMax (ray.origin.x, ray.origin.x + ray.direction.x * ray.length);
+    min_y, max_y := MinMax (ray.origin.y, ray.origin.y + ray.direction.y * ray.length);
+    min_z, max_z := MinMax (ray.origin.z, ray.origin.z + ray.direction.z * ray.length);
+
+    min_x = Floor (min_x);
+    min_y = Floor (min_y);
+    min_z = Floor (min_z);
+
+    max_x = Ceil (max_x);
+    max_y = Ceil (max_y);
+    max_z = Ceil (max_z);
+
+    chunk_x, chunk_z := ChunkPositionFromWorldPosition (cast (int) min_x, cast (int)  min_z);
+    chunk := WorldGetChunk (world, chunk_x, chunk_z);
+
+    closest_hit : HitResult;
+    closest_hit.distance = Math.FLOAT32_MAX;
+    for y : cast (int) min_y..cast (int) max_y
+    {
+        for z : cast (int) min_z..cast (int) max_z
+        {
+            for x : cast (int) min_x..cast (int) max_x
+            {
+                curr_chunk_x, curr_chunk_z := ChunkPositionFromWorldPosition (x, z);
+                if chunk_x != curr_chunk_x || chunk_z != curr_chunk_z
+                {
+                    chunk_x = curr_chunk_x;
+                    chunk_z = curr_chunk_z;
+                    chunk = WorldGetChunk (world, chunk_x, chunk_z);
+                }
+
+                if !chunk
+                    continue;
+
+                rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, x, z);
+                block_aabb := BlockAABB (x, y, z);
+
+                block := ChunkGetBlockInChunk (chunk, rel_x, y, rel_z);
+                if block.id == .Air || block.id == .Water
+                    continue;
+
+                result := RayIntersectsAABB (ray, block_aabb);
+                if result.hit
+                {
+                    if result.distance < closest_hit.distance
+                    {
+                        closest_hit = result;
+                        closest_hit.chunk = chunk;
+                        closest_hit.chunk_x = chunk_x;
+                        closest_hit.chunk_z = chunk_z;
+                        closest_hit.block = block;
+                        closest_hit.block_x = x;
+                        closest_hit.block_y = y;
+                        closest_hit.block_z = z;
+                    }
+                }
+            }
+        }
+    }
+
+    if closest_hit.hit
+        closest_hit.block_face = BlockFaceFromNormal (closest_hit.normal);
+
+    return closest_hit;
+}
+
 SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, length : float) -> HitResult #must
 {
     center := AABBCenter (aabb);
@@ -249,7 +317,7 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
                     if result.distance < closest_hit.distance
                     {
                         closest_hit = result;
-                        closest_hit.chunk = null;
+                        closest_hit.chunk = chunk;
                         closest_hit.chunk_x = chunk_x;
                         closest_hit.chunk_z = chunk_z;
                         closest_hit.block = block;

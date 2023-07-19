@@ -47,9 +47,9 @@ Ceil :: Math.ceil;
 
 g_window : *SDL_Window;
 g_camera : Camera;
-g_fps_camera : bool;
+g_fps_camera := true;
 g_mouse_delta : Vec2f;
-g_should_capture_mouse : bool;
+g_should_capture_mouse := true;
 g_settings : struct
 {
     render_distance := 6;
@@ -59,6 +59,7 @@ g_player : Player;
 g_physics_breakpoint_hit : bool;
 g_physics_step : bool;
 g_prev_keyboard_state : [SDL_NUM_SCANCODES]bool;
+g_prev_mouse_state : u32;
 
 Fixed_Delta_Time :: 1 / 60.0;
 
@@ -122,6 +123,16 @@ IsMouseButtonDown :: inline (button : int) -> bool #must
     state := SDL_GetMouseState (null, null);
 
     return state & SDL_BUTTON (button) != 0;
+}
+
+IsMouseButtonPressed :: inline (button : int) -> bool #must
+{
+    return (g_prev_mouse_state & SDL_BUTTON (button)) == 0 && IsMouseButtonDown (button);
+}
+
+IsMouseButtonReleased :: inline (button : int) -> bool #must
+{
+    return (g_prev_mouse_state & SDL_BUTTON (button)) != 0 && !IsMouseButtonDown (button);
 }
 
 UpdateIm3dKeys :: ()
@@ -261,7 +272,7 @@ main :: ()
     b_aabb := AABB.{.{2, 2, 2}, .{3, 3, 3}};
     point := Vec3f.{-1, 0.5, 0.7};
 
-    WorldInit (*g_world, Basic.current_time_monotonic ().low);
+    WorldInit (*g_world, 1725362821052241920);//Basic.current_time_monotonic ().low);
     defer WorldFree (*g_world);
 
     #if Basic.MEMORY_DEBUGGER
@@ -281,6 +292,8 @@ main :: ()
         keyboard_state_len : s32;
         keyboard_state := SDL_GetKeyboardState (*keyboard_state_len);
         memcpy (g_prev_keyboard_state.data, keyboard_state, keyboard_state_len);
+
+        g_prev_mouse_state = SDL_GetMouseState (null, null);
 
         g_mouse_delta = .{};
         event : SDL_Event;
@@ -313,16 +326,13 @@ main :: ()
             }
         }
 
-        if !ImGui.GetIO ().WantCaptureMouse && IsMouseButtonDown (SDL_BUTTON_RIGHT)
-        {
-            g_should_capture_mouse = true;
+        if IsKeyPressed (SDLK_ESCAPE)
+            g_should_capture_mouse = !g_should_capture_mouse;
+
+        if g_should_capture_mouse
             SDL_SetRelativeMouseMode (SDL_TRUE);
-        }
         else
-        {
-            g_should_capture_mouse = false;
             SDL_SetRelativeMouseMode (SDL_FALSE);
-        }
 
         window_w, window_h : s32;
         SDL_GetWindowSize (g_window, *window_w, *window_h);
@@ -354,6 +364,8 @@ main :: ()
                 UpdateFPSCamera (*g_camera, g_player, delta_time);
             else
                 UpdateTPSCamera (*g_camera, g_player, delta_time);
+
+            UpdateBlockBreaking (*g_world, *g_camera, *g_player);
         }
         else
         {

@@ -264,6 +264,29 @@ ChunkGetBlockInChunk :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> Bl
     return chunk.blocks[ChunkBlockIndex (x, y, z)];
 }
 
+ChunkSetBlockInChunk :: inline (chunk : *Chunk, x : s64, y : s64, z : s64, block : Block)
+{
+    #if Enable_Chunk_Bounds_Check
+    {
+        Assert (x >= 0 && x < Chunk_Size, "Invalid x coordinate (got %)", x);
+        Assert (y >= 0 && y < Chunk_Height, "Invalid y coordinate (got %)", y);
+        Assert (z >= 0 && z < Chunk_Size, "Invalid z coordinate (got %)", z);
+    }
+
+    chunk.blocks[ChunkBlockIndex (x, y, z)] = block;
+
+    chunk.is_dirty = true;
+    if x == 0 && chunk.west
+        chunk.west.is_dirty = true;
+    else if x == Chunk_Size - 1 && chunk.east
+        chunk.east.is_dirty = true;
+
+    if z == 0 && chunk.south
+        chunk.south.is_dirty = true;
+    else if z == Chunk_Size - 1 && chunk.north
+        chunk.north.is_dirty = true;
+}
+
 ChunkGetBlock :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> Block #must
 {
     if y < 0 || y >= Chunk_Height
