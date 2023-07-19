@@ -4,11 +4,12 @@ Player :: struct
     target_orientation : float;
     orientation : float;
     velocity : Vec3f;
-    flying := false;
-    transform_matrix : Mat4f;
-    enable_collisions := true;
+    flying := true;
+    enable_collisions := false;
     was_on_ground, is_on_ground : bool;
     fly_toggle_timer : float;
+
+    transform_matrix : Mat4f;
 }
 
 Player_Fly_Toggle_Timer := 0.5; // seconds
