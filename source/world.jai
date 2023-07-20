@@ -98,11 +98,13 @@ HashVec2l :: inline (vec : Vec2l) -> u64 #must
 
 World :: struct
 {
+    ChunkMap :: HashMap (Vec2l, *Chunk, hash_func = HashVec2l, comp_func = (a, b) => a == b);
+
     #as using generator : Generator;
     origin_chunk : *Chunk;
-    all_loaded_chunks : HashMap (Vec2l, *Chunk, hash_func = HashVec2l, comp_func = (a, b) => a == b);
+    all_loaded_chunks : ChunkMap;
     // Volatile: all the Chunks in this map are being modified in another thread
-    chunks_being_generated : HashMap (Vec2l, *Chunk, hash_func = HashVec2l, comp_func = (a, b) => a == b);
+    chunks_being_generated : ChunkMap;
     chunk_generation_thread_group : Threads.Thread_Group;
 }
 
@@ -159,7 +161,7 @@ ChunkInit :: (chunk : *Chunk, x : s64, z : s64)
     }
 }
 
-ChunkCleanup :: (chunk : *Chunk)
+ChunkCleanup :: inline (chunk : *Chunk)
 {
     glDeleteVertexArrays (chunk.vaos.count, chunk.vaos.data);
     glDeleteBuffers (chunk.vbos.count, chunk.vbos.data);
