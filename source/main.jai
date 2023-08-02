@@ -44,6 +44,7 @@ Ceil :: Math.ceil;
 #load "ui.jai";
 #load "player.jai";
 #load "biomes.jai";
+#load "noise_simd.jai";
 
 g_window : *SDL_Window;
 g_camera : Camera;
@@ -161,6 +162,9 @@ UpdateIm3dKeys :: ()
 
 main :: ()
 {
+    simd_tests ();
+    return;
+
     #if Basic.MEMORY_DEBUGGER
     {
         defer {
