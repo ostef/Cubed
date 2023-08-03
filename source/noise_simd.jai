@@ -106,13 +106,14 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
     two_fifty_five := s32.[255,255,255,255,255,255,255,255].data;
     #asm AVX
     {
-        // xi := (cast (s32) Floor (x)) & 255
+        // xi := (cast (s32) Floor (x))
         cvtps2dq.y xi:, floor_x;
         cvtps2dq.y yi:, floor_y;
 
         // We're using bitwise AND for packed floats,
         // but the bits represent 8 packed 32-bit ints
         // This seems to work fine, but there may be edge cases
+        // xi := (cast  (s32) Floor (x)) & 255
         andps.y xi, xi, [two_fifty_five];
         andps.y yi, yi, [two_fifty_five];
 
@@ -120,28 +121,24 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
 
     Fade :: (dest : reg, src : reg) #expand
     {
-        Sixes :: float.[6,6,6,6,6,6,6,6];
-        Fifteens :: float.[15,15,15,15,15,15,15,15];
-        Tens :: float.[10,10,10,10,10,10,10,10];
-
-        sixes_ptr := Sixes.data;
-        fifteens_ptr := Fifteens.data;
-        tens_ptr := Tens.data;
+        sixes := float.[6,6,6,6,6,6,6,6].data;
+        fifteens := float.[15,15,15,15,15,15,15,15].data;
+        tens := float.[10,10,10,10,10,10,10,10].data;
         #asm AVX
         {
             // Setup the values
             movups.y dest, src;
 
             // Multiply by 6
-            mulps.y dest, dest, [sixes_ptr]; // t * 6
+            mulps.y dest, dest, [sixes]; // t * 6
 
             // Subtract 15
-            subps.y dest, dest, [fifteens_ptr]; // t * 6 - 15
+            subps.y dest, dest, [fifteens]; // t * 6 - 15
 
             // Multiply by t
             mulps.y dest, dest, src; // t * (t * 6 - 15)
             // Add 10
-            addps.y dest, dest, [tens_ptr]; // t * (t * 6 - 15) + 10
+            addps.y dest, dest, [tens]; // t * (t * 6 - 15) + 10
 
             // Multiply by t three times
             mulps.y dest, dest, src; // t * (t * (t * 6 - 15) + 10)
@@ -159,7 +156,7 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
     Fade (u, xf);
     Fade (v, yf);
 
-    IndexIntoPermutationTable :: (table : *void, x : reg, y : reg, dest : reg, $x_disp := 0) #expand
+    IndexIntoPermutationTable :: (x : reg, y : reg, dest : reg, $x_disp := 0) #expand
     {
         #asm AVX, AVX2
         {
@@ -169,16 +166,21 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
             // For all the bits that are unset, nothing is done
             // The mask is reset to 0 after gathering
             pcmpeqd.y gather_mask:, gather_mask, gather_mask;
-            gatherdps.y index:, [table + x * 4 + x_disp], gather_mask;
+            gatherdps.y index:, [`table + x * 4 + x_disp], gather_mask;
 
             // P[xi] + yi
             paddd.y index, index, y;
 
             // P[ P[xi] + yi ]
             pcmpeqd.y gather_mask, gather_mask, gather_mask;
-            gatherdps.y dest, [table + index * 4], gather_mask;
+            gatherdps.y dest, [`table + index * 4], gather_mask;
         }
     }
+
+    // aa := P[P[xi    ] + yi    ];
+    // ba := P[P[xi + 1] + yi    ];
+    // ab := P[P[xi    ] + yi + 1];
+    // bb := P[P[xi + 1] + yi + 1];
 
     #asm
     {
@@ -188,54 +190,124 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
         bb : vec;
     }
 
-    IndexIntoPermutationTable (Perlin_Permutation_Table.data, xi, yi, aa);
-    IndexIntoPermutationTable (Perlin_Permutation_Table.data, xi, yi, ba, x_disp = 4);
+    table := Perlin_Permutation_Table.data;
+    IndexIntoPermutationTable (xi, yi, aa);
+    IndexIntoPermutationTable (xi, yi, ba, x_disp = 4);
 
-    Ones := s32.[1,1,1,1,1,1,1,1];
-    ones := Ones.data;
+    ones := s32.[1,1,1,1,1,1,1,1].data;
     #asm AVX, AVX2
     {
         paddd.y yi, yi, [ones];
     }
 
-    IndexIntoPermutationTable (Perlin_Permutation_Table.data, xi, yi, ab);
-    IndexIntoPermutationTable (Perlin_Permutation_Table.data, xi, yi, bb, x_disp = 4);
+    IndexIntoPermutationTable (xi, yi, ab);
+    IndexIntoPermutationTable (xi, yi, bb, x_disp = 4);
 
-    // _aa : [8]s32;
-    // _ba : [8]s32;
-    // _ab : [8]s32;
-    // _bb : [8]s32;
-    // aa_ptr := _aa.data;
-    // ba_ptr := _ba.data;
-    // ab_ptr := _ab.data;
-    // bb_ptr := _bb.data;
-    // #asm AVX
-    // {
-    //     movdqu.y [aa_ptr], aa;
-    //     movdqu.y [ba_ptr], ba;
-    //     movdqu.y [ab_ptr], ab;
-    //     movdqu.y [bb_ptr], bb;
-    // }
-    // Println (_aa);
-    // Println (_ba);
-    // Println (_ab);
-    // Println (_bb);
-
-    u_result : [8]float = ---;
-    u_ptr := u_result.data;
-    #asm AVX
+    // Modifies hash and dest
+    Gradient :: (dest : reg, hash : reg, x : reg, y : reg) #expand
     {
-        movups [u_ptr], u;
+        ones := s32.[1,1,1,1,1,1,1,1].data;
+        threes := s32.[3,3,3,3,3,3,3,3].data;
+        #asm AVX, AVX2
+        {
+            xorps.y zeros:, zeros, zeros;
 
-        cvtdq2ps.y floor_x, xi;
-        movups [result_ptr], floor_x;
+            // hash = hash & 3
+            andps.y hash, hash, [threes];
+
+            // Y is negative if hash is greater than 1,
+            // that is if the second bit is set. To check
+            // that, we bitshift Y by 1
+            psrld.y y_negative_cond:, hash, 1; // y_negative_cond >>= 1
+
+            // X is negative if hash is 0 or hash is 3
+            // that is if the lsb of hash is set and y_negative is 0
+            // or if lsb of hash is not set and y_negative is 1
+            // Which is just (hash AND 1) XOR y_negative
+            andps.y x_negative_cond:, hash, [ones];
+            xorps.y x_negative_cond, x_negative_cond, y_negative_cond;
+
+            // Both y_negative_cond and x_negative_cond only have the LSB
+            // set, but blendvps checks only the MSB of each dword.
+            // pcmpeqd will set all bits to one or zero based on the equality
+            // so our registers will be setup correctly for the blend
+            pcmpeqd.y y_negative_cond, y_negative_cond, [ones];
+            pcmpeqd.y x_negative_cond, x_negative_cond, [ones];
+
+            subps.y v:, zeros, y;   // v = -y
+            blendvps.y v, y, v, y_negative_cond;
+
+            subps.y u:, zeros, x;   // u = -x
+            blendvps.y u, x, u, x_negative_cond;
+
+            addps.y dest, u, v;
+        }
     }
 
-    return u_result;
+    // https://fgiesen.wordpress.com/2012/08/15/linear-interpolation-past-present-and-future/
+    LerpAndStoreInA :: (a : reg, b : reg, t : reg) #expand
+    {
+        #asm AVX, FMA
+        {
+            fnmadd231ps.y a, t, a; // -t * a + a = -a * (t - 1)
+            fmadd231ps.y a, t, b; // t * b - t * a + a
+        }
+    }
+
+    #asm AVX
+    {
+        x1 : vec;
+        x2 : vec;
+        x3 : vec;
+    }
+
+    fones := float.[1,1,1,1,1,1,1,1].data;
+
+    Gradient (x1, aa, xf, yf);
+
+    #asm AVX { subps.y xf, xf, [fones]; }
+
+    Gradient (x3, ba, xf, yf);
+
+    LerpAndStoreInA (x1, x3, u);
+
+    #asm AVX { subps.y yf, yf, [fones]; }
+
+    Gradient (x3, bb, xf, yf);
+
+    #asm AVX { addps.y xf, xf, [fones]; }
+
+    Gradient (x2, ab, xf, yf);
+    LerpAndStoreInA (x2, x3, u);
+
+    LerpAndStoreInA (x1, x2, t = v);
+
+    #asm AVX { movups.y [result_ptr], x1; }
+
+    return result;
 }
 
 PerlinSIMDTests :: ()
 {
+    Machine_X64 :: #import "Machine_X64";
+
+    cpu_info := Machine_X64.get_cpu_info ();
+    if !Machine_X64.check_feature (cpu_info.feature_leaves, .AVX)
+    {
+        LogError ("AVX is not supported");
+        return;
+    }
+    if !Machine_X64.check_feature (cpu_info.feature_leaves, .AVX2)
+    {
+        LogError ("AVX2 is not supported");
+        return;
+    }
+    if !Machine_X64.check_feature (cpu_info.feature_leaves, .FMA)
+    {
+        LogError ("FMA is not supported");
+        return;
+    }
+
     Println ("Perlin SIMD Tests");
 
     Println ("PerlinFadeLinear:");
@@ -279,5 +351,11 @@ PerlinSIMDTests :: ()
         res := PerlinNoiseSIMD (x, y);
 
         Println ("Result is %", res);
+
+        // res_as_ints := (cast (*[8]s32) *res).*;
+        // Print ("Result is ");
+        // for i : 0..7
+        //     Print ("{:b} ", res_as_ints[i]);
+        // Print ("\n");
     }
 }

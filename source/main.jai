@@ -162,7 +162,7 @@ UpdateIm3dKeys :: ()
 
 main :: ()
 {
-    simd_tests ();
+    PerlinSIMDTests ();
     return;
 
     #if Basic.MEMORY_DEBUGGER
