@@ -4,82 +4,6 @@ reg :: __reg;
 // Tables that show the different instructions, nicely categorized:
 // https://www.officedaytime.com/simd512e/
 
-PerlinFadeLinear :: inline (t : *[8]float)
-{
-    for i : 0..7
-       t.*[i] = t.*[i] * t.*[i] * t.*[i] * (t.*[i] * (t.*[i] * 6 - 15) + 10);
-}
-
-PerlinFadeSIMD :: inline (t : *[8]float)
-{
-    Sixes :: float.[6,6,6,6,6,6,6,6];
-    Fifteens :: float.[15,15,15,15,15,15,15,15];
-    Tens :: float.[10,10,10,10,10,10,10,10];
-
-    sixes_ptr := Sixes.data;
-    fifteens_ptr := Fifteens.data;
-    tens_ptr := Tens.data;
-    t_ptr := t.data;
-    #asm AVX
-    {
-        // res is our result
-        movups.y res:, [t_ptr];
-
-        // Multiply by 6
-        mulps.y res, res, [sixes_ptr]; // t * 6
-
-        // Subtract 15
-        subps.y res, res, [fifteens_ptr]; // t * 6 - 15
-
-        // Multiply by t
-        mulps.y res, res, [t_ptr]; // t * (t * 6 - 15)
-        // Add 10
-        addps.y res, res, [tens_ptr]; // t * (t * 6 - 15) + 10
-
-        // Multiply by t three times
-        mulps.y res, res, [t_ptr]; // t * (t * (t * 6 - 15) + 10)
-        mulps.y res, res, [t_ptr]; // t * t * (t * (t * 6 - 15) + 10)
-        mulps.y res, res, [t_ptr]; // t * t * t * (t * (t * 6 - 15) + 10)
-
-        // Move the result back to t
-        movups.y [t_ptr], res;
-    }
-}
-
-_PerlinNoise :: (x : float64, y : float64) -> float64 #must
-#no_abc
-{
-    xi := (cast (int) Floor (x)) & 255;
-    yi := (cast (int) Floor (y)) & 255;
-    xf := x - Floor (x);
-    yf := y - Floor (y);
-
-    u := PerlinFade (xf);
-    v := PerlinFade (yf);
-
-    P :: Perlin_Permutation_Table;
-    aa := P[P[xi    ] + yi    ];
-    ba := P[P[xi + 1] + yi    ];
-    ab := P[P[xi    ] + yi + 1];
-    bb := P[P[xi + 1] + yi + 1];
-
-    x1, x2 : float64 = ---;
-
-    x1 = Lerp (
-        PerlinGradient (aa, xf    , yf),
-        PerlinGradient (ba, xf - 1, yf),
-        u
-    );
-
-    x2 = Lerp (
-        PerlinGradient (ab, xf    , yf - 1),
-        PerlinGradient (bb, xf - 1, yf - 1),
-        u
-    );
-
-    return Lerp (x1, x2, v);
-}
-
 PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
 #no_abc
 {
@@ -100,7 +24,6 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
         movups.y yf:, [y_ptr];
         subps.y xf, xf, floor_x;
         subps.y yf, yf, floor_y;
-
     }
 
     two_fifty_five := s32.[255,255,255,255,255,255,255,255].data;
@@ -287,6 +210,80 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
     return result;
 }
 
+PerlinFractalNoiseSIMD :: (using params : NoiseParams, offsets : []Vec2f, x : [8]float, y : [8]float) -> [8]float #must
+{
+    oct := Min (octaves, Perlin_Fractal_Max_Octaves);
+    Assert (offsets.count >= oct);
+
+    x_ptr := x.data;
+    y_ptr := y.data;
+    scale_ptr := *scale;
+
+    result : [8]float;
+    result_ptr := result.data;
+
+    amplitude := 1.0;
+    amplitude_ptr := *amplitude;
+
+    frequency := 1.0;
+    frequency_ptr := *frequency;
+
+    for i : 0..oct - 1
+    #no_abc
+    {
+        i_ptr := *i;
+        if amplitude < Perlin_Fractal_Min_Amplitude
+            break;
+
+        sample_x : [8]float = ---;
+        sample_y : [8]float = ---;
+        sample_x_ptr := sample_x.data;
+        sample_y_ptr := sample_y.data;
+        #asm AVX
+        {
+            movdqu.y offset_index:, [i_ptr];
+            broadcastss.y scale_reg:, [scale_ptr];
+            broadcastss.y frequency_reg:, [frequency_ptr];
+            movups.y x_reg:, [x_ptr];
+            movups.y y_reg:, [y_ptr];
+
+            mulps.y x_reg, x_reg, scale_reg;
+            mulps.y x_reg, x_reg, frequency_reg;
+
+            mulps.y y_reg, y_reg, scale_reg;
+            mulps.y y_reg, y_reg, frequency_reg;
+
+            movups.y [sample_x_ptr], x_reg;
+            movups.y [sample_y_ptr], y_reg;
+        }
+
+        // @Speed: because of the memory layout of offsets, we can't use
+        // SIMD instructions. We should fix this
+        for j : 0..7
+        {
+            sample_x[j] += offsets[i].x;
+            sample_y[j] += offsets[i].y;
+        }
+
+        values := PerlinNoiseSIMD (sample_x, sample_y);
+        values_ptr := values.data;
+
+        #asm AVX
+        {
+            movups.y values_reg:, [values_ptr];
+            broadcastss.y amplitude_reg:, [amplitude_ptr];
+            mulps.y values_reg, values_reg, amplitude_reg;
+            addps.y values_reg, values_reg, [result_ptr];
+            movups.y [result_ptr], values_reg;
+        }
+
+        amplitude *= persistance;
+        frequency *= lacunarity;
+    }
+
+    return result;
+}
+
 PerlinSIMDTests :: ()
 {
     Machine_X64 :: #import "Machine_X64";
@@ -310,34 +307,14 @@ PerlinSIMDTests :: ()
 
     Println ("Perlin SIMD Tests");
 
-    Println ("PerlinFadeLinear:");
-    {
-        t : [8]float = .[0.0108, 0.1354, 0.2485, 0.4897, 0.6485, 0.7684, 0.82983, 0.9849];
-        PerlinFadeLinear (*t);
-        Println ("Result is %", t);
-    }
-
-    Print ("\n");
-
-    Println ("PerlinFadeSIMD:");
-    {
-        t : [8]float = .[0.0108, 0.1354, 0.2485, 0.4897, 0.6485, 0.7684, 0.82983, 0.9849];
-        PerlinFadeSIMD (*t);
-        Println ("Result is %", t);
-    }
-
-    Print ("\n");
-
     Println ("PerlinNoise:");
     {
         x : [8]float = .[12.239, 23.0234, 2304,201, 392.923, 583.81, 908.162, 674.1897];
         y : [8]float = .[12.239, 23.0234, 2304,201, 392.923, 583.81, 908.162, 674.1897];
-        Println ("X is %\nY is %", x, y);
-
         res : [8]float = ---;
 
         for i : 0..7
-            res[i] = xx _PerlinNoise (x[i], y[i]);
+            res[i] = xx PerlinNoise (x[i], y[i]);
 
         Println ("Result is %", res);
     }
@@ -351,11 +328,58 @@ PerlinSIMDTests :: ()
         res := PerlinNoiseSIMD (x, y);
 
         Println ("Result is %", res);
+    }
 
-        // res_as_ints := (cast (*[8]s32) *res).*;
-        // Print ("Result is ");
-        // for i : 0..7
-        //     Print ("{:b} ", res_as_ints[i]);
-        // Print ("\n");
+    Print ("\n");
+
+    offsets : [Perlin_Fractal_Max_Octaves]Vec2f;// = ---;
+    params := NoiseParams.{ scale = 0.3764, lacunarity = 1.874, persistance = 0.764, octaves = 4 };
+    // PerlinGenerateOffsets (*context.random_number_generator, offsets);
+    x : [8]float = .[12.239, 23.0234, 2304,201, 392.923, 583.81, 908.162, 674.1897];
+    y : [8]float = .[583.81, 908.162, 674.1897, 12.239, 23.0234, 2304,201, 392.923];
+
+    Println ("PerlinFractalNoise:");
+    {
+        res : [8]float = ---;
+
+        for i : 0..7
+            res[i] = xx PerlinFractalNoise (params, offsets, x[i], y[i]);
+
+        Println ("Result is %", res);
+    }
+
+    Print ("\n");
+
+    Println ("PerlinFractalNoiseSIMD:");
+    {
+        res := PerlinFractalNoiseSIMD (params, offsets, x, y);
+
+        Println ("Result is %", res);
+    }
+
+    Print ("\n");
+
+    Println ("Performance Test:");
+
+    {
+        ProfileBlock ("Perlin Linear Total");
+
+        for i : 0..10000
+        {
+            ProfileBlock ("Perlin Linear");
+            val := PerlinNoise (xx i, xx i);
+        }
+    }
+
+    {
+        ProfileBlock ("Perlin SIMD Total", divide_by = 8);
+
+        x8 : [8]float;
+        y8 : [8]float;
+        for i : 0..10000
+        {
+            ProfileBlock ("Perlin SIMD", divide_by = 8);
+            val := PerlinNoiseSIMD (x8, y8);
+        }
     }
 }
