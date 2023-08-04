@@ -45,6 +45,7 @@ Ceil :: Math.ceil;
 #load "player.jai";
 #load "biomes.jai";
 #load "noise_simd.jai";
+#load "profiling.jai";
 
 g_window : *SDL_Window;
 g_camera : Camera;
@@ -162,7 +163,21 @@ UpdateIm3dKeys :: ()
 
 main :: ()
 {
+    ProfilingInit ();
+
+    defer
+    {
+        AddGlobalProfilingData (context.profiling_entries);
+        entries := LockGlobalProfilingData ();
+        defer UnlockGlobalProfilingData ();
+
+        builder : StringBuilder;
+        PrintProfilingData (*builder, entries);
+        Print (StringBuilderBuild (*builder));
+    };
+
     PerlinSIMDTests ();
+
     return;
 
     #if Basic.MEMORY_DEBUGGER
@@ -288,6 +303,8 @@ main :: ()
     quit := false;
     while !quit
     {
+        ProfileBlock ("MainLoop");
+
         defer ResetTemporaryStorage ();
         defer g_physics_step = false;
 
