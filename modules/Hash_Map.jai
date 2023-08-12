@@ -45,7 +45,7 @@ HashMapInit :: inline (map : *HashMap, capacity : s64, allocator := context.allo
 {
     Initialize (map);
 
-    capacity := Max (capacity, Hash_Map_Min_Capacity);
+    capacity = Max (capacity, Hash_Map_Min_Capacity);
 
     pow := 1;
     while capacity > pow
