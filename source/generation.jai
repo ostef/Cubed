@@ -135,6 +135,7 @@ SurfaceParams :: struct
 {
     spline : *Spline;
     spline_y_range : Vec2f;
+
     water_level : s32 = 127;
     noise_amplitudes := float.[
         1.33,   // Temperature

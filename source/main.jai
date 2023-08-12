@@ -54,7 +54,7 @@ g_mouse_delta : Vec2f;
 g_should_capture_mouse := true;
 g_settings : struct
 {
-    render_distance := 6;
+    render_distance := 1;
 }
 g_world : World;
 g_player : Player;
