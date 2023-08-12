@@ -26,7 +26,10 @@ StringBuilder :: struct (Buffer_Size := 1000)
 EnsureInit :: inline (using builder : *StringBuilder)
 {
     if !page
+    {
+        allocator = context.allocator;
         page = *base_page;
+    }
 }
 
 #scope_export
