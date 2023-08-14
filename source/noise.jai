@@ -39,12 +39,12 @@ Perlin_Permutation_Table : [512]s32 : .[
     138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
 ];
 
-PerlinFade :: inline (t : float64) -> float64 #must
+PerlinFade :: inline (t : float) -> float #must
 {
     return t * t * t * (t * (t * 6 - 15) + 10);
 }
 
-PerlinGradient :: inline (hash : s32, x : float64, y : float64) -> float64 #must
+PerlinGradient :: inline (hash : s32, x : float, y : float) -> float #must
 {
     ifx hash & 0x3 ==
     {
@@ -56,7 +56,7 @@ PerlinGradient :: inline (hash : s32, x : float64, y : float64) -> float64 #must
     }
 }
 
-PerlinNoise :: (x : float64, y : float64) -> float64 #must
+PerlinNoise :: (x : float, y : float) -> float #must
 #no_abc
 {
     xi := (cast (int) Floor (x)) & 255;
@@ -73,7 +73,7 @@ PerlinNoise :: (x : float64, y : float64) -> float64 #must
     ba := P[P[xi + 1] + yi    ];
     bb := P[P[xi + 1] + yi + 1];
 
-    x1, x2 : float64 = ---;
+    x1, x2 : float = ---;
 
     x1 = Lerp (
         PerlinGradient (aa, xf    , yf),
@@ -90,7 +90,7 @@ PerlinNoise :: (x : float64, y : float64) -> float64 #must
     return Lerp (x1, x2, v);
 }
 
-PerlinGradient :: inline (hash : s32, x : float64, y : float64, z : float64) -> float64 #must
+PerlinGradient :: inline (hash : s32, x : float, y : float, z : float) -> float #must
 {
     ifx hash & 0xf ==
     {
@@ -114,7 +114,7 @@ PerlinGradient :: inline (hash : s32, x : float64, y : float64, z : float64) -> 
     }
 }
 
-PerlinNoise :: (x : float64, y : float64, z : float64) -> float64 #must
+PerlinNoise :: (x : float, y : float, z : float) -> float #must
 #no_abc
 {
     xi := (cast (int) Floor (x)) & 255;
@@ -138,7 +138,7 @@ PerlinNoise :: (x : float64, y : float64, z : float64) -> float64 #must
     bab := P[P[P[xi + 1] + yi    ] + zi + 1];
     bbb := P[P[P[xi + 1] + yi + 1] + zi + 1];
 
-    x1, x2, y1, y2 : float64 = ---;
+    x1, x2, y1, y2 : float = ---;
 
     x1 = Lerp (
         PerlinGradient (aaa, xf    , yf, zf),
@@ -171,9 +171,9 @@ PerlinNoise :: (x : float64, y : float64, z : float64) -> float64 #must
     return Lerp (y1, y2, w);
 }
 
-PerlinFractalMax :: inline (octaves : int, persistance : float) -> float64 #must
+PerlinFractalMax :: inline (octaves : int, persistance : float) -> float #must
 {
-    result : float64;
+    result : float;
     amplitude := 1.0;
 
     for i : 0..octaves - 1
@@ -188,12 +188,12 @@ PerlinFractalMax :: inline (octaves : int, persistance : float) -> float64 #must
     return result;
 }
 
-PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec2f, x : float64, y : float64) -> float64 #must
+PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec2f, x : float, y : float) -> float #must
 {
     oct := Min (octaves, Perlin_Fractal_Max_Octaves);
     Assert (offsets.count >= oct);
 
-    result : float64;
+    result : float;
     amplitude := 1.0;
     frequency := 1.0;
     for i : 0..oct - 1
@@ -214,12 +214,12 @@ PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec2f, x : float6
     return result;
 }
 
-PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec3f, x : float64, y : float64, z : float64) -> float64 #must
+PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec3f, x : float, y : float, z : float) -> float #must
 {
     oct := Min (octaves, Perlin_Fractal_Max_Octaves);
     Assert (offsets.count >= oct);
 
-    result : float64;
+    result : float;
     amplitude := 1.0;
     frequency := 1.0;
     for i : 0..oct - 1
