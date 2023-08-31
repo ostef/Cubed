@@ -7,41 +7,6 @@ reg :: __reg;
 PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
 #no_abc
 {
-    result : [8]float = ---;
-    x_ptr := x.data;
-    y_ptr := y.data;
-    result_ptr := result.data;
-
-    #asm AVX
-    {
-        // roundps takes an imm8 as third argument
-        // 0x09 for this value means floor, 0x0A means ceil
-        roundps.y floor_x:, [x_ptr], 0x09;
-        roundps.y floor_y:, [y_ptr], 0x09;
-
-        // xf := x - Floor (x)
-        movups.y xf:, [x_ptr];
-        movups.y yf:, [y_ptr];
-        subps.y xf, xf, floor_x;
-        subps.y yf, yf, floor_y;
-    }
-
-    two_fifty_five := s32.[255,255,255,255,255,255,255,255].data;
-    #asm AVX
-    {
-        // xi := (cast (s32) Floor (x))
-        cvtps2dq.y xi:, floor_x;
-        cvtps2dq.y yi:, floor_y;
-
-        // We're using bitwise AND for packed floats,
-        // but the bits represent 8 packed 32-bit ints
-        // This seems to work fine, but there may be edge cases
-        // xi := (cast  (s32) Floor (x)) & 255
-        andps.y xi, xi, [two_fifty_five];
-        andps.y yi, yi, [two_fifty_five];
-
-    }
-
     Fade :: (dest : reg, src : reg) #expand
     {
         sixes := float.[6,6,6,6,6,6,6,6].data;
@@ -70,15 +35,6 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
         }
     }
 
-    #asm AVX
-    {
-        u : vec;
-        v : vec;
-    }
-
-    Fade (u, xf);
-    Fade (v, yf);
-
     IndexIntoPermutationTable :: (x : reg, y : reg, dest : reg, $x_disp := 0) #expand
     {
         #asm AVX, AVX2
@@ -99,32 +55,6 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
             gatherdps.y dest, [`table + index * 4], gather_mask;
         }
     }
-
-    // aa := P[P[xi    ] + yi    ];
-    // ba := P[P[xi + 1] + yi    ];
-    // ab := P[P[xi    ] + yi + 1];
-    // bb := P[P[xi + 1] + yi + 1];
-
-    #asm
-    {
-        aa : vec;
-        ba : vec;
-        ab : vec;
-        bb : vec;
-    }
-
-    table := Perlin_Permutation_Table.data;
-    IndexIntoPermutationTable (xi, yi, aa);
-    IndexIntoPermutationTable (xi, yi, ba, x_disp = 4);
-
-    ones := s32.[1,1,1,1,1,1,1,1].data;
-    #asm AVX, AVX2
-    {
-        paddd.y yi, yi, [ones];
-    }
-
-    IndexIntoPermutationTable (xi, yi, ab);
-    IndexIntoPermutationTable (xi, yi, bb, x_disp = 4);
 
     // Modifies hash and dest
     Gradient :: (dest : reg, hash : reg, x : reg, y : reg) #expand
@@ -177,12 +107,69 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
         }
     }
 
+    result : [8]float = ---;
+    x_ptr := x.data;
+    y_ptr := y.data;
+    result_ptr := result.data;
+    two_fifty_five := s32.[255,255,255,255,255,255,255,255].data;
+
     #asm AVX
     {
+        // roundps takes an imm8 as third argument
+        // 0x09 for this value means floor, 0x0A means ceil
+        roundps.y floor_x:, [x_ptr], 0x09;
+        roundps.y floor_y:, [y_ptr], 0x09;
+
+        // xf := x - Floor (x)
+        movups.y xf:, [x_ptr];
+        movups.y yf:, [y_ptr];
+        subps.y xf, xf, floor_x;
+        subps.y yf, yf, floor_y;
+
+        // xi := (cast (s32) Floor (x))
+        cvtps2dq.y xi:, floor_x;
+        cvtps2dq.y yi:, floor_y;
+
+        // We're using bitwise AND for packed floats,
+        // but the bits represent 8 packed 32-bit ints
+        // This seems to work fine, but there may be edge cases
+        // xi := (cast  (s32) Floor (x)) & 255
+        andps.y xi, xi, [two_fifty_five];
+        andps.y yi, yi, [two_fifty_five];
+
+        u : vec;
+        v : vec;
+
+        aa : vec;
+        ba : vec;
+        ab : vec;
+        bb : vec;
+
         x1 : vec;
         x2 : vec;
         x3 : vec;
     }
+
+    Fade (u, xf);
+    Fade (v, yf);
+
+    // aa := P[P[xi    ] + yi    ];
+    // ba := P[P[xi + 1] + yi    ];
+    // ab := P[P[xi    ] + yi + 1];
+    // bb := P[P[xi + 1] + yi + 1];
+
+    table := Perlin_Permutation_Table.data;
+    IndexIntoPermutationTable (xi, yi, aa);
+    IndexIntoPermutationTable (xi, yi, ba, x_disp = 4);
+
+    ones := s32.[1,1,1,1,1,1,1,1].data;
+    #asm AVX, AVX2
+    {
+        paddd.y yi, yi, [ones];
+    }
+
+    IndexIntoPermutationTable (xi, yi, ab);
+    IndexIntoPermutationTable (xi, yi, bb, x_disp = 4);
 
     fones := float.[1,1,1,1,1,1,1,1].data;
 
@@ -241,7 +228,6 @@ PerlinFractalNoiseSIMD :: (using params : NoiseParams, offsets : []Vec2f, x : [8
         sample_y_ptr := sample_y.data;
         #asm AVX
         {
-            movdqu.y offset_index:, [i_ptr];
             broadcastss.y scale_reg:, [scale_ptr];
             broadcastss.y frequency_reg:, [frequency_ptr];
             movups.y x_reg:, [x_ptr];
@@ -362,24 +348,29 @@ PerlinSIMDTests :: ()
     Println ("Performance Test:");
 
     {
-        ProfileBlock ("Perlin Linear Total");
+        ProfileBlock ("Linear");
 
-        for i : 0..10000
+        result : [8]float = ---;
+        for i : 0..100000
         {
-            ProfileBlock ("Perlin Linear");
-            val := PerlinNoise (xx i, xx i);
+            val := xx PerlinNoise (xx i, xx i);
+
+            // for j : 0..7
+            // {
+            //     result[j] = xx PerlinNoise (xx (i - j), xx (i + j));
+            // }
         }
     }
 
     {
-        ProfileBlock ("Perlin SIMD Total", divide_by = 8);
+        ProfileBlock ("SIMD", 8);
 
+        result : [8]float = ---;
         x8 : [8]float;
         y8 : [8]float;
-        for i : 0..10000
+        for i : 0..100000
         {
-            ProfileBlock ("Perlin SIMD", divide_by = 8);
-            val := PerlinNoiseSIMD (x8, y8);
+            result = PerlinNoiseSIMD (x8, y8);
         }
     }
 }
