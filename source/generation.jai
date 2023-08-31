@@ -156,8 +156,6 @@ SurfaceParams :: struct
 CalculateTerrainNoise :: inline (using generator : Generator, noise : TerrainNoise, x : float, z : float) -> float #must
 {
     return PerlinFractalNoise (noise_params[noise], noise_offsets[noise], x, z);
-    max_val := cast (float) PerlinFractalMax (noise_params[noise].octaves, noise_params[noise].persistance);
-
 }
 
 CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x : float, z : float) -> float #must
