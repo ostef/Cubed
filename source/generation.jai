@@ -145,20 +145,19 @@ SurfaceParams :: struct
         2.97    // Weirdness
     ];
     noise_params : [TerrainNoise.Count]NoiseParams = .[
-        .{scale=0.00041, octaves=3, persistance=0.081, lacunarity=3.139}, // T
-        .{scale=0.00065, octaves=4, persistance=0.139, lacunarity=2.333}, // H
-        .{scale=0.00113, octaves=6, persistance=0.196, lacunarity=4.085}, // C
-        .{scale=0.00096, octaves=5, persistance=0.168, lacunarity=3.897}, // E
-        .{scale=0.00106, octaves=4, persistance=0.267, lacunarity=4.824}, // W
+        .{scale=0.00041, octaves=3, persistance=0.081, lacunarity=3.139, max_amplitude=#run PerlinFractalMax (3, 0.081)}, // T
+        .{scale=0.00065, octaves=4, persistance=0.139, lacunarity=2.333, max_amplitude=#run PerlinFractalMax (4, 0.139)}, // H
+        .{scale=0.00113, octaves=6, persistance=0.196, lacunarity=4.085, max_amplitude=#run PerlinFractalMax (6, 0.196)}, // C
+        .{scale=0.00096, octaves=5, persistance=0.168, lacunarity=3.897, max_amplitude=#run PerlinFractalMax (5, 0.168)}, // E
+        .{scale=0.00106, octaves=4, persistance=0.267, lacunarity=4.824, max_amplitude=#run PerlinFractalMax (4, 0.267)}, // W
     ];
 }
 
 CalculateTerrainNoise :: inline (using generator : Generator, noise : TerrainNoise, x : float, z : float) -> float #must
 {
+    return PerlinFractalNoise (noise_params[noise], noise_offsets[noise], x, z);
     max_val := cast (float) PerlinFractalMax (noise_params[noise].octaves, noise_params[noise].persistance);
-    val := cast (float) PerlinFractalNoise (noise_params[noise], noise_offsets[noise], x, z);
 
-    return val / max_val;
 }
 
 CalculateTerrainParam :: (using generator : Generator, param : TerrainParam, x : float, z : float) -> float #must

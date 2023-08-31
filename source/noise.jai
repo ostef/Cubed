@@ -4,6 +4,7 @@ NoiseParams :: struct
     octaves : s32;
     persistance : float;
     lacunarity : float;
+    max_amplitude := 1.0;
 }
 
 Perlin_Fractal_Max_Octaves :: 10;
@@ -59,10 +60,12 @@ PerlinGradient :: inline (hash : s32, x : float, y : float) -> float #must
 PerlinNoise :: (x : float, y : float) -> float #must
 #no_abc
 {
-    xi := (cast (int) Floor (x)) & 255;
-    yi := (cast (int) Floor (y)) & 255;
-    xf := x - Floor (x);
-    yf := y - Floor (y);
+    x_floor := Floor (x);
+    y_floor := Floor (y);
+    xi := (cast (int) x_floor) & 255;
+    yi := (cast (int) y_floor) & 255;
+    xf := x - x_floor;
+    yf := y - y_floor;
 
     u := PerlinFade (xf);
     v := PerlinFade (yf);
@@ -117,12 +120,15 @@ PerlinGradient :: inline (hash : s32, x : float, y : float, z : float) -> float 
 PerlinNoise :: (x : float, y : float, z : float) -> float #must
 #no_abc
 {
-    xi := (cast (int) Floor (x)) & 255;
-    yi := (cast (int) Floor (y)) & 255;
-    zi := (cast (int) Floor (z)) & 255;
-    xf := x - Floor (x);
-    yf := y - Floor (y);
-    zf := z - Floor (z);
+    x_floor := Floor (x);
+    y_floor := Floor (y);
+    z_floor := Floor (z);
+    xi := (cast (int) x_floor) & 255;
+    yi := (cast (int) y_floor) & 255;
+    zi := (cast (int) z_floor) & 255;
+    xf := x - x_floor;
+    yf := y - y_floor;
+    zf := z - z_floor;
 
     u := PerlinFade (xf);
     v := PerlinFade (yf);
@@ -195,7 +201,7 @@ PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec2f, x : float,
 
     result : float;
     amplitude := 1.0;
-    frequency := 1.0;
+    frequency := scale;
     for i : 0..oct - 1
     #no_abc
     {
@@ -203,15 +209,15 @@ PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec2f, x : float,
             break;
 
         result += PerlinNoise (
-            x * scale * frequency + offsets[i].x,
-            y * scale * frequency + offsets[i].y
+            x * frequency + offsets[i].x,
+            y * frequency + offsets[i].y
         ) * amplitude;
 
         amplitude *= persistance;
         frequency *= lacunarity;
     }
 
-    return result;
+    return result / max_amplitude;
 }
 
 PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec3f, x : float, y : float, z : float) -> float #must
@@ -221,7 +227,7 @@ PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec3f, x : float,
 
     result : float;
     amplitude := 1.0;
-    frequency := 1.0;
+    frequency := scale;
     for i : 0..oct - 1
     #no_abc
     {
@@ -229,16 +235,16 @@ PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec3f, x : float,
             break;
 
         result += PerlinNoise (
-            x * scale * frequency + offsets[i].x,
-            y * scale * frequency + offsets[i].y,
-            z * scale * frequency + offsets[i].z
+            x * frequency + offsets[i].x,
+            y * frequency + offsets[i].y,
+            z * frequency + offsets[i].z
         ) * amplitude;
 
         amplitude *= persistance;
         frequency *= lacunarity;
     }
 
-    return result;
+    return result / max_amplitude;
 }
 
 PerlinGenerateOffsets :: inline (rng : *RNG, offsets : []Vec2f)
