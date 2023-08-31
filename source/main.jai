@@ -54,7 +54,9 @@ g_mouse_delta : Vec2f;
 g_should_capture_mouse := true;
 g_settings : struct
 {
-    render_distance := 1;
+    generate_new_chunks := true;
+    render_distance : s32 = 6;
+    player_speed_mult := 1.0;
 }
 g_world : World;
 g_player : Player;
@@ -416,7 +418,8 @@ main :: ()
         UIUpdate ();
 
         WorldHandleNewlyGeneratedChunks (*g_world);
-        WorldGenerateAroundPosition (*g_world, g_camera.position, g_settings.render_distance);
+        if g_settings.generate_new_chunks
+            WorldGenerateAroundPosition (*g_world, g_camera.position, g_settings.render_distance);
 
         glViewport (0, 0, xx window_w, xx window_h);
         glClearColor (0.1, 0.1, 0.1, 1.0);

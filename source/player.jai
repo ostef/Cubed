@@ -80,6 +80,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     movement_speed := Player_Movement_Speed;
     if IsKeyDown (SDLK_LSHIFT)
         movement_speed *= 10;
+    movement_speed *= g_settings.player_speed_mult;
     movement_speed *= delta_time;
 
     if !flying
