@@ -1,6 +1,7 @@
 GenerateNoiseTexture :: (tex : *GLuint,
     width : s32, height : s32,
-    seed : u64, params : NoiseParams
+    seed : u64, params : NoiseParams,
+    use_simd := true
 ) -> min_val : float, max_val : float
 {
     static_offsets : [Perlin_Fractal_Max_Octaves]Vec2f;
@@ -17,18 +18,73 @@ GenerateNoiseTexture :: (tex : *GLuint,
     buffer := Alloc (u32, width * height, Temp);
 
     max_val := cast (float) PerlinFractalMax (params.octaves, params.persistance);
-    for y : 0..height - 1
+    if use_simd
     {
-        for x : 0..width - 1
-        {
-            val := cast (float) PerlinFractalNoise (params, offsets, xx x, xx y);
-            if val < min_non_normalized
-                min_non_normalized = val;
-            if val > max_non_normalized
-                max_non_normalized = val;
-            val = InverseLerp (-max_val, max_val, val);
+        ProfileBlock ("SIMD");
 
-            buffer[y * width + x] = ImGui.GetColorU32 (.{val, val, val, 1});
+        x8 : [8]float = ---;
+        x8_ptr := x8.data;
+        y8 : [8]float = ---;
+        y8_ptr := y8.data;
+        zero_to_seven := float.[0,1,2,3,4,5,6,7].data;
+
+        y := 0;
+        while y < height
+        {
+            defer y += 1;
+
+            y_float := cast (float) y;
+            y_ptr := *y_float;
+            #asm AVX
+            {
+                broadcastss.y y_reg:, [y_ptr];
+                movups.y [y8_ptr], y_reg;
+            }
+
+            x := 0;
+            while x < width
+            {
+                defer x += 8;
+
+                x_float := cast (float) x;
+                x_ptr := *x_float;
+                #asm AVX
+                {
+                    broadcastss.y x_reg:, [x_ptr];
+                    addps.y x_reg, x_reg, [zero_to_seven];
+                    movups.y [x8_ptr], x_reg;
+                }
+
+                // values := PerlinFractalNoiseSIMD (params, offsets, x8, y8);
+                values := PerlinNoiseSIMD (x8, y8);
+                values_ptr := values.data;
+
+                for i : 0..7
+                {
+                    // values[i] = InverseLerp (-max_val, max_val, values[i]);
+                    buffer[y * width + x + i] = ImGui.GetColorU32 (.{values[i], values[i], values[i], 1});
+                }
+            }
+        }
+    }
+    else
+    {
+        ProfileBlock ("Linear");
+
+        for y : 0..height - 1
+        {
+            for x : 0..width - 1
+            {
+                // val := cast (float) PerlinFractalNoise (params, offsets, xx x, xx y);
+                // if val < min_non_normalized
+                //     min_non_normalized = val;
+                // if val > max_non_normalized
+                //     max_non_normalized = val;
+                // val = InverseLerp (-max_val, max_val, val);
+                val := cast (float) PerlinNoise (xx x, xx y);
+
+                buffer[y * width + x] = ImGui.GetColorU32 (.{val, val, val, 1});
+            }
         }
     }
 
@@ -60,13 +116,14 @@ g_ui_perlin : struct
     };
     min_value := Math.FLOAT32_MAX;
     max_value := -Math.FLOAT32_MAX;
+    use_simd := true;
 };
 
 #scope_export
 
 UIShowNoiseParams :: (id : ImGui.ID, params : *NoiseParams) -> bool
 {
-    ImGui.PushID (cast (s32) id);
+    ImGui.PushID (cast, no_check (s32) id);
     defer ImGui.PopID ();
 
     result := false;
@@ -112,6 +169,9 @@ UIShowPerlinTestWindow :: (opened : *bool)
     if UIShowNoiseParams (0, *params)
         should_generate = true;
 
+    if ImGui.Checkbox ("Use SIMD", *use_simd)
+        should_generate = true;
+
     if ImGui.Button ("Generate")
         should_generate = true;
 
@@ -124,7 +184,7 @@ UIShowPerlinTestWindow :: (opened : *bool)
     }
 
     if should_generate
-        min_value, max_value = GenerateNoiseTexture (*texture_handle, texture_size, texture_size, seed, params);
+        min_value, max_value = GenerateNoiseTexture (*texture_handle, texture_size, texture_size, seed, params, use_simd);
 }
 
 #scope_file
