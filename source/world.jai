@@ -357,6 +357,8 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
 
     defer chunk.is_generated = true;
 
+    ProfileBlock ();
+
     surface_thickness_rng : RNG;
     RandomSeed (*surface_thickness_rng, world.seed + 57483593 + HashS64 (chunk.x) + HashS64 (chunk.z));
 
@@ -708,6 +710,8 @@ ChunkGenerateMeshes :: (chunk : *Chunk)
     if !chunk.is_dirty
         return;
 
+    ProfileBlock ();
+
     defer chunk.is_dirty = false;
 
     state := GetTemporaryStorageState ();
@@ -749,6 +753,8 @@ ChunkGenerationWorkerProc :: (group : *Threads.Thread_Group, thread : *Threads.T
 {
     using data := cast (*ChunkGenerationWorkerData) work;
     ChunkGenerate (world, chunk);
+
+    AddGlobalProfilingData (*context.profiling_entries);
 
     return .CONTINUE;
 }
@@ -854,6 +860,8 @@ WorldAddChunk :: (world : *World, chunk : *Chunk)
 
 WorldHandleNewlyGeneratedChunks :: (using world : *World)
 {
+    ProfileBlock ();
+
     completed := Threads.get_completed_work (*chunk_generation_thread_group);
     for completed
     {
@@ -892,6 +900,8 @@ WorldLaunchThreadedChunkGeneration :: inline (using world : *World, x : s64, z :
 
 WorldGenerateAroundPosition :: (world : *World, position : Vec3f, distance_in_chunks : int)
 {
+    ProfileBlock ();
+
     chunk_x, chunk_z := ChunkPositionFromWorldPosition (cast (s64) position.x, cast (s64) position.z);
 
     for z : chunk_z - distance_in_chunks..chunk_z + distance_in_chunks

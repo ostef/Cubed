@@ -169,7 +169,7 @@ main :: ()
 
     defer
     {
-        AddGlobalProfilingData (context.profiling_entries);
+        AddGlobalProfilingData (*context.profiling_entries);
         entries := LockGlobalProfilingData ();
         defer UnlockGlobalProfilingData ();
 
@@ -177,10 +177,6 @@ main :: ()
         PrintProfilingData (*builder, entries);
         Print (StringBuilderBuild (*builder));
     };
-
-    PerlinSIMDTests ();
-
-    return;
 
     #if Basic.MEMORY_DEBUGGER
     {

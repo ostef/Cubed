@@ -18,6 +18,7 @@ g_global_profiling_mutex : Threads.Mutex;
 ProfilingKey :: struct
 {
     location : Source_Code_Location;
+    proc_name : string;
     name : string;
 }
 
@@ -26,6 +27,7 @@ operator== :: inline (a : ProfilingKey, b : ProfilingKey) -> bool #must
     return a.location.fully_pathed_filename == b.location.fully_pathed_filename
         && a.location.line_number == b.location.line_number
         && a.location.character_number == b.location.character_number
+        && a.proc_name == b.proc_name
         && a.name == b.name;
 }
 
@@ -54,26 +56,37 @@ UnlockGlobalProfilingData :: inline ()
     Threads.unlock (*g_global_profiling_mutex);
 }
 
-AddGlobalProfilingData :: (entries : ProfilingEntriesMap)
+CopyProfilingData :: (dest : *ProfilingEntriesMap, source : ProfilingEntriesMap)
 {
-    global_entries := LockGlobalProfilingData ();
-    defer UnlockGlobalProfilingData ();
-
-    for entries
+    for source
     {
-        ptr, is_new := HashMapInsert (global_entries, it_index);
+        ptr, is_new := HashMapInsert (dest, it_index);
         ptr.key = it_index;
         ptr.total_time += it.total_time;
         ptr.number_of_times_profiled += it.number_of_times_profiled;
     }
 }
 
+AddGlobalProfilingData :: (entries : *ProfilingEntriesMap, free_entries := true)
+{
+    if entries.count == 0
+        return;
+
+    global_entries := LockGlobalProfilingData ();
+    defer UnlockGlobalProfilingData ();
+
+    CopyProfilingData (global_entries, entries);
+
+    if free_entries
+        HashMapFree (entries);
+}
+
 #add_context profiling_entries : ProfilingEntriesMap;
 
-GetProfilingData :: inline (name : string, location : Source_Code_Location) -> *ProfilingData #must
+GetProfilingData :: inline (proc_name : string, name : string, location : Source_Code_Location) -> *ProfilingData #must
 {
-    ptr, new := HashMapInsert (*context.profiling_entries, .{location, name});
-    ptr.key = .{location, name};
+    ptr, new := HashMapInsert (*context.profiling_entries, .{location, proc_name, name});
+    ptr.key = .{location, proc_name, name};
 
     return ptr;
 }
@@ -82,11 +95,12 @@ ProfileBlock :: (name := "", divide_by := 0, location := #caller_location) #expa
 {
     #if Enable_Profiling
     {
-        data := GetProfilingData (name, location);
         start_time := Basic.current_time_monotonic ();
 
         `defer {
             end_time := Basic.current_time_monotonic ();
+
+            data := GetProfilingData (#procedure_name (), name, location);
             if divide_by > 0
                 data.total_time += (end_time - start_time) / divide_by;
             else
@@ -98,8 +112,12 @@ ProfileBlock :: (name := "", divide_by := 0, location := #caller_location) #expa
 
 PrintProfilingData :: (builder : *StringBuilder, using data : ProfilingData)
 {
-    StringBuilderAppendLine (builder, "%\t%:%:%",
-        name, location.fully_pathed_filename, location.line_number, location.character_number);
+    if name
+        StringBuilderAppendLine (builder, "% - %    (%:%:%)",
+            proc_name, name, location.fully_pathed_filename, location.line_number, location.character_number);
+    else
+        StringBuilderAppendLine (builder, "%    (%:%:%)",
+            proc_name, location.fully_pathed_filename, location.line_number, location.character_number);
 
     avg_time_secs := Basic.to_float64_seconds (total_time / number_of_times_profiled);
 
@@ -113,7 +131,7 @@ PrintProfilingData :: (builder : *StringBuilder, using data : ProfilingData)
         StringBuilderAppendLine (builder, "{:.3f} ms, profiled % times",
             avg_time_secs * 1000.0, number_of_times_profiled);
     else
-        StringBuilderAppendLine (builder, "{:.3f} s, profiled % times",
+        StringBuilderAppendLine (builder, "{:.3f}  s, profiled % times",
             avg_time_secs, number_of_times_profiled);
 }
 
@@ -125,7 +143,16 @@ PrintProfilingData :: (builder : *StringBuilder, entries : ProfilingEntriesMap)
     for entries
         ArrayPush (*sorted_entries, it);
 
-    for Sort.quick_sort (sorted_entries, (a, b) => StringCompare (a.name, b.name))
+    Sort.quick_sort (sorted_entries, (a : ProfilingData, b : ProfilingData) -> int
+    {
+        result := StringCompare (a.proc_name, b.proc_name);
+        if result == 0
+            return StringCompare (a.name, b.name);
+
+        return result;
+    });
+
+    for sorted_entries
     {
         PrintProfilingData (builder, it);
         StringBuilderAppend (builder, "\n");
