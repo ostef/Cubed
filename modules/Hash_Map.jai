@@ -156,7 +156,7 @@ HashMapProbe :: (map : HashMap, key : map.Key) -> h : map.HashType, index : s64,
     return hash, cast (s64) index, false;
 }
 
-HashMapInsert :: inline (map : *HashMap, key : map.Key, $initialize_if_new := true) -> *map.Value #must, is_new : bool
+HashMapInsert :: inline (map : *HashMap, key : map.Key, $initialize_if_new := true) -> *map.Value #must, was_present : bool
 {
     if (map.occupied + 1) * 100 >= map.allocated * map.Load_Factor
         HashMapGrow (map);
@@ -179,12 +179,12 @@ HashMapInsert :: inline (map : *HashMap, key : map.Key, $initialize_if_new := tr
     return *entry.value, false;
 }
 
-HashMapInsert :: inline (map : *HashMap, key : map.Key, value : map.Value) -> *map.Value, is_new : bool
+HashMapInsert :: inline (map : *HashMap, key : map.Key, value : map.Value) -> *map.Value, was_present : bool
 {
-    ptr, is_new := HashMapInsert (map, key, initialize_if_new = false);
+    ptr, was_present := HashMapInsert (map, key, initialize_if_new = false);
     ptr.* = value;
 
-    return ptr, is_new;
+    return ptr, was_present;
 }
 
 HashMapRemove :: inline (map : *HashMap, key : map.Key) -> found : bool, removed : map.Value
