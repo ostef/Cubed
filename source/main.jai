@@ -46,6 +46,7 @@ Ceil :: Math.ceil;
 #load "biomes.jai";
 #load "noise_simd.jai";
 #load "profiling.jai";
+#load "anim.jai";
 
 g_window : *SDL_Window;
 g_camera : Camera;
@@ -294,6 +295,14 @@ main :: ()
 
     #if Basic.MEMORY_DEBUGGER
         Basic.allocations_before_this_call_will_not_be_considered_leaks ();
+
+    mesh : SkinnedMesh;
+    if !LoadSkinnedMeshFromFile (*mesh, "data/Steve.mesh")
+    {
+        LogError ("Could not load skinned mesh data/Steve.mesh");
+    }
+
+    return;
 
     g_camera.position.y = xx g_world.surface_params.water_level + 10.0;
     g_player.position.y = xx g_world.surface_params.water_level + 10.0;
