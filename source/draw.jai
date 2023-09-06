@@ -2,6 +2,7 @@
 // of the blocks. Atlas[BlockFace] is the texture atlas for a given block face
 
 g_block_shader : GLuint;
+g_skinned_mesh_shader : GLuint;
 g_texture_atlas : GLuint;
 g_grass_overlay_texture : GLuint;
 g_all_texture_atlases : [6]GLuint; // We also have separate textures for each face, so we can display them using ImGui
@@ -197,37 +198,152 @@ void main ()
 }
 GLSL
 
+GL_Skinned_Mesh_Vertex_Shader :: #string GLSL
+#version 330 core
+
+layout (location = 0) in vec3 a_Position;
+layout (location = 1) in vec3 a_Normal;
+layout (location = 2) in vec2 a_Tex_Coords;
+layout (location = 3) in int a_Joint_Id;
+
+uniform mat4 u_Model_Matrix;
+uniform mat4 u_View_Projection_Matrix;
+
+out vec2 Tex_Coords;
+out vec3 Normal;
+
+void main ()
+{
+    gl_Position = u_View_Projection_Matrix * u_Model_Matrix * vec4 (a_Position, 1);
+    Tex_Coords = a_Tex_Coords;
+    Normal = a_Normal;
+}
+GLSL
+
+GL_Skinned_Mesh_Fragment_Shader :: #string GLSL
+#version 330 core
+
+uniform sampler2D u_Texture;
+
+in vec2 Tex_Coords;
+in vec3 Normal;
+
+out vec4 Frag_Color;
+
+void main ()
+{
+    vec4 color = texture (u_Texture, Tex_Coords);
+    Frag_Color = vec4 (Normal, 1);
+}
+GLSL
+
 ReloadShaders :: () -> bool
 {
-    block_ids_string : string;
+    GetAttribLocation :: inline (shader : GLuint, $name : string, location := #caller_location) -> GLuint, bool
     {
-        builder : StringBuilder;
-        builder.allocator = Temp;
+        loc := glGetAttribLocation (shader, name);
+        if loc < 0
+        {
+            LogError ("Shader attribute % does not exist", name, location = location);
+            return 0xffffffff, false;
+        }
 
-        for i : 0..BlockID.Count
-            StringBuilderAppend (*builder, "const int Block_% = %;\n", i, cast (int) i);
-
-        block_ids_string = StringBuilderBuild (*builder, allocator = Temp);
+        return xx loc, true;
     }
 
-    shader_header := FormatString (GL_Block_Shader_Header,
-        Atlas_Cell_Size_No_Border, Atlas_Cell_Border_Size, g_atlas_cell_count,
-        Grass_Color_00.r, Grass_Color_00.g, Grass_Color_00.b,
-        Grass_Color_10.r, Grass_Color_10.g, Grass_Color_10.b,
-        Grass_Color_01.r, Grass_Color_01.g, Grass_Color_01.b,
-        Grass_Color_11.r, Grass_Color_11.g, Grass_Color_11.b,
-        block_ids_string
-    );
+    {
+        block_ids_string : string;
+        {
+            builder : StringBuilder;
+            builder.allocator = Temp;
 
-    vertex_source   := StringJoin (shader_header, GL_Block_Shader_Vertex);
-    fragment_source := StringJoin (shader_header, GL_Block_Shader_Fragment);
+            for i : 0..BlockID.Count
+                StringBuilderAppend (*builder, "const int Block_% = %;\n", i, cast (int) i);
 
-    new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source);
-    if !new_shader
-        return false;
+            block_ids_string = StringBuilderBuild (*builder, allocator = Temp);
+        }
 
-    glDeleteProgram (g_block_shader);
-    g_block_shader = new_shader;
+        shader_header := FormatString (GL_Block_Shader_Header,
+            Atlas_Cell_Size_No_Border, Atlas_Cell_Border_Size, g_atlas_cell_count,
+            Grass_Color_00.r, Grass_Color_00.g, Grass_Color_00.b,
+            Grass_Color_10.r, Grass_Color_10.g, Grass_Color_10.b,
+            Grass_Color_01.r, Grass_Color_01.g, Grass_Color_01.b,
+            Grass_Color_11.r, Grass_Color_11.g, Grass_Color_11.b,
+            block_ids_string
+        );
+
+        vertex_source   := StringJoin (shader_header, GL_Block_Shader_Vertex);
+        fragment_source := StringJoin (shader_header, GL_Block_Shader_Fragment);
+
+        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source);
+        if !new_shader
+            return false;
+
+        attribs : type_of (g_block_shader_attribs);
+        ok : bool;
+
+        attribs.position, ok = GetAttribLocation (new_shader, "a_Position");
+        if !ok
+        {
+            glDeleteProgram (new_shader);
+            return false;
+        }
+
+        attribs.block_id, ok = GetAttribLocation (new_shader, "a_Block_Id");
+        if !ok
+        {
+            glDeleteProgram (new_shader);
+            return false;
+        }
+
+        attribs.face, ok = GetAttribLocation (new_shader, "a_Face");
+        if !ok
+        {
+            glDeleteProgram (new_shader);
+            return false;
+        }
+
+        attribs.face_corner, ok = GetAttribLocation (new_shader, "a_Face_Corner");
+        if !ok
+        {
+            glDeleteProgram (new_shader);
+            return false;
+        }
+
+        attribs.block_height, ok = GetAttribLocation (new_shader, "a_Block_Height");
+        if !ok
+        {
+            glDeleteProgram (new_shader);
+            return false;
+        }
+
+        attribs.temperature, ok = GetAttribLocation (new_shader, "a_Temperature");
+        if !ok
+        {
+            glDeleteProgram (new_shader);
+            return false;
+        }
+
+        attribs.humidity, ok = GetAttribLocation (new_shader, "a_Humidity");
+        if !ok
+        {
+            glDeleteProgram (new_shader);
+            return false;
+        }
+
+        glDeleteProgram (g_block_shader);
+        g_block_shader = new_shader;
+        g_block_shader_attribs = attribs;
+    }
+
+    {
+        new_shader := GL_Utils.CreateShaderProgram (GL_Skinned_Mesh_Vertex_Shader, GL_Skinned_Mesh_Fragment_Shader);
+        if !new_shader
+            return false;
+
+        glDeleteProgram (g_skinned_mesh_shader);
+        g_skinned_mesh_shader = new_shader;
+    }
 
     return true;
 }
@@ -242,14 +358,6 @@ DrawInit :: (textures_directory : string) -> bool
 
     if !ReloadShaders ()
         return false;
-
-    g_block_shader_attribs.position = xx glGetAttribLocation (g_block_shader, "a_Position");
-    g_block_shader_attribs.block_id = xx glGetAttribLocation (g_block_shader, "a_Block_Id");
-    g_block_shader_attribs.face = xx glGetAttribLocation (g_block_shader, "a_Face");
-    g_block_shader_attribs.face_corner = xx glGetAttribLocation (g_block_shader, "a_Face_Corner");
-    g_block_shader_attribs.block_height = xx glGetAttribLocation (g_block_shader, "a_Block_Height");
-    g_block_shader_attribs.temperature = xx glGetAttribLocation (g_block_shader, "a_Temperature");
-    g_block_shader_attribs.humidity = xx glGetAttribLocation (g_block_shader, "a_Humidity");
 
     return true;
 }
@@ -491,6 +599,32 @@ LoadTextureAtlases :: (textures_dirname : string) -> bool
     LogContentMessage ("Loaded texture atlas: % cells, % by % pixels", g_atlas_cell_count, g_texture_atlas_size, g_texture_atlas_size);
 
     return true;
+}
+
+DrawSkinnedMesh :: inline (mesh : SkinnedMesh, camera : Camera, model_matrix : Mat4f)
+{
+    GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
+    GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
+    GL_Utils.StateBlock (GL_ELEMENT_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, prev);});
+    GL_Utils.EnableBlock (GL_DEPTH_TEST);
+    GL_Utils.EnableBlock (GL_CULL_FACE);
+    GL_Utils.StateBlock (GL_ACTIVE_TEXTURE, (prev : GLenum) {glActiveTexture (prev);});
+    GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D_ARRAY, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D_ARRAY, prev);});
+    GL_Utils.StateBlock (GL_CURRENT_PROGRAM, (prev : GLuint) {glUseProgram (prev);});
+
+    glUseProgram (g_skinned_mesh_shader);
+
+    loc := glGetUniformLocation (g_skinned_mesh_shader, "u_View_Projection_Matrix");
+    glUniformMatrix4fv (loc, 1, GL_TRUE, *camera.view_projection_matrix.r0c0);
+
+    loc = glGetUniformLocation (g_skinned_mesh_shader, "u_Model_Matrix");
+    glUniformMatrix4fv (loc, 1, GL_TRUE, *model_matrix.r0c0);
+
+    glBindVertexArray (mesh.vao);
+    glBindBuffer (GL_ARRAY_BUFFER, mesh.vbo);
+    glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, mesh.ibo);
+
+    glDrawElements (GL_TRIANGLES, xx mesh.index_count, GL_UNSIGNED_INT, null);
 }
 
 DrawChunkMesh :: inline (chunk : Chunk, camera : Camera, mesh_type : ChunkMeshType)

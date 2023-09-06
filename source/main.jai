@@ -50,7 +50,7 @@ Ceil :: Math.ceil;
 
 g_window : *SDL_Window;
 g_camera : Camera;
-g_fps_camera := true;
+g_fps_camera := false;
 g_mouse_delta : Vec2f;
 g_should_capture_mouse := true;
 g_settings : struct
