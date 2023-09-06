@@ -66,6 +66,8 @@ g_physics_step : bool;
 g_prev_keyboard_state : [SDL_NUM_SCANCODES]bool;
 g_prev_mouse_state : u32;
 
+g_steve_mesh : SkinnedMesh;
+
 Fixed_Delta_Time :: 1 / 60.0;
 
 GLMessageCallback :: (
@@ -349,13 +351,11 @@ main :: ()
     #if Basic.MEMORY_DEBUGGER
         Basic.allocations_before_this_call_will_not_be_considered_leaks ();
 
-    mesh : SkinnedMesh;
-    if !LoadSkinnedMeshFromFile (*mesh, "data/Steve.mesh")
+    if !LoadSkinnedMeshFromFile (*g_steve_mesh, "data/Steve.mesh")
     {
         LogError ("Could not load skinned mesh data/Steve.mesh");
+        return;
     }
-
-    return;
 
     g_camera.position.y = xx g_world.surface_params.water_level + 10.0;
     g_player.position.y = xx g_world.surface_params.water_level + 10.0;
