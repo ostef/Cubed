@@ -15,7 +15,7 @@ PerlinNoiseSIMD :: (x : [8]float, y : [8]float) -> [8]float #must
         #asm AVX
         {
             // Setup the values
-            movups.y dest, src;
+            movaps.y dest, src;
 
             // Multiply by 6
             mulps.y dest, dest, [sixes]; // t * 6
