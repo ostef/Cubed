@@ -194,7 +194,7 @@ ChunkCleanup :: inline (chunk : *Chunk)
 ChunkAABB :: inline (x : s64, z : s64) -> AABB #must
 {
     result : AABB = ---;
-    result.min = .{xx (x / Chunk_Size), 0, xx (z / Chunk_Size)};
+    result.min = .{xx (x * Chunk_Size), 0, xx (z * Chunk_Size)};
     result.max = result.min + .{xx Chunk_Size, xx Chunk_Height, xx Chunk_Size};
 
     return result;

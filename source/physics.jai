@@ -225,19 +225,16 @@ RayIntersectsWorld :: (world : *World, ray : Ray) -> HitResult #must
                     continue;
 
                 result := RayIntersectsAABB (ray, block_aabb);
-                if result.hit
+                if result.hit && result.distance < closest_hit.distance
                 {
-                    if result.distance < closest_hit.distance
-                    {
-                        closest_hit = result;
-                        closest_hit.chunk = chunk;
-                        closest_hit.chunk_x = chunk_x;
-                        closest_hit.chunk_z = chunk_z;
-                        closest_hit.block = block;
-                        closest_hit.block_x = x;
-                        closest_hit.block_y = y;
-                        closest_hit.block_z = z;
-                    }
+                    closest_hit = result;
+                    closest_hit.chunk = chunk;
+                    closest_hit.chunk_x = chunk_x;
+                    closest_hit.chunk_z = chunk_z;
+                    closest_hit.block = block;
+                    closest_hit.block_x = x;
+                    closest_hit.block_y = y;
+                    closest_hit.block_z = z;
                 }
             }
         }
@@ -251,6 +248,8 @@ RayIntersectsWorld :: (world : *World, ray : Ray) -> HitResult #must
 
 SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, length : float) -> HitResult #must
 {
+    ProfileBlock ();
+
     center := AABBCenter (aabb);
     half_size := AABBHalfSize (aabb);
     min_x, max_x := MinMax (center.x, center.x + direction.x * length);
@@ -291,7 +290,7 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
 
                 if !chunk
                 {
-                    chunk_aabb := ChunkAABB (x / Chunk_Size, z / Chunk_Size);
+                    chunk_aabb := ChunkAABB (chunk_x, chunk_z);
                     result := SweptAABBIntersectsAABB (aabb, chunk_aabb, direction, length, return_tnear_when_inside = false);
                     if result.hit && result.distance < closest_hit.distance
                     {
@@ -312,19 +311,16 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
                     continue;
 
                 result := SweptAABBIntersectsAABB (aabb, block_aabb, direction, length);
-                if result.hit
+                if result.hit && result.distance < closest_hit.distance
                 {
-                    if result.distance < closest_hit.distance
-                    {
-                        closest_hit = result;
-                        closest_hit.chunk = chunk;
-                        closest_hit.chunk_x = chunk_x;
-                        closest_hit.chunk_z = chunk_z;
-                        closest_hit.block = block;
-                        closest_hit.block_x = x;
-                        closest_hit.block_y = y;
-                        closest_hit.block_z = z;
-                    }
+                    closest_hit = result;
+                    closest_hit.chunk = chunk;
+                    closest_hit.chunk_x = chunk_x;
+                    closest_hit.chunk_z = chunk_z;
+                    closest_hit.block = block;
+                    closest_hit.block_x = x;
+                    closest_hit.block_y = y;
+                    closest_hit.block_z = z;
                 }
             }
         }
