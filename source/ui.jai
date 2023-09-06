@@ -595,12 +595,21 @@ UIShowGameMetricsWindow :: (opened : *bool)
     if !ImGui.Begin ("Game Metrics", opened)
         return;
 
+    ImGui.LabelText ("Frame Time", "%.2f ms, %d FPS", ImGui.GetIO ().DeltaTime * 1000.0, cast (s32) (1 / ImGui.GetIO ().DeltaTime));
+
+    ImGui.SeparatorText ("Drawing");
+    ImGui.SliderInt ("Render Distance", *g_settings.render_distance, 1, 32);
+    ImGui.Checkbox ("Enable View Culling", *g_settings.enable_view_culling);
+    ImGui.LabelText ("Chunks Being Rendered", "%lld", g_chunks_drawn_this_frame);
+
     ImGui.SeparatorText ("World");
     ImGui.LabelText ("World Seed", "%lld", g_world.seed);
     ImGui.LabelText ("Loaded Chunks", "%lld", g_world.all_loaded_chunks.count);
     ImGui.LabelText ("Chunks Being Generated", "%lld", g_world.chunks_being_generated.count);
+    ImGui.Checkbox ("Generate New chunks", *g_settings.generate_new_chunks);
 
     ImGui.SeparatorText ("Player");
+    ImGui.SliderFloat ("Movement Speed Multiplier", *g_settings.player_speed_mult, 1, 1000.0);
     if ImGui.InputFloat3 ("XYZ", *g_player.position.n, "%.3f")
         g_player.velocity = .{};
     ImGui.Checkbox ("Enable Collisions", *g_player.enable_collisions);

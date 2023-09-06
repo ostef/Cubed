@@ -58,6 +58,7 @@ g_settings : struct
     generate_new_chunks := true;
     render_distance : s32 = 6;
     player_speed_mult := 1.0;
+    enable_view_culling := true;
 }
 g_world : World;
 g_player : Player;

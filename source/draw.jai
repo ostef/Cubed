@@ -679,6 +679,8 @@ DrawCameraFrustum :: (using camera : Camera)
     Im3d.DrawArrow (bottom_plane.origin, bottom_plane.origin + bottom_plane.normal);
 }
 
+g_chunks_drawn_this_frame := 0;
+
 DrawWorld :: (world : *World, camera : Camera)
 {
     #if false
@@ -712,14 +714,15 @@ DrawWorld :: (world : *World, camera : Camera)
         camera_horizontal_pos := Vec2f.{camera.position.x, camera.position.z};
         world_chunk_pos := Vec2f.{xx (it.x * Chunk_Size), xx (it.z * Chunk_Size)};
 
-        if SqrdDistance (world_chunk_pos, camera_horizontal_pos) < sqrd_render_distance && ChunkIsInFrustum (it, view_frustum)
+        if SqrdDistance (world_chunk_pos, camera_horizontal_pos) < sqrd_render_distance
+        && (!g_settings.enable_view_culling || ChunkIsInFrustum (it, view_frustum))
         {
             ChunkGenerateMeshes (it);
             ArrayPush (*chunks_to_draw, it);
         }
     }
 
-    // Println ("Drawing % chunks", chunks_to_draw.count);
+    g_chunks_drawn_this_frame = chunks_to_draw.count;
 
     GL_Utils.EnableBlock (GL_BLEND);
     GL_Utils.BlendFuncStateBlock ();
