@@ -13,6 +13,7 @@ SkinnedMesh :: struct
 {
     vao, vbo, ibo : GLuint;
 
+    index_count : s64;
     _vertex_count : s64;
     memory_block : *void;
 
@@ -71,7 +72,7 @@ GetJointNamesArray :: inline (skeleton : *Skeleton) -> [][Max_Skeleton_Joint_Nam
     return result;
 }
 
-LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, allocator := context.allocator) -> bool
+LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, init_gl_objects := true, allocator := context.allocator) -> bool
 {
     reader := MakeBinaryReader (data);
 
@@ -103,6 +104,7 @@ LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, allocator := c
 
     mesh.indices.data = xx (mesh.vertices.data + vertex_count);
     mesh.indices.count = xx index_count;
+    mesh.index_count = xx index_count;
 
     ok = ReadArray (*reader, mesh.vertices);
     if !ok
@@ -164,10 +166,13 @@ LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, allocator := c
         joint.parent = ifx parent_id < 0 then null else *mesh.joints[parent_id];
     }
 
+    if init_gl_objects
+        InitSkinnedMeshGLObjects (mesh);
+
     return true;
 }
 
-LoadSkinnedMeshFromFile :: inline (mesh : *SkinnedMesh, filename : string, allocator := context.allocator) -> bool
+LoadSkinnedMeshFromFile :: inline (mesh : *SkinnedMesh, filename : string, init_gl_objects := true, allocator := context.allocator) -> bool
 {
     data, ok := read_entire_file (filename);
     if !ok
@@ -176,7 +181,7 @@ LoadSkinnedMeshFromFile :: inline (mesh : *SkinnedMesh, filename : string, alloc
         return false;
     }
 
-    ok = LoadSkinnedMeshFromMemory (mesh, data, allocator);
+    ok = LoadSkinnedMeshFromMemory (mesh, data, init_gl_objects, allocator);
     Free (data.data);
 
     return ok;
@@ -197,34 +202,36 @@ InitSkinnedMeshGLObjects :: (using mesh : *SkinnedMesh)
 
     glBufferData (GL_ARRAY_BUFFER, size_of (SkinnedVertex) * vertices.count, vertices.data, GL_STATIC_DRAW);
     glBufferData (GL_ELEMENT_ARRAY_BUFFER, size_of (u32) * indices.count, indices.data, GL_STATIC_DRAW);
+
+    SetupVertexAttribsForShader (mesh, g_skinned_mesh_shader);
 }
 
 SetupVertexAttribsForShader :: (using mesh : *SkinnedMesh, shader : GLuint)
 {
     location : GLint;
 
-    location = glGetAttribLocation (shader, "position");
+    location = glGetAttribLocation (shader, "a_Position");
     if location != -1
     {
         glEnableVertexAttribArray (xx location);
         glVertexAttribPointer (xx location, 3, GL_FLOAT, GL_FALSE, size_of (SkinnedVertex), xx OffsetOf (SkinnedVertex, "position"));
     }
 
-    location = glGetAttribLocation (shader, "normal");
+    location = glGetAttribLocation (shader, "a_Normal");
     if location != -1
     {
         glEnableVertexAttribArray (xx location);
         glVertexAttribPointer (xx location, 3, GL_FLOAT, GL_FALSE, size_of (SkinnedVertex), xx OffsetOf (SkinnedVertex, "normal"));
     }
 
-    location = glGetAttribLocation (shader, "tex_coords");
+    location = glGetAttribLocation (shader, "a_Tex_Coords");
     if location != -1
     {
         glEnableVertexAttribArray (xx location);
         glVertexAttribPointer (xx location, 2, GL_FLOAT, GL_FALSE, size_of (SkinnedVertex), xx OffsetOf (SkinnedVertex, "tex_coords"));
     }
 
-    location = glGetAttribLocation (shader, "joint_id");
+    location = glGetAttribLocation (shader, "a_Joint_Id");
     if location != -1
     {
         glEnableVertexAttribArray (xx location);
