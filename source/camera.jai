@@ -24,8 +24,8 @@ Camera :: struct
 
 Plane :: struct
 {
+    origin : Vec3f;
     normal : Vec3f;
-    distance : float;
 }
 
 Frustum :: struct
@@ -139,14 +139,12 @@ CalculateCameraMatrices :: inline (using cam : *Camera)
 
 MakePlane :: inline (origin : Vec3f, normal : Vec3f) -> Plane #must
 {
-    inv_len := 1 / Length (normal);
-
-    return .{ normal * inv_len, Dot (normal, origin) * inv_len };
+    return .{ origin, Normalized (normal) };
 }
 
 SignedDistanceToPlane :: inline (point : Vec3f, plane : Plane) -> float #must
 {
-    return Dot (plane.normal, point) - plane.distance;
+    return Dot (plane.normal, point) - Dot (plane.normal, plane.origin);
 }
 
 AABBIsInFrontOrOnPlane :: (aabb : AABB, plane : Plane) -> bool #must
@@ -168,10 +166,18 @@ MakeViewFrustum :: (using camera : Camera) -> Frustum #must
     w, h : s32;
     SDL_GetWindowSize (g_window, *w, *h);
 
-    aspect_ratio := cast (float) w / cast (float) h;
+    aspect_ratio :=  cast (float) w / cast (float) h;
+    inv_aspect_ratio := cast (float) h / cast (float) w;
 
-    half_v_side := z_far * Tan (ToRadians (fov_in_degrees * 0.5));
-    half_h_side := half_v_side * aspect_ratio;
+    half_near_v_side := z_near * Tan (ToRadians (fov_in_degrees * 0.5));
+    half_near_h_side := half_near_v_side * aspect_ratio;
+    half_near_h_hypothenuse := Sqrt (z_near * z_near + half_near_h_side * half_near_h_side);
+    half_near_v_hypothenuse := Sqrt (z_near * z_near + half_near_v_side * half_near_v_side);
+
+    half_far_v_side := z_far * Tan (ToRadians (fov_in_degrees * 0.5));
+    half_far_h_side := half_far_v_side * aspect_ratio;
+    half_far_h_hypothenuse := Sqrt (z_far * z_far + half_far_h_side * half_far_h_side);
+    half_far_v_hypothenuse := Sqrt (z_far * z_far + half_far_v_side * half_far_v_side);
 
     right   := RightVector (transform_matrix);
     up      := UpVector (transform_matrix);
@@ -182,10 +188,22 @@ MakeViewFrustum :: (using camera : Camera) -> Frustum #must
     far_plane    = MakePlane (position + z_far * forward, -forward);
 
     far_center := z_far * forward;
-    right_plane  = MakePlane (position, Cross (up, far_center + right * half_h_side));
-    left_plane   = MakePlane (position, Cross (far_center - right * half_h_side, up));
-    top_plane    = MakePlane (position, Cross (far_center + up * half_v_side, right));
-    bottom_plane = MakePlane (position, Cross (right, far_center - up * half_v_side));
+
+    far_right := far_center + right * half_far_h_side;
+    far_left  := far_center - right * half_far_h_side;
+    right_center := far_right - Normalized (far_right) * (half_far_h_hypothenuse - half_near_h_hypothenuse) * 0.5;
+    left_center  := far_left - Normalized (far_left) * (half_far_h_hypothenuse - half_near_h_hypothenuse) * 0.5;
+
+    right_plane  = MakePlane (position + right_center, Cross (far_right, up));
+    left_plane   = MakePlane (position + left_center, Cross (up, far_left));
+
+    far_top    := far_center + up * half_far_v_side;
+    far_bottom := far_center - up * half_far_v_side;
+    top_center    := far_top - Normalized (far_top) * (half_far_v_hypothenuse - half_near_v_hypothenuse) * 0.5;
+    bottom_center := far_bottom - Normalized (far_bottom) * (half_far_v_hypothenuse - half_near_v_hypothenuse) * 0.5;
+
+    top_plane    = MakePlane (position + top_center, Cross (right, far_top));
+    bottom_plane = MakePlane (position + bottom_center, Cross (far_bottom, right));
 
     return result;
 }

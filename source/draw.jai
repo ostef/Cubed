@@ -641,42 +641,66 @@ DrawChunkMesh :: inline (chunk : Chunk, camera : Camera, mesh_type : ChunkMeshTy
     glDrawArrays (GL_TRIANGLES, 0, xx chunk.vertex_counts[mesh_type]);
 }
 
-cam : Camera;
-
-DrawCameraFrustum :: (using camera : Camera, using frustum : Frustum)
+DrawCameraFrustum :: (using camera : Camera)
 {
+    using frustum := MakeViewFrustum (camera);
+
     w, h : s32;
     SDL_GetWindowSize (g_window, *w, *h);
 
     aspect_ratio := cast (float) w / cast (float) h;
 
-    near_size : Vec2f = ---;
-    near_size.x = z_near * Tan (ToRadians (fov_in_degrees * 0.5));
-    near_size.y = near_size.x * aspect_ratio;
+    half_near_v_side := z_near * Tan (ToRadians (fov_in_degrees * 0.5));
+    half_near_h_side := half_near_v_side * aspect_ratio;
+    half_near_h_hypothenuse := Sqrt (z_near * z_near + half_near_h_side * half_near_h_side) * 0.5;
+    half_near_v_hypothenuse := Sqrt (z_near * z_near + half_near_v_side * half_near_v_side) * 0.5;
 
-    far_size : Vec2f = ---;
-    far_size.x = z_far * Tan (ToRadians (fov_in_degrees * 0.5));
-    far_size.y = far_size.x * aspect_ratio;
+    half_far_v_side := z_far * Tan (ToRadians (fov_in_degrees * 0.5));
+    half_far_h_side := half_far_v_side * aspect_ratio;
+    half_far_h_hypothenuse := Sqrt (z_far * z_far + half_far_h_side * half_far_h_side) * 0.5;
+    half_far_v_hypothenuse := Sqrt (z_far * z_far + half_far_v_side * half_far_v_side) * 0.5;
 
-    Im3d.DrawQuad (near_plane.normal * near_plane.distance, near_plane.normal, near_size);
-    Im3d.DrawArrow (near_plane.normal * near_plane.distance, near_plane.normal * near_plane.distance + near_plane.normal);
+    Im3d.DrawQuad (near_plane.origin, near_plane.normal, .{ half_near_h_side, half_near_v_side });
+    Im3d.DrawArrow (near_plane.origin, near_plane.origin + near_plane.normal);
 
-    Im3d.DrawQuad (far_plane.normal * far_plane.distance, far_plane.normal, far_size);
-    Im3d.DrawArrow (far_plane.normal * far_plane.distance, far_plane.normal * far_plane.distance + far_plane.normal);
+    Im3d.DrawQuad (far_plane.origin, far_plane.normal, .{ half_far_h_side, half_far_v_side });
+    Im3d.DrawArrow (far_plane.origin, far_plane.origin + far_plane.normal);
+
+    Im3d.DrawQuad (left_plane.origin, left_plane.normal, .{ half_far_h_hypothenuse - half_near_h_hypothenuse, half_far_v_side });
+    Im3d.DrawArrow (left_plane.origin, left_plane.origin + left_plane.normal);
+
+    Im3d.DrawQuad (right_plane.origin, right_plane.normal, .{ half_far_h_hypothenuse - half_near_h_hypothenuse, half_far_v_side });
+    Im3d.DrawArrow (right_plane.origin, right_plane.origin + right_plane.normal);
+
+    Im3d.DrawQuad (top_plane.origin, top_plane.normal, .{ half_far_h_side, half_far_v_hypothenuse - half_near_v_hypothenuse });
+    Im3d.DrawArrow (top_plane.origin, top_plane.origin + top_plane.normal);
+
+    Im3d.DrawQuad (bottom_plane.origin, bottom_plane.normal, .{ half_far_h_side, half_far_v_hypothenuse - half_near_v_hypothenuse });
+    Im3d.DrawArrow (bottom_plane.origin, bottom_plane.origin + bottom_plane.normal);
 }
 
 DrawWorld :: (world : *World, camera : Camera)
 {
-    // if Im3d.Gizmo ("Cam", cast (*[16]float) *cam.transform_matrix.n)
-    // {
-    //     cam.position = TranslationVector (cam.transform_matrix);
-    //     cam.rotation = QuatfFromMatrix (cam.transform_matrix);
-    //     cam.euler_angles = EulerAnglesFromQuat (cam.rotation);
-    // }
+    #if false
+    {
+        current_time := cast (float) Basic.to_float64_seconds (Basic.current_time_monotonic ());
+
+        dummy_camera : Camera;
+        // dummy_camera.position.z = Cos (current_time * 0.2) * 100;
+        dummy_camera.position.y = 130;
+        dummy_camera.z_near = 2.0;
+        dummy_camera.z_far = Chunk_Size * 4;
+        dummy_camera.euler_angles.yaw = Cos (current_time * 0.2);
+        // dummy_camera.euler_angles.pitch = Sin (current_time);
+        dummy_camera.rotation = QuatfFromEulerAngles (dummy_camera.euler_angles);
+
+        CalculateCameraMatrices (*dummy_camera);
+        view_frustum := MakeViewFrustum (dummy_camera);
+
+        DrawCameraFrustum (dummy_camera);
+    }
 
     view_frustum := MakeViewFrustum (camera);
-
-    // DrawCameraFrustum (cam, view_frustum);
 
     chunks_to_draw : [..]*Chunk;
     chunks_to_draw.allocator = Temp;
@@ -688,14 +712,11 @@ DrawWorld :: (world : *World, camera : Camera)
         camera_horizontal_pos := Vec2f.{camera.position.x, camera.position.z};
         world_chunk_pos := Vec2f.{xx (it.x * Chunk_Size), xx (it.z * Chunk_Size)};
 
-        if SqrdDistance (world_chunk_pos, camera_horizontal_pos) < sqrd_render_distance //&& ChunkIsInFrustum (it, view_frustum)
+        if SqrdDistance (world_chunk_pos, camera_horizontal_pos) < sqrd_render_distance && ChunkIsInFrustum (it, view_frustum)
         {
             ChunkGenerateMeshes (it);
             ArrayPush (*chunks_to_draw, it);
         }
-
-        // if ChunkIsInFrustum (it, view_frustum)
-        //     Im3d.DrawAlignedBox (ChunkAABB (it.x, it.z).min, ChunkAABB (it.x, it.z).max);
     }
 
     // Println ("Drawing % chunks", chunks_to_draw.count);
