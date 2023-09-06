@@ -484,9 +484,9 @@ main :: ()
         glClearColor (0.1, 0.1, 0.1, 1.0);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        DrawWorld (*g_world, *g_camera);
         if PhysicsIsRunning ()
             DrawPlayer (g_world, g_player, g_camera);
+        DrawWorld (*g_world, *g_camera);
 
         if PhysicsIsRunning ()
             Im3d.EndFrame ();
