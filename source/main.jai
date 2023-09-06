@@ -68,6 +68,55 @@ g_prev_mouse_state : u32;
 
 Fixed_Delta_Time :: 1 / 60.0;
 
+GLMessageCallback :: (
+    source : GLenum,
+    type : GLenum,
+    id : GLuint,
+    severity : GLenum,
+    length : GLsizei,
+    message : *GLchar,
+    user_param : *void
+) #c_call
+{
+    ctx : Context = (cast (*Context) user_param).*;
+    push_context ctx
+    {
+        msg := MakeString (length, message);
+        source_str : string;
+        if source ==
+        {
+        case GL_DEBUG_SOURCE_API; source_str = "API ";
+        case GL_DEBUG_SOURCE_WINDOW_SYSTEM; source_str = "window system ";
+        case GL_DEBUG_SOURCE_SHADER_COMPILER; source_str = "chader compiler ";
+        case GL_DEBUG_SOURCE_THIRD_PARTY; source_str = "third party ";
+        case GL_DEBUG_SOURCE_APPLICATION; source_str = "application ";
+        case; source_str = "";
+        }
+
+        type_str : string;
+        if type ==
+        {
+        case GL_DEBUG_TYPE_ERROR; type_str = "";
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR; type_str = ", deprecated behavior";
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR; type_str = ", undefined behavior";
+        case GL_DEBUG_TYPE_PORTABILITY; type_str = ", portability concern";
+        case GL_DEBUG_TYPE_PERFORMANCE; type_str = ", performance concern";
+        case; type_str = "";
+        }
+
+        if severity ==
+        {
+        case GL_DEBUG_SEVERITY_HIGH;
+            LogError ("OpenGL %error%: %", source_str, type_str, msg);
+        case GL_DEBUG_SEVERITY_MEDIUM; #through;
+        case GL_DEBUG_SEVERITY_LOW;
+            LogWarning ("OpenGL %warning%: %", source_str, type_str, msg);
+        //case GL_DEBUG_SEVERITY_NOTIFICATION;
+        //    LogMessage ("OpenGL %message%: %", source_str, type_str, msg);
+        }
+    }
+}
+
 PhysicsDebugBreak :: inline ()
 {
     if !g_physics_breakpoint_hit
@@ -176,7 +225,7 @@ main :: ()
 
         builder : StringBuilder;
         PrintProfilingData (*builder, entries);
-        Print (StringBuilderBuild (*builder));
+        LogMessage ("Profiling results:\n%", StringBuilderBuild (*builder));
     };
 
     #if Basic.MEMORY_DEBUGGER
@@ -236,6 +285,10 @@ main :: ()
     defer SDL_GL_DeleteContext (gl_context);
 
     gl_load (*gl, SDL_GL_GetProcAddress);
+
+    glEnable (GL_DEBUG_OUTPUT);
+    glEnable (GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback (GLMessageCallback, *context);
 
     LogMessage ("GL version: %", MakeString (glGetString (GL_VERSION)));
 
