@@ -364,7 +364,7 @@ main :: ()
     quit := false;
     while !quit
     {
-        ProfileBlock ("MainLoop");
+        ProfileBlock ("Main Loop");
 
         defer ResetTemporaryStorage ();
         defer g_physics_step = false;
