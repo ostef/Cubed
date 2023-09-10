@@ -21,6 +21,8 @@ g_block_shader_attribs : struct
     humidity : GLuint;
 };
 
+g_steve_texture : GLuint;
+
 Atlas_Cell_Size_No_Border :: 16;
 Atlas_Cell_Border_Size :: 4;
 Atlas_Cell_Size :: Atlas_Cell_Size_No_Border + Atlas_Cell_Border_Size * 2;
@@ -216,6 +218,7 @@ void main ()
 {
     gl_Position = u_View_Projection_Matrix * u_Model_Matrix * vec4 (a_Position, 1);
     Tex_Coords = a_Tex_Coords;
+    Tex_Coords.y = 1 - Tex_Coords.y;
     Normal = a_Normal;
 }
 GLSL
@@ -233,7 +236,7 @@ out vec4 Frag_Color;
 void main ()
 {
     vec4 color = texture (u_Texture, Tex_Coords);
-    Frag_Color = vec4 (Normal, 1);
+    Frag_Color = color;
 }
 GLSL
 
@@ -355,6 +358,11 @@ DrawInit :: (textures_directory : string) -> bool
         LogError ("Could not load textures at %", textures_directory);
         return false;
     }
+
+    steve_filename := FormatToCString ("%/steve.png", textures_directory);
+    g_steve_texture = LoadSingleTexture (steve_filename);
+    if !g_steve_texture
+        return false;
 
     if !ReloadShaders ()
         return false;
@@ -608,8 +616,6 @@ DrawSkinnedMesh :: inline (mesh : SkinnedMesh, camera : Camera, model_matrix : M
     GL_Utils.StateBlock (GL_ELEMENT_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, prev);});
     GL_Utils.EnableBlock (GL_DEPTH_TEST);
     GL_Utils.EnableBlock (GL_CULL_FACE);
-    GL_Utils.StateBlock (GL_ACTIVE_TEXTURE, (prev : GLenum) {glActiveTexture (prev);});
-    GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D_ARRAY, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D_ARRAY, prev);});
     GL_Utils.StateBlock (GL_CURRENT_PROGRAM, (prev : GLuint) {glUseProgram (prev);});
 
     glUseProgram (g_skinned_mesh_shader);

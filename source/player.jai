@@ -169,5 +169,11 @@ DrawPlayer :: (world : World, using player : Player, camera : Camera)
     // aabb := PlayerAABB (player);
     // Im3d.DrawAlignedBox (aabb.min, aabb.max);
     // Im3d.DrawArrow (position, position + velocity * 60);
+    GL_Utils.StateBlock (GL_ACTIVE_TEXTURE, (prev : GLenum) {glActiveTexture (prev);});
+    GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D_ARRAY, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D_ARRAY, prev);});
+
+    glActiveTexture (GL_TEXTURE0);
+    glBindTexture (GL_TEXTURE_2D, g_steve_texture);
+
     DrawSkinnedMesh (g_steve_mesh, g_camera, transform_matrix);
 }
