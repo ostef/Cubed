@@ -85,14 +85,20 @@ class Mesh:
             if len (poly.vertices) != 3:
                 raise Exception ("Mesh has polygons that are not triangles. Make sure to triangulate the mesh prior.")
 
+            for vert_idx, loop_idx in zip (poly.vertices, poly.loop_indices):
+                uv_coords = blender_mesh.uv_layers.active.data[loop_idx].uv
+                print ("%i %i %f %f", vert_idx, loop_idx, uv_coords.x, uv_coords.y)
+
             tri = []
-            for j, vert_index in enumerate (poly.vertices):
-                if vert_index in vertices_dict:
-                    result_vert_index = vertices_dict[vert_index]
+            for vert_index, loop_index in zip (poly.vertices, poly.loop_indices):
+                vert_id = (vert_index, loop_index)
+                if vert_id in vertices_dict:
+                    result_vert_index = vertices_dict[vert_id]
                 else:
                     result_vert_index = len (result.verts)
-                    vertices_dict.update ({ vert_index : result_vert_index })
+                    vertices_dict.update ({ vert_id : result_vert_index })
                     vert = blender_mesh.vertices[vert_index]
+                    uv_coords = blender_mesh.uv_layers.active.data[loop_index].uv
 
                     if len (vert.groups) != 0 and blender_armature is None:
                         raise Exception ("Mesh has vertices assigned to vertex groups, but we could not find an armature associated with it. Make sure it is parented to an armature, or it has a valid skin modifier.")
@@ -111,7 +117,7 @@ class Mesh:
                     result.verts.append (Vertex (
                         tuple (vert.co),
                         tuple (vert.normal),
-                        [0,0],
+                        uv_coords,
                         joint_id
                     ))
 
