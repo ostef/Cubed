@@ -87,7 +87,6 @@ class Mesh:
 
             for vert_idx, loop_idx in zip (poly.vertices, poly.loop_indices):
                 uv_coords = blender_mesh.uv_layers.active.data[loop_idx].uv
-                print ("%i %i %f %f", vert_idx, loop_idx, uv_coords.x, uv_coords.y)
 
             tri = []
             for vert_index, loop_index in zip (poly.vertices, poly.loop_indices):
@@ -132,6 +131,7 @@ class Mesh:
 
         with open (filename, "wb") as file:
             fw = file.write
+
             fw (b"SKINNED_MESH")
             fw (struct.pack ("<I", 10000)) # File version
 
@@ -166,44 +166,6 @@ class Mesh:
                     fw (struct.pack ("<h", self.name_to_joint_id[joint.parent.name]))
                 else:
                     fw (struct.pack ("<h", -1))
-
-    def WriteText (self, filename : str):
-        with open (filename, "wb") as file:
-            fw = file.write
-            fw (b"[1]\n\n")	# Version
-            fw (b"joint_count %u\n" % len (self.joints))
-            fw (b"vertex_count %u\n" % len (self.verts))
-            fw (b"triangle_count %u\n\n" % len (self.tris))
-            fw (b"joints:\n")
-
-            for joint in self.joints:
-                fw (b"%s\n" % bytes (joint.name, 'UTF-8'))
-                if joint.parent is not None:
-                    local_transform = joint.parent.matrix_local.inverted () @ joint.matrix_local
-                else:
-                    local_transform = joint.matrix_local
-
-                fw (b"%.6f %.6f %.6f %.6f\n" % local_transform[0][:])
-                fw (b"%.6f %.6f %.6f %.6f\n" % local_transform[1][:])
-                fw (b"%.6f %.6f %.6f %.6f\n" % local_transform[2][:])
-                fw (b"%.6f %.6f %.6f %.6f\n" % local_transform[3][:])
-
-                if joint.parent is not None:
-                    fw (b"%u\n\n" % self.name_to_joint_id[joint.parent.name])
-                else:
-                    fw (b"-1\n\n")
-
-            fw (b"vertices:\n")
-            for vert in self.verts:
-                fw (b"%.6f %.6f %.6f\n" % vert.position)
-                fw (b"%.6f %.6f %.6f\n" % vert.normal)
-                fw (b"%.6f %.6f %.6f\n" % vert.weights)
-                fw (b"%i %i %i %i\n" % vert.joint_id)
-                fw (b"\n")
-
-            fw (b"triangles:\n")
-            for tri in self.tris:
-                fw (b"%u %u %u\n" % tuple (tri))
 
 def ExportMeshes (
     context : bpy.types.Context,
@@ -257,7 +219,8 @@ def ExportMeshes (
         output_filename = os.path.join (os.path.dirname (filename), obj.name) + Exporter.filename_ext
         result.WriteBinary (output_filename)
         obj.to_mesh_clear ()
-        print (f"Exported mesh {obj.name} to file {output_filename}.\n")
+
+        print (f"Exported mesh {obj.name} to file {output_filename}")
 
 @orientation_helper (axis_forward = '-Z', axis_up = 'Y')
 class Exporter (bpy.types.Operator, ExportHelper):
