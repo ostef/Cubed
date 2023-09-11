@@ -19,32 +19,36 @@ from bpy_extras.io_utils import (
     axis_conversion
 )
 
+Vec3f = Tuple[float, float, float]
+Quatf = Tuple[float, float, float, float]
+
 class JointSample:
     def __init__ (
         self,
-        local_position : Tuple[float, float, float],
-        local_orientation : Tuple[float, float, float, float],
-        local_scale : Tuple[float, float, float]
+        local_position : Vec3f,
+        local_orientation : Quatf,
+        local_scale : Vec3f
     ):
         self.local_position = local_position
         self.local_orientation = local_orientation
         self.local_scale = local_scale
 
-class JointAnimation:
+class SkeletonPose:
     def __init__ (
         self,
-        name : str
+        joint_count : int
     ):
-        self.name = name
-        self.samples : List[JointSample] = []
+        self.joints : List[JointSample] = [
+            JointSample ((0,0,0), (0,0,0,1), (1,1,1))
+            for i in range (joint_count)
+        ]
 
 class SampledAnimation:
     def __init__ (
         self
     ):
-        self.sample_count : int = 0
         self.name_to_joint_id : Dict[str, int] = {}
-        self.joints : List[JointAnimation] = []
+        self.poses : List[SkeletonPose] = []
 
     def FromAction (
         blender_obj : bpy.types.Object,
@@ -56,16 +60,14 @@ class SampledAnimation:
     ):
         def AppendPose (
             anim : SampledAnimation,
-            pose : bpy.types.Pose
+            blender_pose : bpy.types.Pose
         ):
-            for bone in pose.bones:
-                # @Note (stefan): Is it possible for a bone to
-                # spawn in the middle of an animation ? We don't
-                # want that.
+            pose = SkeletonPose (len (anim.name_to_joint_id))
+            for bone in blender_pose.bones:
                 if bone.name not in anim.name_to_joint_id:
                     continue
 
-                matrix = transform_matrix @ bone.matrix
+                matrix : mathutils.Matrix = transform_matrix @ bone.matrix
 
                 if bone.parent is not None:
                     parent_matrix = transform_matrix @ bone.parent.matrix
@@ -73,37 +75,26 @@ class SampledAnimation:
 
                 location, orientation, scale = matrix.decompose ()
                 joint_index = anim.name_to_joint_id[bone.name]
+                pose.joints[joint_index] = JointSample (location, orientation, scale)
 
-                anim.joints[joint_index].samples.append (
-                    JointSample (
-                        tuple (location),
-                        (
-                            orientation[1],
-                            orientation[2],
-                            orientation[3],
-                            orientation[0]
-                        ),
-                        tuple (scale)
-                    )
-                )
+            anim.poses.append (pose)
 
         result = SampledAnimation ()
         prev_action = blender_obj.animation_data.action
-        prev_frame  = bpy.context.scene.frame_current
-        blender_obj.animation_data.action = blender_action
+        prev_frame = bpy.context.scene.frame_current
 
-        # Initialize the joint animations array and name dict
+        blender_obj.animation_data.action = blender_action
         bpy.context.scene.frame_set (frame_begin)
+
+        # Initialize the name to joint id dict
+        joint_count = 0
         for bone in blender_obj.pose.bones:
             if not bone.bone.use_deform:
                 continue
 
-            joint_index = len (result.joints)
-            joint_anim = JointAnimation (bone.name)
-            result.joints.append (joint_anim)
-            result.name_to_joint_id.update ({ bone.name : joint_index })
+            result.name_to_joint_id.update ({ bone.name : joint_count })
+            joint_count += 1
 
-        # Go through each frame in the animation and add the pose to the anim
         for frame in range (frame_begin, frame_end, frame_step):
             bpy.context.scene.frame_set (frame)
             AppendPose (result, blender_obj.pose)
@@ -111,37 +102,36 @@ class SampledAnimation:
         bpy.context.scene.frame_set (prev_frame)
         blender_obj.animation_data.action = prev_action
 
-        # Make sure we have the same number of samples for each joint
-        if len (result.joints) > 0:
-            result.sample_count = len (result.joints[0].samples)
-
-        for joint in result.joints:
-            if len (joint.samples) != result.sample_count:
-                raise Exception (f"Inconsistent sample count for joints in animation {blender_action.name}.")
-
         return result
 
-    def WriteText (self, filename : str):
+    def WriteBinary (self, filename : str):
+        import struct
+
         with open (filename, "wb") as file:
             fw = file.write
-            fw (b"[1]\n\n")	# Version
-            fw (b"joint_count %u\n" % len (self.joints))
-            fw (b"sample_count %u\n\n" % self.sample_count)
 
-            for joint in self.joints:
-                fw (b"%s\n\n" % bytes (joint.name, 'UTF-8'))
+            fw (b"ANIMATION")
 
-                for sample in joint.samples:
-                    fw (b"%.6f %.6f %.6f\n" % sample.local_position[:])
-                    fw (b"%.6f %.6f %.6f %.6f\n" % sample.local_orientation[:])
-                    fw (b"%.6f %.6f %.6f\n\n" % sample.local_scale[:])
+            fw (struct.pack ("<I", 10000))
+
+            fw (struct.pack ("<I", len (self.poses)))
+            fw (struct.pack ("<I", len (self.name_to_joint_id)))
+            for name in self.name_to_joint_id:
+                fw (b"%s\0" % bytes (name, 'UTF-8'))
+
+            for pose in self.poses:
+                for joint in pose.joints:
+                    fw (struct.pack ("<fff", *joint.local_position))
+                    fw (struct.pack ("<ffff", *joint.local_orientation))
+                    fw (struct.pack ("<fff", *joint.local_scale))
 
 def ExportAnimations (
     context : bpy.types.Context,
     filename : str,
     use_action_frame_range : bool,
     frame_step : int,
-    use_selection : bool,
+    selected_objects_only : bool,
+    active_action_only : bool,
     apply_transform : bool,
     axis_conversion_matrix : mathutils.Matrix
 ):
@@ -150,7 +140,7 @@ def ExportAnimations (
     if bpy.ops.object.mode_set.poll ():
         bpy.ops.object.mode_set (mode = 'OBJECT')
 
-    if use_selection:
+    if selected_objects_only:
         objs = context.selected_objects
     else:
         objs = context.scene.objects
@@ -183,9 +173,10 @@ def ExportAnimations (
             )
 
         anim = SampledAnimation.FromAction (obj, action, frame_begin, frame_end, frame_step, transform_matrix)
-        anim.WriteText (output_filename)
-        print (f"Exported animation clip {action.name} to file {output_filename}.\n")
+        anim.WriteBinary (output_filename)
+
         exported_actions.append (action)
+        print (f"Exported animation clip {action.name} to file {output_filename}")
 
 @orientation_helper (axis_forward = '-Z', axis_up = 'Y')
 class Exporter (bpy.types.Operator, ExportHelper):
