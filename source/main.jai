@@ -68,6 +68,7 @@ g_prev_keyboard_state : [SDL_NUM_SCANCODES]bool;
 g_prev_mouse_state : u32;
 
 g_steve_mesh : SkinnedMesh;
+g_sprint_anim : SkeletalAnimation;
 
 Fixed_Delta_Time :: 1 / 60.0;
 
@@ -355,6 +356,12 @@ main :: ()
     if !LoadSkinnedMeshFromFile (*g_steve_mesh, "data/Steve.mesh")
     {
         LogError ("Could not load skinned mesh data/Steve.mesh");
+        return;
+    }
+
+    if !LoadSkeletalAnimationFromFile (*g_sprint_anim, "data/Sprint_Better.anim")
+    {
+        LogError ("Could not load animation data/Sprint_Better.anim");
         return;
     }
 

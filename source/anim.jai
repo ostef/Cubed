@@ -44,13 +44,29 @@ Skeleton :: struct
     name_to_joint_id : HashMap (string, s16);
 }
 
-CalculateSkeletonMemoryBlockSize :: inline (joint_count : s16) -> s64 #must
+JointSample :: struct
+{
+    local_position : Vec3f;
+    local_orientation : Quatf;
+    local_scale : Vec3f;
+}
+
+SkeletalAnimation :: struct
+{
+    joint_count : s64;
+    pose_count : s64;
+    memory_block : *void;
+    name_to_joint_id : HashMap (string, s16);
+    joint_samples : []JointSample;
+}
+
+CalculateSkeletonMemoryBlockSize :: inline (joint_count : int) -> int #must
 {
     return HashMapGetMinCapacityForElementCount (Skeleton.name_to_joint_id.Load_Factor, joint_count) +
         joint_count * (Max_Skeleton_Joint_Name_Length + size_of (SkeletonJoint));
 }
 
-AllocSkeletonData :: (skeleton : *Skeleton, joint_count : s16, allocator := context.allocator)
+AllocSkeletonData :: (skeleton : *Skeleton, joint_count : int, allocator := context.allocator)
 {
     skeleton.memory_block = Alloc (CalculateSkeletonMemoryBlockSize (joint_count), allocator);
 
@@ -82,18 +98,30 @@ LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, init_gl_object
 
     version:, ok = ReadValue (*reader, u32);
     if !ok
+    {
+        LogError ("Could not read file version");
         return false;
+    }
 
     if version != 10000
+    {
+        LogError ("Unknown version %", version);
         return false;
+    }
 
     vertex_count:, ok = ReadValue (*reader, u32);
     if !ok
+    {
+        LogError ("Could not read vertex count");
         return false;
+    }
 
     triangle_count:, ok = ReadValue (*reader, u32);
     if !ok
+    {
+        LogError ("Could not read triangle count");
         return false;
+    }
 
     index_count := triangle_count * 3;
 
@@ -122,7 +150,10 @@ LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, init_gl_object
 
     joint_count:, ok = ReadValue (*reader, s16);
     if !ok
+    {
+        LogError ("Could not read joint count");
         return false;
+    }
 
     AllocSkeletonData (*mesh.skeleton, joint_count, allocator);
     joint_names := GetJointNamesArray (*mesh.skeleton);
@@ -137,7 +168,10 @@ LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, init_gl_object
         }
 
         if name.count == 0 || name.count > Max_Skeleton_Joint_Name_Length
+        {
+            LogError ("Invalid joint name %", name);
             return false;
+        }
 
         joint_name := *joint_names[i][0];
         memcpy (joint_name, name.data, name.count + 1);
@@ -145,7 +179,10 @@ LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, init_gl_object
 
         _, was_present := HashMapInsert (*mesh.name_to_joint_id, name, i);
         if was_present
+        {
+            LogError ("Duplicate joint %", name);
             return false;
+        }
 
         joint := *mesh.joints[i];
         joint.id = i;
@@ -256,4 +293,140 @@ DestroySkinnedMeshGLObjects :: inline (using mesh : *SkinnedMesh)
 {
     glDeleteBuffers (2, *vbo);
     glDeleteVertexArrays (1, *vao);
+}
+
+CalculateSkeletalAnimationMemoryBlockSize :: inline (joint_count : int, pose_count : int) -> int #must
+{
+    joint_name_size := HashMapGetMinCapacityForElementCount (SkeletalAnimation.name_to_joint_id.Load_Factor, joint_count) + joint_count * (Max_Skeleton_Joint_Name_Length + size_of (SkeletonJoint));
+    sample_size := size_of (JointSample) * joint_count * pose_count;
+
+    return joint_name_size + sample_size;
+}
+
+AllocSkeletalAnimationData :: (anim : *SkeletalAnimation, joint_count : int, pose_count : int, allocator := context.allocator)
+{
+    anim.memory_block = Alloc (CalculateSkeletalAnimationMemoryBlockSize (joint_count, pose_count), allocator);
+
+    anim.joint_count = joint_count;
+    anim.pose_count = pose_count;
+
+    anim.joint_samples.data = anim.memory_block;
+    anim.joint_samples.count = joint_count * pose_count;
+
+    map_data := cast (*void) (anim.joint_samples.data + anim.joint_samples.count);
+    capacity := HashMapGetMinCapacityForElementCount (SkeletalAnimation.name_to_joint_id.Load_Factor, joint_count);
+    HashMapInitFromPreallocatedMemory (*anim.name_to_joint_id, map_data, capacity, .{});
+}
+
+GetJointNamesArray :: inline (anim : *SkeletalAnimation) -> [][Max_Skeleton_Joint_Name_Length]u8 #must
+{
+    result : [][Max_Skeleton_Joint_Name_Length]u8 = ---;
+    result.count = anim.joint_count;
+    result.data = xx (anim.name_to_joint_id.entries + anim.name_to_joint_id.allocated);
+
+    return result;
+}
+
+GetJointSample :: inline (using anim : *SkeletalAnimation, joint_id : s16, pose_index : int) -> *JointSample #must
+{
+    Assert (joint_id >= 0 && joint_id < joint_count, "Invalid joint id %", joint_id);
+    Assert (pose_index >= 0 && pose_index < pose_count, "Pose index % out of bounds %", pose_index, pose_count);
+
+    return *joint_samples[pose_index * joint_count + joint_id];
+}
+
+LoadSkeletalAnimationFromMemory :: (anim : *SkeletalAnimation, data : string, allocator := context.allocator) -> bool
+{
+    reader := MakeBinaryReader (data);
+
+    str, ok := ReadString (*reader, "ANIMATION".count);
+    if !ok || str != "ANIMATION"
+        return false;
+
+    version:, ok = ReadValue (*reader, u32);
+    if !ok
+    {
+        LogError ("Could not read file version");
+        return false;
+    }
+
+    if version != 10000
+    {
+        LogError ("Unknown version %", version);
+        return false;
+    }
+
+    pose_count:, ok = ReadValue (*reader, u32);
+    if !ok
+    {
+        LogError ("Could not read joint count");
+        return false;
+    }
+
+    joint_count:, ok = ReadValue (*reader, u32);
+    if !ok
+    {
+        LogError ("Could not read joint count");
+        return false;
+    }
+
+    AllocSkeletalAnimationData (anim, joint_count, pose_count, allocator);
+    joint_names := GetJointNamesArray (anim);
+
+    for i : 0..joint_count - 1
+    {
+        name:, ok = ReadNullTerminatedString (*reader);
+        if !ok
+        {
+            LogError ("Could not read joint % name", i);
+            return false;
+        }
+
+        if name.count == 0 || name.count > Max_Skeleton_Joint_Name_Length
+        {
+            LogError ("Invalid joint name %", name);
+            return false;
+        }
+
+        joint_name := *joint_names[i][0];
+        memcpy (joint_name, name.data, name.count + 1);
+        name.data = joint_name;
+
+        _, was_present := HashMapInsert (*anim.name_to_joint_id, name, xx i);
+        if was_present
+        {
+            LogError ("Duplicate joint %", name);
+            return false;
+        }
+    }
+
+    ok = ReadArray (*reader, anim.joint_samples);
+    if !ok
+    {
+        LogError ("Could not read joint samples");
+        return false;
+    }
+
+    return true;
+}
+
+LoadSkeletalAnimationFromFile :: inline (anim : *SkeletalAnimation, filename : string, allocator := context.allocator) -> bool
+{
+    data, ok := read_entire_file (filename);
+    if !ok
+    {
+        LogError ("Could not read file '%'", filename);
+        return false;
+    }
+
+    ok = LoadSkeletalAnimationFromMemory (anim, data, allocator);
+    Free (data.data);
+
+    return ok;
+}
+
+FreeSkeletalAnimation :: inline (using anim : *SkeletalAnimation, allocator : Allocator)
+{
+    Free (memory_block, allocator);
+    Initialize (anim);
 }
