@@ -85,31 +85,11 @@ Initialize :: inline (item : *$T, count : s64)
     }
 }
 
-OffsetOf :: ($T : Type, $member : string, $location := #caller_location) -> s64 #expand
+OffsetOf :: ($T : Type, $member : string) -> s64 #must #expand
 {
-    Compiler :: #import "Compiler";
+    dummy := cast (*T) null;
 
-    #insert -> string
-    {
-        info := cast (*Type_Info_Struct) type_info (T);
-        if info.type != .STRUCT
-            Compiler.compiler_report (FormatString ("Type % is not a struct", T), loc = location);
-
-        result := -1;
-        for info.members
-        {
-            if it.name == member
-            {
-                result = it.offset_in_bytes;
-                break;
-            }
-        }
-
-        if result < 0
-            Compiler.compiler_report (FormatString ("Struct % does not have a member named %", T, member), loc = location);
-
-        return FormatString ("return %;", result);
-    }
+    #insert #run FormatString ("return cast (s64) *dummy.%;", member);
 }
 
 DefaultValue :: ($T : Type) -> T #expand
