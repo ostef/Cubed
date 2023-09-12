@@ -120,3 +120,8 @@ NLerp :: Linalg.nlerp;
 
 EulerAngles :: Linalg.Euler_Angles;
 EulerAnglesFromQuat :: Linalg.euler_angles_from_quat;
+
+SimpleDecomposeTransform :: (mat : Mat4f) -> translation : Vec3f, rotation : Quatf, scale : Vec3f
+{
+    return TranslationVector (mat), QuatfFromMatrix (mat), ScaleVector (mat);
+}
