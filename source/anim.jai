@@ -200,8 +200,26 @@ LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, init_gl_object
             return false;
         }
 
-        joint.parent = ifx parent_id < 0 then null else *mesh.joints[parent_id];
+        if parent_id >= 0
+        {
+            if parent_id >= mesh.joints.count
+            {
+                LogError ("Invalid parent id for joint %", name);
+                return false;
+            }
+
+            joint.parent = *mesh.joints[parent_id];
+            joint.inverse_bind_transform = joint.parent.inverse_bind_transform * joint.local_bind_transform;
+        }
+        else
+        {
+            joint.parent = null;
+            joint.inverse_bind_transform = joint.local_bind_transform;
+        }
     }
+
+    for * mesh.joints
+        it.inverse_bind_transform = Inverse (it.inverse_bind_transform);
 
     if init_gl_objects
         InitSkinnedMeshGLObjects (mesh);
