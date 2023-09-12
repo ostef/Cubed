@@ -1,6 +1,8 @@
 #import "Binary_Reader";
 #import "File";
 
+// @Note: we mostly don't care about alignment when we allocate our memory.
+
 SkinnedVertex :: struct
 {
     position : Vec3f;
@@ -58,6 +60,28 @@ SkeletalAnimation :: struct
     memory_block : *void;
     name_to_joint_id : HashMap (string, s16);
     joint_samples : []JointSample;
+}
+
+JointPose :: struct
+{
+    parent : *JointPose;
+    #as using sample : JointSample;
+    // This is the transform matrix of the Joint in model space.
+    // It is used for skinning matrices generation.
+    model_space_transform : Mat4f;
+}
+
+SkeletonPose :: struct
+{
+    skeleton : *Skeleton;
+
+    joint_count : s64;
+    memory_block : *void;
+
+    #place joint_count;
+    joints : []JointPose;
+
+    skinning_matrices : []Mat4f;
 }
 
 CalculateSkeletonMemoryBlockSize :: inline (joint_count : int) -> int #must
@@ -315,7 +339,8 @@ DestroySkinnedMeshGLObjects :: inline (using mesh : *SkinnedMesh)
 
 CalculateSkeletalAnimationMemoryBlockSize :: inline (joint_count : int, pose_count : int) -> int #must
 {
-    joint_name_size := HashMapGetMinCapacityForElementCount (SkeletalAnimation.name_to_joint_id.Load_Factor, joint_count) + joint_count * (Max_Skeleton_Joint_Name_Length + size_of (SkeletonJoint));
+    joint_name_size := HashMapGetMinCapacityForElementCount (SkeletalAnimation.name_to_joint_id.Load_Factor, joint_count)
+        + joint_count * (Max_Skeleton_Joint_Name_Length + size_of (SkeletonJoint));
     sample_size := size_of (JointSample) * joint_count * pose_count;
 
     return joint_name_size + sample_size;
@@ -336,7 +361,7 @@ AllocSkeletalAnimationData :: (anim : *SkeletalAnimation, joint_count : int, pos
     HashMapInitFromPreallocatedMemory (*anim.name_to_joint_id, map_data, capacity, .{});
 }
 
-GetJointNamesArray :: inline (anim : *SkeletalAnimation) -> [][Max_Skeleton_Joint_Name_Length]u8 #must
+GetJointNamesArray :: inline (anim : SkeletalAnimation) -> [][Max_Skeleton_Joint_Name_Length]u8 #must
 {
     result : [][Max_Skeleton_Joint_Name_Length]u8 = ---;
     result.count = anim.joint_count;
@@ -345,7 +370,7 @@ GetJointNamesArray :: inline (anim : *SkeletalAnimation) -> [][Max_Skeleton_Join
     return result;
 }
 
-GetJointSample :: inline (using anim : *SkeletalAnimation, joint_id : s16, pose_index : int) -> *JointSample #must
+GetJointSample :: inline (using anim : SkeletalAnimation, joint_id : s16, pose_index : int) -> *JointSample #must
 {
     Assert (joint_id >= 0 && joint_id < joint_count, "Invalid joint id %", joint_id);
     Assert (pose_index >= 0 && pose_index < pose_count, "Pose index % out of bounds %", pose_index, pose_count);
@@ -447,4 +472,132 @@ FreeSkeletalAnimation :: inline (using anim : *SkeletalAnimation, allocator : Al
 {
     Free (memory_block, allocator);
     Initialize (anim);
+}
+
+InitSkeletonPose :: (pose : *SkeletonPose, skeleton : *Skeleton, allocator := context.allocator)
+{
+    pose.skeleton = skeleton;
+    pose.memory_block = Alloc ((size_of (JointPose) + size_of (Mat4f)) * skeleton.joints.count, allocator);
+
+    pose.joints.data = pose.memory_block;
+    pose.joints.count = skeleton.joints.count;
+    Initialize (pose.joints.data, pose.joints.count);
+
+    pose.skinning_matrices.data = xx (pose.joints.data + pose.joints.count);
+    pose.skinning_matrices.count = skeleton.joints.count;
+    Initialize (pose.skinning_matrices.data, pose.skinning_matrices.count);
+
+    for * pose.joints
+    {
+        joint_in_skeleton := *skeleton.joints[it_index];
+        if joint_in_skeleton.parent
+        {
+            parent_id := joint_in_skeleton.parent - skeleton.joints.data;
+            it.parent = *pose.joints[parent_id];
+        }
+        else
+        {
+            it.parent = null;
+        }
+    }
+
+    ResetToBindPose (pose);
+}
+
+FreeSkeletonPose :: inline (using pose : *SkeletonPose, allocator := context.allocator)
+{
+    Free (memory_block, allocator);
+    Initialize (pose);
+}
+
+ResetToBindPose :: (using pose : *SkeletonPose)
+{
+    for * joints
+    {
+        it.local_position,
+        it.local_orientation,
+        it.local_scale = SimpleDecomposeTransform (skeleton.joints[it_index].local_bind_transform);
+    }
+}
+
+InterpolateJointSamples :: inline (
+    a : JointSample,
+    b : JointSample,
+    t : float
+) -> JointSample #must
+{
+    result : JointSample = ---;
+    result.local_position = Lerp (a.local_position, b.local_position, t);
+    result.local_orientation = NLerp (a.local_orientation, b.local_orientation, t);
+    result.local_scale = Lerp (a.local_scale, b.local_scale, t);
+
+    return result;
+}
+
+SampleAnimation :: (
+    anim : SkeletalAnimation,
+    pose_index : float,
+    pose : *SkeletonPose
+)
+{
+    pose_joint_names := GetJointNamesArray (pose.skeleton);
+    pose_index = Math.fmod_cycling (pose_index, cast (float) anim.pose_count);
+    for * pose_joint : pose.joints
+    {
+        joint_name := MakeString (pose_joint_names[it_index].data);
+        anim_joint_id, exists := HashMapGet (*anim.name_to_joint_id, joint_name);
+        if !exists
+            continue;
+
+        first_pose_index  := cast (s64) pose_index;
+        second_pose_index := (first_pose_index + 1) % anim.pose_count;
+        first  := GetJointSample (anim, anim_joint_id, first_pose_index);
+        second := GetJointSample (anim, anim_joint_id, second_pose_index);
+        pose_joint.sample = InterpolateJointSamples (
+            first,
+            second,
+            Clamp (pose_index - first_pose_index, 0, 1)
+        );
+    }
+}
+
+// After we've done the sampling of the animation, and maybe other
+// operations on the pose, we can calculate the pose transforms that
+// will be used to generate the skinning matrices. This is a separate
+// function from GenerateSkinningMatrices because we might need
+// those transforms for purposes other than skinning.
+CalculatePoseTransforms :: (using pose : *SkeletonPose)
+{
+    for * joints
+    {
+        local_transform := Mat4fTranslate (it.local_position)
+            * Mat4fScale (it.local_scale)
+            * Mat4fFromQuat (it.local_orientation);
+
+        parent := it.parent;
+        if parent
+            it.model_space_transform = parent.model_space_transform * local_transform;
+        else
+            it.model_space_transform = local_transform;
+    }
+}
+
+GenerateSkinningMatrices :: (using pose : *SkeletonPose, transpose_result : bool)
+{
+    CalculatePoseTransforms (pose);
+
+    if transpose_result
+    {
+        for * skinning_matrices
+        {
+            it.* = Transposed (joints[it_index].model_space_transform * skeleton.joints[it_index].inverse_bind_transform);
+        }
+    }
+    else
+    {
+        for * skinning_matrices
+        {
+            it.* = joints[it_index].model_space_transform * skeleton.joints[it_index].inverse_bind_transform;
+        }
+    }
 }
