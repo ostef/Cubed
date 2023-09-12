@@ -125,7 +125,7 @@ PrintProfilingData :: (builder : *StringBuilder, using data : ProfilingData)
         StringBuilderAppendLine (builder, "{:.3f} ns, profiled % times",
             avg_time_secs * 1000.0 * 1000.0 * 1000.0, number_of_times_profiled);
     else if avg_time_secs < 1 / 1000.0
-        StringBuilderAppendLine (builder, "{:.3f} us, profiled % times",
+        StringBuilderAppendLine (builder, "{:.3f} μs, profiled % times",
             avg_time_secs * 1000.0 * 1000.0, number_of_times_profiled);
     else if avg_time_secs < 1
         StringBuilderAppendLine (builder, "{:.3f} ms, profiled % times",
