@@ -183,24 +183,8 @@ DrawPlayer :: (world : World, using player : Player, camera : Camera)
     glBindTexture (GL_TEXTURE_2D, g_steve_texture);
 
     time := cast (float) Basic.to_float64_seconds (Basic.current_time_monotonic ());
-    time *= 5;
-    // SampleAnimation (g_sprint_anim, time * 2, *pose);
-
-    left_arm := HashMapGet (*pose.skeleton.name_to_joint_id, "Arm.L", -1);
-    if left_arm >= 0
-        pose.joints[left_arm].local_orientation = QuatfFromAxisAngle (.{1,0,0}, Cos (time) + Pi);
-
-    right_arm := HashMapGet (*pose.skeleton.name_to_joint_id, "Arm.R", -1);
-    if right_arm >= 0
-        pose.joints[right_arm].local_orientation = QuatfFromAxisAngle (.{-1,0,0}, Cos (time) + Pi);
-
-    right_leg := HashMapGet (*pose.skeleton.name_to_joint_id, "Leg.R", -1);
-    if right_leg >= 0
-        pose.joints[right_leg].local_orientation = QuatfFromAxisAngle (.{1,0,0}, Cos (time) + Pi * 0.5);
-
-    left_leg := HashMapGet (*pose.skeleton.name_to_joint_id, "Leg.L", -1);
-    if left_leg >= 0
-        pose.joints[left_leg].local_orientation = QuatfFromAxisAngle (.{-1,0,0}, Cos (time) + Pi * 1.5);
+    time *= 30;
+    SampleAnimation (g_sprint_anim, time, *pose);
 
     CalculatePoseTransforms (*pose);
     GenerateSkinningMatrices (*pose, true);
