@@ -105,7 +105,10 @@ DebugDrawFlush :: ()
 
     defer g_debug_draw_vertex_count = 0;
 
-    glEnable (GL_DEPTH_TEST);
+    GL_Utils.EnableBlock (GL_DEPTH_TEST);
+    GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
+    GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
+    GL_Utils.StateBlock (GL_CURRENT_PROGRAM, (prev : GLuint) {glUseProgram (prev);});
 
     glBindVertexArray (g_debug_draw_vao);
     glBindBuffer (GL_ARRAY_BUFFER, g_debug_draw_vbo);
@@ -117,9 +120,6 @@ DebugDrawFlush :: ()
     glBufferData (GL_ARRAY_BUFFER, size_of (Vertex) * g_debug_draw_vertex_count, g_debug_draw_vertices.data, GL_DYNAMIC_DRAW);
 
     glDrawArrays (GL_LINES, 0, xx g_debug_draw_vertex_count);
-
-    glBindVertexArray (0);
-    glBindBuffer (GL_ARRAY_BUFFER, 0);
 }
 
 DebugDrawLine :: (start : Vec3f, end : Vec3f, color : Vec4f)
@@ -160,4 +160,28 @@ DebugDrawWireframeAABB :: (min : Vec3f, max : Vec3f, color : Vec4f)
     DebugDrawLine (.{min.x, min.y, max.z}, .{min.x, max.y, max.z}, color);
     DebugDrawLine (.{max.x, min.y, max.z}, .{max.x, max.y, max.z}, color);
     DebugDrawLine (.{max.x, min.y, min.z}, .{max.x, max.y, min.z}, color);
+}
+
+DebugDrawSkeletonPose :: (pose : SkeletonPose, transform : Mat4f, color : Vec4f)
+{
+    joint_names := GetJointNamesArray (pose.skeleton);
+
+    for pose.joints
+    {
+        parent_transform := ifx it.parent
+            then transform * it.parent.model_space_transform
+            else transform;
+
+        world_space_transform := transform * it.model_space_transform;
+        start := TranslationVector (parent_transform);
+        end   := TranslationVector (world_space_transform);
+
+        Im3d.DrawLine (start, end, 1, .{0xffffffff});
+        Im3d.DrawLine (end, end + RightVector (world_space_transform) * 0.1, 1, .{0xff0000ff});
+        Im3d.DrawLine (end, end + UpVector (world_space_transform) * 0.1, 1, .{0x00ff00ff});
+        Im3d.DrawLine (end, end + ForwardVector (world_space_transform) * 0.1, 1, .{0x0000ffff});
+
+        joint_name := GetJointName (pose.skeleton, xx it_index);
+        Im3d.Text (end, 1, .{0xffffffff}, cast (u32) Im3d.TextFlags.Default, joint_name.data);
+    }
 }
