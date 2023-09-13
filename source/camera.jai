@@ -38,7 +38,7 @@ Frustum :: struct
     planes : [6]Plane;
 }
 
-UpdateFlyingCamera :: (using cam : *Camera, delta_time : float, allow_movement : bool)
+UpdateFreeCamera :: (using cam : *Camera, delta_time : float, allow_movement : bool)
 {
     defer CalculateCameraMatrices (cam);
 
@@ -84,7 +84,7 @@ UpdateFlyingCamera :: (using cam : *Camera, delta_time : float, allow_movement :
     rotation = QuatfFromEulerAngles (euler_angles);
 }
 
-UpdateFPSCamera :: (using camera : *Camera, player : Player, delta_time : float)
+UpdateFirstPersonCamera :: (using camera : *Camera, player : Player, delta_time : float)
 {
     defer CalculateCameraMatrices (camera);
 
@@ -104,7 +104,7 @@ UpdateFPSCamera :: (using camera : *Camera, player : Player, delta_time : float)
     rotation = QuatfFromEulerAngles (euler_angles);
 }
 
-UpdateTPSCamera :: (using camera : *Camera, player : Player, delta_time : float)
+UpdateThirdPersonCamera :: (using camera : *Camera, player : Player, delta_time : float, front := false)
 {
     defer CalculateCameraMatrices (camera);
 

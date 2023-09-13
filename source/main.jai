@@ -48,9 +48,17 @@ Ceil :: Math.ceil;
 #load "profiling.jai";
 #load "anim.jai";
 
+CameraMode :: enum
+{
+    Free_Camera;
+    First_Person;
+    Third_Person_Back;
+    Third_Person_Front;
+}
+
 g_window : *SDL_Window;
 g_camera : Camera;
-g_fps_camera := false;
+g_camera_mode := CameraMode.Free_Camera;
 g_mouse_delta : Vec2f;
 g_should_capture_mouse := true;
 g_settings : struct
@@ -452,21 +460,28 @@ main :: ()
         {
             Im3d.NewFrame ();
 
-            UpdatePlayer (*g_world, *g_player, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
+            UpdatePlayer (*g_world, *g_player, delta_time, !ImGui.GetIO ().WantCaptureKeyboard && g_camera_mode != .Free_Camera);
         }
 
         if !g_physics_breakpoint_hit
         {
-            if g_fps_camera
-                UpdateFPSCamera (*g_camera, g_player, delta_time);
-            else
-                UpdateTPSCamera (*g_camera, g_player, delta_time);
+            if #complete g_camera_mode ==
+            {
+            case .Free_Camera;
+                UpdateFreeCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
+            case .First_Person;
+                UpdateFirstPersonCamera (*g_camera, g_player, delta_time);
+            case .Third_Person_Back;
+                UpdateThirdPersonCamera (*g_camera, g_player, delta_time);
+            case .Third_Person_Front;
+                UpdateThirdPersonCamera (*g_camera, g_player, delta_time, true);
+            }
 
             UpdateBlockBreaking (*g_world, *g_camera, *g_player);
         }
         else
         {
-            UpdateFlyingCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
+            UpdateFreeCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
         }
 
         // Update the Im3d matrices otherwise all drawn things will be delayed by one frame

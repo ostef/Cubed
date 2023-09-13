@@ -62,7 +62,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     if !flying
         velocity.y -= Gravity * delta_time;
 
-    if IsKeyPressed (SDLK_SPACE)
+    if allow_movement && IsKeyPressed (SDLK_SPACE)
     {
         if fly_toggle_timer > 0
         {
@@ -96,7 +96,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
             + ForwardVector (transform_matrix) * g_player_movement_input.z * movement_speed;
     }
 
-    if g_should_capture_mouse
+    if g_should_capture_mouse && allow_movement
         target_orientation += ToRadians (g_mouse_delta.x * Player_Rotation_Speed * delta_time);
 
     orientation = Lerp (orientation, target_orientation, Player_Rotation_Smoothing);

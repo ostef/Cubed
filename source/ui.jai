@@ -1,3 +1,5 @@
+ImGuiExt :: #import "ImGuiExt";
+
 GenerateNoiseTexture :: (tex : *GLuint,
     width : s32, height : s32,
     seed : u64, params : NoiseParams,
@@ -476,17 +478,9 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
     should_generate |= ImGui.SliderFloat ("Scale", *scale, 1, 100);
     should_generate |= ImGui.SliderInt ("Water Level", *generator.surface_params.water_level, 0, 320);
 
-    terrain_param_names := Alloc (*u8, cast (s64) TerrainParam.Count, Temp);
-    for i : 0..xx TerrainParam.Count - 1
-        terrain_param_names[i] = StringCloneToCString (type_info (TerrainParam).names[i], Temp);
+    ImGuiExt.EnumCombo ("Edit Param", *selected_param, ignore_last_value = true);
 
-    selected_param_s32 := cast (s32) selected_param;
-    ImGui.Combo ("Edit Param", *selected_param_s32, terrain_param_names, xx TerrainParam.Count);
-    selected_param = xx selected_param_s32;
-
-    show_param_s32 := cast (s32) show_param;
-    should_generate |= ImGui.Combo ("Show Param", *show_param_s32, terrain_param_names, xx TerrainParam.Count);
-    show_param = xx show_param_s32;
+    should_generate |= ImGuiExt.EnumCombo ("Show Param", *show_param, ignore_last_value = true);
 
     if selected_param < xx TerrainNoise.Count
     {
@@ -535,7 +529,7 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
 
 g_texture_atlas_window : struct
 {
-    selected_face : s32;
+    selected_face : BlockFace;
 };
 
 #scope_export
@@ -548,12 +542,7 @@ UIShowTextureAtlasWindow :: (opened : *bool)
     if !ImGui.Begin ("Texture Atlas", opened)
         return;
 
-    face_names := Alloc (*u8, 7, Temp);
-    for i : 0..5
-        face_names[i] = StringCloneToCString (type_info (BlockFace).names[i], Temp);
-    face_names[6] = "Grass Side Overlay";
-
-    ImGui.Combo ("Block Face", *selected_face, face_names, 7);
+    ImGuiExt.EnumCombo ("Block Face", *selected_face);
 
     draw_list := ImGui.GetWindowDrawList ();
     avail_width := ImGui.GetContentRegionAvail ().x;
@@ -613,7 +602,7 @@ UIShowGameMetricsWindow :: (opened : *bool)
     if ImGui.InputFloat3 ("XYZ", *g_player.position.n, "%.3f")
         g_player.velocity = .{};
     ImGui.Checkbox ("Enable Collisions", *g_player.enable_collisions);
-    ImGui.Checkbox ("FPS Camera", *g_fps_camera);
+    ImGuiExt.EnumCombo ("Camera Mode", *g_camera_mode);
     ImGui.LabelText ("Is Flying", "%s", ifx g_player.flying then "true".data else "false".data);
     ImGui.LabelText ("Is On Ground", "%s", ifx g_player.is_on_ground then "true".data else "false".data);
     ImGui.LabelText ("Fly Toggle Timer", "%.3f", g_player.fly_toggle_timer);
@@ -630,6 +619,8 @@ g_cave_generation_window : struct
         lacunarity = 0.323
     };
     cheese_cave_threshold := 0.245;
+    cheese_cave_enabled := false;
+
     spaggetti_cave_params := NoiseParams.{
         scale = 0.0478,
         octaves = 4,
@@ -637,13 +628,7 @@ g_cave_generation_window : struct
         lacunarity = 0.323
     };
     spaggetti_cave_threshold := 0.245;
-    noodle_cave_params := NoiseParams.{
-        scale = 0.0478,
-        octaves = 4,
-        persistance = 0.545,
-        lacunarity = 0.323
-    };
-    noodle_cave_threshold := 0.128;
+    spaggetti_cave_enabled := true;
 };
 
 #scope_export
@@ -659,19 +644,24 @@ UIShowCaveGenerationWindow :: (opened : *bool)
     ImGui.SeparatorText ("Cheese Caves");
     UIShowNoiseParams (ImGui.GetID ("Cheese Noise Params"), *cheese_cave_params);
     ImGui.SliderFloat ("Threshold##Cheese", *cheese_cave_threshold, 0, 1);
+    ImGui.Checkbox ("Enabled##Cheese", *cheese_cave_enabled);
 
     ImGui.SeparatorText ("Spaggetti Caves");
     UIShowNoiseParams (ImGui.GetID ("Spaggetti Noise Params"), *spaggetti_cave_params);
     ImGui.SliderFloat ("Threshold##Spaggetti", *spaggetti_cave_threshold, 0, 1);
+    ImGui.Checkbox ("Enabled##Spaggetti", *spaggetti_cave_enabled);
 
     if ImGui.Button ("Regenerate World")
     {
         Cheese_Cave_Noise_Params = cheese_cave_params;
         Cheese_Cave_Threshold = cheese_cave_threshold;
+        Cheese_Cave_Enabled = cheese_cave_enabled;
         Spaggetti_Cave_Noise_Params = spaggetti_cave_params;
         Spaggetti_Cave_Threshold = spaggetti_cave_threshold;
+        Spaggetti_Cave_Enabled = spaggetti_cave_enabled;
         WorldFree (*g_world);
         WorldInit (*g_world, g_world.seed);
+        WorldGenerateAroundPosition (*g_world, .{}, g_settings.render_distance);
     }
 }
 
@@ -679,8 +669,8 @@ g_ui_show_demo_window := false;
 g_ui_show_perlin_test_window := false;
 g_ui_show_terrain_generator_window := false;
 g_ui_show_texture_atlas_window := false;
-g_ui_show_game_metrics_window := false;
-g_ui_show_cave_generation_window := true;
+g_ui_show_game_metrics_window := true;
+g_ui_show_cave_generation_window := false;
 
 UIUpdate :: ()
 {
