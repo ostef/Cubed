@@ -118,6 +118,15 @@ GetJointNamesArray :: inline (skeleton : Skeleton) -> [][Max_Skeleton_Joint_Name
     return result;
 }
 
+GetJointName :: inline (skeleton : Skeleton, joint_id : s16) -> string #must
+{
+    Assert (joint_id >= 0 && joint_id < skeleton.joint_count, "Invalid joint id %", joint_id);
+
+    names_data := cast (*[Max_Skeleton_Joint_Name_Length]u8) (skeleton.memory_block + size_of (SkeletonJoint) * skeleton.joint_count);
+
+    return MakeString (names_data[joint_id].data);
+}
+
 LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, init_gl_objects := true, allocator := context.allocator) -> bool
 {
     reader := MakeBinaryReader (data);
@@ -197,13 +206,13 @@ LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, init_gl_object
             return false;
         }
 
-        if name.count == 0 || name.count > Max_Skeleton_Joint_Name_Length
+        if name.count == 0 || name.count >= Max_Skeleton_Joint_Name_Length
         {
             LogError ("Invalid joint name %", name);
             return false;
         }
 
-        joint_name := *joint_names[i][0];
+        joint_name := joint_names[i].data;
         memcpy (joint_name, name.data, name.count + 1);
         name.data = joint_name;
 
@@ -378,6 +387,15 @@ GetJointNamesArray :: inline (using anim : SkeletalAnimation) -> [][Max_Skeleton
     return result;
 }
 
+GetJointName :: inline (anim : SkeletalAnimation, joint_id : s16) -> string #must
+{
+    Assert (joint_id >= 0 && joint_id < anim.joint_count, "Invalid joint id %", joint_id);
+
+    names_data := cast (*[Max_Skeleton_Joint_Name_Length]u8) (anim.memory_block + size_of (JointSample) * anim.joint_count * anim.pose_count);
+
+    return MakeString (names_data[joint_id].data);
+}
+
 GetJointSample :: inline (using anim : SkeletalAnimation, joint_id : s16, pose_index : int) -> *JointSample #must
 {
     Assert (joint_id >= 0 && joint_id < joint_count, "Invalid joint id %", joint_id);
@@ -439,7 +457,7 @@ LoadSkeletalAnimationFromMemory :: (anim : *SkeletalAnimation, data : string, al
             return false;
         }
 
-        joint_name := *joint_names[i][0];
+        joint_name := joint_names[i].data;
         memcpy (joint_name, name.data, name.count + 1);
         name.data = joint_name;
 
@@ -548,11 +566,10 @@ SampleAnimation :: (
     pose : *SkeletonPose
 )
 {
-    pose_joint_names := GetJointNamesArray (pose.skeleton);
     pose_index = Math.fmod_cycling (pose_index, cast (float) anim.pose_count);
     for * pose_joint : pose.joints
     {
-        joint_name := MakeString (pose_joint_names[it_index].data);
+        joint_name := GetJointName (pose.skeleton, cast (s16) it_index);
         anim_joint_id, exists := HashMapGet (*anim.name_to_joint_id, joint_name);
         if !exists
             continue;
