@@ -86,18 +86,24 @@ SkeletonPose :: struct
 
 CalculateSkeletonMemoryBlockSize :: inline (joint_count : int) -> int #must
 {
-    return HashMapGetMinCapacityForElementCount (Skeleton.name_to_joint_id.Load_Factor, joint_count) +
-        joint_count * (Max_Skeleton_Joint_Name_Length + size_of (SkeletonJoint));
+    map_capacity := HashMapGetMinCapacityForElementCount (Skeleton.name_to_joint_id.Load_Factor, joint_count);
+
+    return size_of (SkeletonJoint) * joint_count
+        + Max_Skeleton_Joint_Name_Length * joint_count
+        + size_of (Skeleton.name_to_joint_id.Entry) * map_capacity;
 }
 
 AllocSkeletonData :: (skeleton : *Skeleton, joint_count : int, allocator := context.allocator)
 {
-    skeleton.memory_block = Alloc (CalculateSkeletonMemoryBlockSize (joint_count), allocator);
+    size := CalculateSkeletonMemoryBlockSize (joint_count);
+    skeleton.joint_count = joint_count;
+    skeleton.memory_block = Alloc (size, allocator);
 
-    skeleton.joints.data = skeleton.memory_block;
-    skeleton.joints.count = joint_count;
+    // This below is redundant since joints.data has the same offset as memory_block
+    // skeleton.joints.data = skeleton.memory_block;
+    // skeleton.joints.count = joint_count;
 
-    map_data := cast (*void) (skeleton.joints.data + joint_count);
+    map_data := skeleton.memory_block + size_of (SkeletonJoint) * joint_count;
     map_data += Max_Skeleton_Joint_Name_Length * joint_count;
     capacity := HashMapGetMinCapacityForElementCount (Skeleton.name_to_joint_id.Load_Factor, joint_count);
     HashMapInitFromPreallocatedMemory (*skeleton.name_to_joint_id, map_data, capacity, .{});
@@ -107,7 +113,7 @@ GetJointNamesArray :: inline (skeleton : *Skeleton) -> [][Max_Skeleton_Joint_Nam
 {
     result : [][Max_Skeleton_Joint_Name_Length]u8 = ---;
     result.count = skeleton.joint_count;
-    result.data = xx (skeleton.joints.data + skeleton.joint_count);
+    result.data = skeleton.memory_block + size_of (SkeletonJoint) * skeleton.joint_count;
 
     return result;
 }
@@ -339,7 +345,8 @@ DestroySkinnedMeshGLObjects :: inline (using mesh : *SkinnedMesh)
 
 CalculateSkeletalAnimationMemoryBlockSize :: inline (joint_count : int, pose_count : int) -> int #must
 {
-    joint_name_size := HashMapGetMinCapacityForElementCount (SkeletalAnimation.name_to_joint_id.Load_Factor, joint_count)
+    joint_name_size := size_of (SkeletalAnimation.name_to_joint_id.Entry)
+        * HashMapGetMinCapacityForElementCount (SkeletalAnimation.name_to_joint_id.Load_Factor, joint_count)
         + joint_count * (Max_Skeleton_Joint_Name_Length + size_of (SkeletonJoint));
     sample_size := size_of (JointSample) * joint_count * pose_count;
 
@@ -356,16 +363,17 @@ AllocSkeletalAnimationData :: (anim : *SkeletalAnimation, joint_count : int, pos
     anim.joint_samples.data = anim.memory_block;
     anim.joint_samples.count = joint_count * pose_count;
 
-    map_data := cast (*void) (anim.joint_samples.data + anim.joint_samples.count);
+    map_data := anim.memory_block + size_of (JointSample) * joint_count * pose_count;
+    map_data += Max_Skeleton_Joint_Name_Length * joint_count;
     capacity := HashMapGetMinCapacityForElementCount (SkeletalAnimation.name_to_joint_id.Load_Factor, joint_count);
     HashMapInitFromPreallocatedMemory (*anim.name_to_joint_id, map_data, capacity, .{});
 }
 
-GetJointNamesArray :: inline (anim : SkeletalAnimation) -> [][Max_Skeleton_Joint_Name_Length]u8 #must
+GetJointNamesArray :: inline (using anim : SkeletalAnimation) -> [][Max_Skeleton_Joint_Name_Length]u8 #must
 {
     result : [][Max_Skeleton_Joint_Name_Length]u8 = ---;
-    result.count = anim.joint_count;
-    result.data = xx (anim.name_to_joint_id.entries + anim.name_to_joint_id.allocated);
+    result.count = joint_count;
+    result.data = memory_block + size_of (JointSample) * joint_count * pose_count;
 
     return result;
 }
