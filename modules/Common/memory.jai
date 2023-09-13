@@ -90,6 +90,15 @@ GetAllocatorSpecs :: inline (allocator := context.allocator) -> Allocator_Caps #
     return cast, no_check (Allocator_Caps) allocator.proc (.CAPS, 0, 0, null, allocator.data);
 }
 
+Trap :: Allocator.{ proc = TrapAllocatorProc, data = null };
+
+TrapAllocatorProc :: (mode: Allocator_Mode, requested_size: s64, old_size: s64, old_memory: *void, allocator_data: *void) -> *void
+{
+    Panic ("Allocation trap");
+
+    return null;
+}
+
 #scope_module
 
 Basic :: #import "Basic";

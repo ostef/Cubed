@@ -106,7 +106,7 @@ AllocSkeletonData :: (skeleton : *Skeleton, joint_count : int, allocator := cont
     map_data := skeleton.memory_block + size_of (SkeletonJoint) * joint_count;
     map_data += Max_Skeleton_Joint_Name_Length * joint_count;
     capacity := HashMapGetMinCapacityForElementCount (Skeleton.name_to_joint_id.Load_Factor, joint_count);
-    HashMapInitFromPreallocatedMemory (*skeleton.name_to_joint_id, map_data, capacity, .{});
+    HashMapInitFromPreallocatedMemory (*skeleton.name_to_joint_id, map_data, capacity, Trap);
 }
 
 GetJointNamesArray :: inline (skeleton : Skeleton) -> [][Max_Skeleton_Joint_Name_Length]u8 #must
@@ -366,7 +366,7 @@ AllocSkeletalAnimationData :: (anim : *SkeletalAnimation, joint_count : int, pos
     map_data := anim.memory_block + size_of (JointSample) * joint_count * pose_count;
     map_data += Max_Skeleton_Joint_Name_Length * joint_count;
     capacity := HashMapGetMinCapacityForElementCount (SkeletalAnimation.name_to_joint_id.Load_Factor, joint_count);
-    HashMapInitFromPreallocatedMemory (*anim.name_to_joint_id, map_data, capacity, .{});
+    HashMapInitFromPreallocatedMemory (*anim.name_to_joint_id, map_data, capacity, Trap);
 }
 
 GetJointNamesArray :: inline (using anim : SkeletalAnimation) -> [][Max_Skeleton_Joint_Name_Length]u8 #must
