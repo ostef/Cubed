@@ -75,7 +75,15 @@ class SampledAnimation:
 
                 location, orientation, scale = matrix.decompose ()
                 joint_index = anim.name_to_joint_id[bone.name]
-                pose.joints[joint_index] = JointSample (location, orientation, scale)
+                pose.joints[joint_index] = JointSample (
+                    location,
+                    (
+                        orientation[1],
+                        orientation[2],
+                        orientation[3],
+                        orientation[0],
+                    ),
+                    scale)
 
             anim.poses.append (pose)
 
