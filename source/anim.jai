@@ -109,7 +109,7 @@ AllocSkeletonData :: (skeleton : *Skeleton, joint_count : int, allocator := cont
     HashMapInitFromPreallocatedMemory (*skeleton.name_to_joint_id, map_data, capacity, .{});
 }
 
-GetJointNamesArray :: inline (skeleton : *Skeleton) -> [][Max_Skeleton_Joint_Name_Length]u8 #must
+GetJointNamesArray :: inline (skeleton : Skeleton) -> [][Max_Skeleton_Joint_Name_Length]u8 #must
 {
     result : [][Max_Skeleton_Joint_Name_Length]u8 = ---;
     result.count = skeleton.joint_count;
