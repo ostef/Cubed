@@ -1,6 +1,6 @@
 Enable_Chunk_Bounds_Check :: true;
 
-Basic :: #import "Basic" () (MEMORY_DEBUGGER = false);
+Basic :: #import "Basic" () (MEMORY_DEBUGGER = true);
 using, only (.["+", "-", "*", "/"]) Basic;
 
 #import "Common";
