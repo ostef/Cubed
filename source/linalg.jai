@@ -2,12 +2,12 @@ Linalg :: #import "Linalg";
 
 ToRadians :: inline (angle_in_degrees : $T) -> T #must
 {
-	return angle_in_degrees * PI / 180.0;
+	return angle_in_degrees * Pi / 180.0;
 }
 
 ToDegrees :: inline (angle_in_radians : $T) -> T #must
 {
-	return angle_in_degrees * 180.0 / PI;
+	return angle_in_degrees * 180.0 / Pi;
 }
 
 Vector :: Linalg.Vector;

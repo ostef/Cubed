@@ -427,9 +427,9 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
                     player_pos.x = Clamp (player_pos.x, map_top_left.x, map_top_left.x + xx texture_size);
                     player_pos.y = Clamp (player_pos.y, map_top_left.y, map_top_left.y + xx texture_size);
 
-                    p0 := Rotate (Vec2f.{0, -1}, -g_player.orientation + PI * 0.5);
-                    p1 := Rotate (Vec2f.{2,  0}, -g_player.orientation + PI * 0.5);
-                    p2 := Rotate (Vec2f.{0,  1}, -g_player.orientation + PI * 0.5);
+                    p0 := Rotate (Vec2f.{0, -1}, -g_player.orientation + Pi * 0.5);
+                    p1 := Rotate (Vec2f.{2,  0}, -g_player.orientation + Pi * 0.5);
+                    p2 := Rotate (Vec2f.{0,  1}, -g_player.orientation + Pi * 0.5);
 
                     draw_list.AddCircleFilled (draw_list, player_pos, 7, ImGui.GetColorU32 (.{0,0,0,1}));
                     draw_list.AddTriangleFilled (draw_list, player_pos + p0 * 7, player_pos + p1 * 7, player_pos + p2 * 7, ImGui.GetColorU32 (.{0,0,0,1}));

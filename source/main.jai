@@ -21,7 +21,7 @@ ImGuiSDL :: #import "ImGui/Impl/SDL";
 ImGuiGL :: #import "ImGui/Impl/GL";
 
 Math :: #import "Math";
-PI :: Math.PI;
+Pi :: Math.PI;
 Cos :: Math.cos;
 Sin :: Math.sin;
 Tan :: Math.tan;
