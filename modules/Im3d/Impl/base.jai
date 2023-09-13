@@ -85,3 +85,82 @@ NewFrame :: (fov : float, mouse_pos : Vec2f, camera_transform : Mat4f, projectio
 
     Im3d.AppData.setCullFrustum (app, data.view_projection_matrix, true);
 }
+
+RenderTextDrawListsUsingImGui :: (text_draw_lists : *Im3d.TextDrawList, count : s64)
+{
+    ImGui :: #import "ImGui";
+
+    impl_data := GetData ();
+
+    ImGui.PushStyleColor (.WindowBg, 0);
+    defer ImGui.PopStyleColor ();
+
+    ImGui.SetNextWindowPos (ImGui.GetMainViewport ().Pos);
+    ImGui.SetNextWindowSize (ImGui.GetMainViewport ().Size);
+    ImGui.SetNextWindowViewport (ImGui.GetMainViewport ().ID_);
+    ImGui.Begin ("Im3d Text Window", null,
+        .NoTitleBar
+        | .NoResize
+        | .NoScrollbar
+        | .NoInputs
+        | .NoSavedSettings
+        | .NoFocusOnAppearing
+        | .NoBringToFrontOnFocus
+    );
+    defer ImGui.End ();
+
+    im_draw_list := ImGui.GetWindowDrawList ();
+    view_proj := impl_data.view_projection_matrix;
+    for i : 0..count - 1
+    {
+        text_draw_list := text_draw_lists[i];
+        if text_draw_list.textDataCount == 0
+            continue;
+
+        for j : 0..text_draw_list.textDataCount - 1
+        {
+            text_data := text_draw_list.textData[j];
+
+            // Project world space to screen space
+            clip := view_proj * Vec4f.{text_data.positionSize.x, text_data.positionSize.y, text_data.positionSize.z, 1};
+            screen := Vec2f.{clip.x / clip.w, clip.y / clip.w};
+
+            // Cull text which falls offscreen. Note that this doesn't take into account text size but works well enough in practice.
+            if clip.w < 0 //|| screen.x >= 1 || screen.y >= 1
+                continue;
+
+            // Transform screen coordinates to ImGuiWindow coordinates
+            screen = screen * 0.5 + Vec2f.{0.5, 0.5};
+            screen.y = 1.0 - screen.y;
+            screen = ImGui.GetWindowPos () + scale (screen, ImGui.GetWindowSize ());
+
+            text := text_draw_list.textBuffer + text_data.textBufferOffset;
+
+            ImGui.SetWindowFontScale (text_data.positionSize.w);
+            text_size := ImGui.CalcTextSize (text, text + text_data.textLength);
+            ImGui.SetWindowFontScale (1);
+
+            // Set pixel offset based on text flags
+            text_offset := Vec2f.{-text_size.x * 0.5, -text_size.y * 0.5};
+            flags := cast (Im3d.TextFlags) text_data.flags;
+            if (flags & .AlignLeft) != 0
+                text_offset.x -= text_size.x;
+            if (flags & .AlignRight) != 0
+                text_offset.x = 0;
+            if (flags & .AlignTop) != 0
+                text_offset.y -= text_size.y;
+            if (flags & .AlignBottom) != 0
+                text_offset.y = 0;
+
+            screen += text_offset;
+            im_draw_list.AddText (
+                im_draw_list,
+                null,
+                text_data.positionSize.w * ImGui.GetFontSize (),
+                screen,
+                text_data.color.v,
+                MakeString (text_data.textLength, text)
+            );
+        }
+    }
+}

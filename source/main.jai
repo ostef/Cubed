@@ -499,6 +499,7 @@ main :: ()
             Im3d.EndFrame ();
 
         Im3dImpl.RenderDrawLists (Im3d.GetDrawLists (), Im3d.GetDrawListCount ());
+        Im3dImpl.RenderTextDrawListsUsingImGui (Im3d.GetTextDrawLists (), Im3d.GetTextDrawListCount ());
 
         ImGui.Render ();
         ImGuiGL.RenderDrawData (ImGui.GetDrawData ());
