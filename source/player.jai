@@ -10,6 +10,8 @@ Player :: struct
     fly_toggle_timer : float;
 
     transform_matrix : Mat4f;
+
+    pose : SkeletonPose;
 }
 
 Player_Fly_Toggle_Timer := 0.5; // seconds
@@ -166,6 +168,11 @@ UpdateBlockBreaking :: (world : *World, using camera : *Camera, player : *Player
 
 DrawPlayer :: (world : World, using player : Player, camera : Camera)
 {
+    if !pose.skeleton
+    {
+        InitSkeletonPose (*pose, *g_steve_mesh.skeleton, init_gl_objects = true);
+    }
+
     // aabb := PlayerAABB (player);
     // Im3d.DrawAlignedBox (aabb.min, aabb.max);
     // Im3d.DrawArrow (position, position + velocity * 60);
@@ -175,5 +182,29 @@ DrawPlayer :: (world : World, using player : Player, camera : Camera)
     glActiveTexture (GL_TEXTURE0);
     glBindTexture (GL_TEXTURE_2D, g_steve_texture);
 
-    DrawSkinnedMesh (g_steve_mesh, g_camera, transform_matrix);
+    time := cast (float) Basic.to_float64_seconds (Basic.current_time_monotonic ());
+    time *= 5;
+    // SampleAnimation (g_sprint_anim, time * 2, *pose);
+
+    left_arm := HashMapGet (*pose.skeleton.name_to_joint_id, "Arm.L", -1);
+    if left_arm >= 0
+        pose.joints[left_arm].local_orientation = QuatfFromAxisAngle (.{1,0,0}, Cos (time) + Pi);
+
+    right_arm := HashMapGet (*pose.skeleton.name_to_joint_id, "Arm.R", -1);
+    if right_arm >= 0
+        pose.joints[right_arm].local_orientation = QuatfFromAxisAngle (.{-1,0,0}, Cos (time) + Pi);
+
+    right_leg := HashMapGet (*pose.skeleton.name_to_joint_id, "Leg.R", -1);
+    if right_leg >= 0
+        pose.joints[right_leg].local_orientation = QuatfFromAxisAngle (.{1,0,0}, Cos (time) + Pi * 0.5);
+
+    left_leg := HashMapGet (*pose.skeleton.name_to_joint_id, "Leg.L", -1);
+    if left_leg >= 0
+        pose.joints[left_leg].local_orientation = QuatfFromAxisAngle (.{-1,0,0}, Cos (time) + Pi * 1.5);
+
+    CalculatePoseTransforms (*pose);
+    GenerateSkinningMatrices (*pose, true);
+
+    DebugDrawSkeletonPose (pose, transform_matrix, .{1,1,1,1});
+    DrawSkinnedMesh (g_steve_mesh, pose, g_camera, transform_matrix);
 }

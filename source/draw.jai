@@ -43,6 +43,10 @@ Vertex :: struct
     block_id : u8;
 }
 
+Max_Joints :: 1000;
+
+GL_Skinning_Data_Uniform_Binding :: 1;
+
 GL_Block_Shader_Header :: #string GLSL
 #version 330 core
 
@@ -203,6 +207,8 @@ GLSL
 GL_Skinned_Mesh_Vertex_Shader :: #string GLSL
 #version 330 core
 
+const int Max_Joints = 1000;
+
 layout (location = 0) in vec3 a_Position;
 layout (location = 1) in vec3 a_Normal;
 layout (location = 2) in vec2 a_Tex_Coords;
@@ -211,15 +217,34 @@ layout (location = 3) in int a_Joint_Id;
 uniform mat4 u_Model_Matrix;
 uniform mat4 u_View_Projection_Matrix;
 
+layout (std140) uniform Skinning_Data
+{
+    mat4 u_Skinning_Matrices[Max_Joints];
+};
+
 out vec2 Tex_Coords;
 out vec3 Normal;
 
 void main ()
 {
-    gl_Position = u_View_Projection_Matrix * u_Model_Matrix * vec4 (a_Position, 1);
+    vec3 model_position = vec3 (0);
+    vec3 model_normal = vec3 (0);
+    if (a_Joint_Id < 0)
+    {
+        model_position = a_Position;
+        model_normal   = a_Normal;
+    }
+    else
+    {
+        mat4 skinning_matrix = u_Skinning_Matrices[a_Joint_Id];
+        model_position = (skinning_matrix * vec4 (a_Position, 1)).xyz;
+        model_normal = (skinning_matrix * vec4 (a_Normal, 0)).xyz;
+    }
+
+    gl_Position = u_View_Projection_Matrix * u_Model_Matrix * vec4 (model_position, 1);
     Tex_Coords = a_Tex_Coords;
     Tex_Coords.y = 1 - Tex_Coords.y;
-    Normal = a_Normal;
+    Normal = (u_Model_Matrix * vec4 (model_normal, 0)).xyz;
 }
 GLSL
 
@@ -346,6 +371,17 @@ ReloadShaders :: () -> bool
 
         glDeleteProgram (g_skinned_mesh_shader);
         g_skinned_mesh_shader = new_shader;
+
+        uniform_block_size : s32;
+        glGetIntegerv (GL_MAX_UNIFORM_BLOCK_SIZE, *uniform_block_size);
+        if uniform_block_size < Max_Joints * size_of (Mat4f)
+        {
+            LogError ("OpenGL error: maximum uniform block size is too small to hold the skinning data for % joints", Max_Joints);
+            return false;
+        }
+
+        skinning_data_uniform_index := glGetUniformBlockIndex (g_skinned_mesh_shader, "Skinning_Data");
+        glUniformBlockBinding (g_skinned_mesh_shader, skinning_data_uniform_index, GL_Skinning_Data_Uniform_Binding);
     }
 
     return true;
@@ -609,14 +645,16 @@ LoadTextureAtlases :: (textures_dirname : string) -> bool
     return true;
 }
 
-DrawSkinnedMesh :: inline (mesh : SkinnedMesh, camera : Camera, model_matrix : Mat4f)
+DrawSkinnedMesh :: inline (mesh : SkinnedMesh, pose : SkeletonPose, camera : Camera, model_matrix : Mat4f)
 {
     GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
     GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
     GL_Utils.StateBlock (GL_ELEMENT_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, prev);});
+    GL_Utils.StateBlock (GL_UNIFORM_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_UNIFORM_BUFFER, prev);});
+    GL_Utils.StateBlock (GL_CURRENT_PROGRAM, (prev : GLuint) {glUseProgram (prev);});
+
     GL_Utils.EnableBlock (GL_DEPTH_TEST);
     GL_Utils.EnableBlock (GL_CULL_FACE);
-    GL_Utils.StateBlock (GL_CURRENT_PROGRAM, (prev : GLuint) {glUseProgram (prev);});
 
     glUseProgram (g_skinned_mesh_shader);
 
@@ -629,6 +667,7 @@ DrawSkinnedMesh :: inline (mesh : SkinnedMesh, camera : Camera, model_matrix : M
     glBindVertexArray (mesh.vao);
     glBindBuffer (GL_ARRAY_BUFFER, mesh.vbo);
     glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, mesh.ibo);
+    glBindBufferBase (GL_UNIFORM_BUFFER, GL_Skinning_Data_Uniform_Binding, pose.skinning_data_ubo);
 
     glDrawElements (GL_TRIANGLES, xx mesh.index_count, GL_UNSIGNED_INT, null);
 }

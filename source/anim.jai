@@ -81,7 +81,14 @@ SkeletonPose :: struct
     #place joint_count;
     joints : []JointPose;
 
+    // The two members below might or might not be used,
+    // since there may be other use cases for skeleton poses
+    // than skinning (for example storing intermediate results
+    // when combining two poses together). Although the skinning
+    // matrices are always allocated in a block along with the
+    // joints, the GL uniform buffer object isn't always initialized
     skinning_matrices : []Mat4f;
+    skinning_data_ubo : GLuint;
 }
 
 CalculateSkeletonMemoryBlockSize :: inline (joint_count : int) -> int #must
@@ -500,7 +507,7 @@ FreeSkeletalAnimation :: inline (using anim : *SkeletalAnimation, allocator : Al
     Initialize (anim);
 }
 
-InitSkeletonPose :: (pose : *SkeletonPose, skeleton : *Skeleton, allocator := context.allocator)
+InitSkeletonPose :: (pose : *SkeletonPose, skeleton : *Skeleton, init_gl_objects := false, allocator := context.allocator)
 {
     pose.skeleton = skeleton;
     pose.memory_block = Alloc ((size_of (JointPose) + size_of (Mat4f)) * skeleton.joints.count, allocator);
@@ -528,11 +535,26 @@ InitSkeletonPose :: (pose : *SkeletonPose, skeleton : *Skeleton, allocator := co
     }
 
     ResetToBindPose (pose);
+
+    if init_gl_objects
+        InitSkeletonPoseGLObjects (pose);
+}
+
+InitSkeletonPoseGLObjects :: (using pose : *SkeletonPose)
+{
+    GL_Utils.StateBlock (GL_UNIFORM_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_UNIFORM_BUFFER, prev);});
+
+    glGenBuffers (1, *skinning_data_ubo);
+    glBindBuffer (GL_UNIFORM_BUFFER, skinning_data_ubo);
+    glBufferData (GL_UNIFORM_BUFFER, size_of (Mat4f) * Max_Joints, null, GL_DYNAMIC_DRAW);
 }
 
 FreeSkeletonPose :: inline (using pose : *SkeletonPose, allocator := context.allocator)
 {
     Free (memory_block, allocator);
+    if skinning_data_ubo != 0
+        glDeleteBuffers (1, *skinning_data_ubo);
+
     Initialize (pose);
 }
 
@@ -607,16 +629,24 @@ CalculatePoseTransforms :: (using pose : *SkeletonPose)
     }
 }
 
-GenerateSkinningMatrices :: (using pose : *SkeletonPose, transpose_result : bool)
+GenerateSkinningMatrices :: (using pose : *SkeletonPose, upload_to_uniform_buffer : bool)
 {
     CalculatePoseTransforms (pose);
 
-    if transpose_result
+    if upload_to_uniform_buffer
     {
         for * skinning_matrices
         {
             it.* = Transposed (joints[it_index].model_space_transform * skeleton.joints[it_index].inverse_bind_transform);
         }
+
+        if skinning_data_ubo == 0
+            InitSkeletonPoseGLObjects (pose);
+
+        GL_Utils.StateBlock (GL_UNIFORM_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_UNIFORM_BUFFER, prev);});
+
+        glBindBuffer (GL_UNIFORM_BUFFER, skinning_data_ubo);
+        glBufferSubData (GL_UNIFORM_BUFFER, 0, size_of (Mat4f) * skinning_matrices.count, skinning_matrices.data);
     }
     else
     {
