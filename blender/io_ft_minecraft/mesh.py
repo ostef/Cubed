@@ -169,12 +169,14 @@ class Mesh:
 
 def ExportMeshes (
     context : bpy.types.Context,
-    filename : str,
+    dirname : str,
     use_selection : bool,
     apply_transform : bool,
     axis_conversion_matrix : mathutils.Matrix
 ):
     import os
+
+    os.makedirs (dirname, exist_ok = True)
 
     if bpy.ops.object.mode_set.poll ():
         bpy.ops.object.mode_set (mode = 'OBJECT')
@@ -216,7 +218,7 @@ def ExportMeshes (
         bm.free ()
 
         result = Mesh.FromMeshAndArmature (obj, me, armature)
-        output_filename = os.path.join (os.path.dirname (filename), obj.name) + Exporter.filename_ext
+        output_filename = os.path.join (dirname, obj.name) + Exporter.filename_ext
         result.WriteBinary (output_filename)
         obj.to_mesh_clear ()
 

@@ -135,15 +135,18 @@ class SampledAnimation:
 
 def ExportAnimations (
     context : bpy.types.Context,
-    filename : str,
+    dirname : str,
     use_action_frame_range : bool,
     frame_step : int,
     selected_objects_only : bool,
     active_action_only : bool,
+    action_prefix : str,
     apply_transform : bool,
     axis_conversion_matrix : mathutils.Matrix
 ):
     import os
+
+    os.makedirs (dirname, exist_ok = True)
 
     if bpy.ops.object.mode_set.poll ():
         bpy.ops.object.mode_set (mode = 'OBJECT')
@@ -158,9 +161,19 @@ def ExportAnimations (
         if obj.animation_data is None or obj.pose is None:
             continue
 
-        action = obj.animation_data.action
-        if action is None or action in exported_actions:
-            continue
+        actions_to_export : List[bpy.types.Action] = []
+
+        if active_action_only:
+            action = obj.animation_data.action
+            if action is not None and action not in exported_actions and action not in actions_to_export:
+                actions_to_export.append (action)
+        else:
+            for action in context.blend_data.actions:
+                if action is None or action in exported_actions or action in actions_to_export:
+                    continue
+
+                if action.name.startswith (action_prefix):
+                    actions_to_export.append (action)
 
         transform_matrix = mathutils.Matrix.Identity (4)
         if apply_transform:
@@ -168,23 +181,24 @@ def ExportAnimations (
         if axis_conversion_matrix is not None:
             transform_matrix = transform_matrix @ axis_conversion_matrix.to_4x4 ()
 
-        output_filename = os.path.join (os.path.dirname (filename), action.name) + Exporter.filename_ext
-        if use_action_frame_range:
-            frame_begin, frame_end = (
-                int (action.frame_range[0]),
-                int (action.frame_range[1])
-            )
-        else:
-            frame_begin, frame_end = (
-                int (context.scene.frame_start),
-                int (context.scene.frame_end)
-            )
+        for action in actions_to_export:
+            output_filename = os.path.join (dirname, action.name) + Exporter.filename_ext
+            if use_action_frame_range:
+                frame_begin, frame_end = (
+                    int (action.frame_range[0]),
+                    int (action.frame_range[1])
+                )
+            else:
+                frame_begin, frame_end = (
+                    int (context.scene.frame_start),
+                    int (context.scene.frame_end)
+                )
 
-        anim = SampledAnimation.FromAction (obj, action, frame_begin, frame_end, frame_step, transform_matrix)
-        anim.WriteBinary (output_filename)
+            anim = SampledAnimation.FromAction (obj, action, frame_begin, frame_end, frame_step, transform_matrix)
+            anim.WriteBinary (output_filename)
 
-        exported_actions.append (action)
-        print (f"Exported animation clip {action.name} to file {output_filename}")
+            exported_actions.append (action)
+            print (f"Exported animation clip {action.name} to file {output_filename}")
 
 @orientation_helper (axis_forward = '-Z', axis_up = 'Y')
 class Exporter (bpy.types.Operator, ExportHelper):
