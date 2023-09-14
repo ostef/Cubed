@@ -170,7 +170,7 @@ DrawPlayer :: (world : World, using player : Player, camera : Camera)
 {
     if !pose.skeleton
     {
-        InitSkeletonPose (*pose, *g_steve_mesh.skeleton, init_gl_objects = true);
+        InitSkeletonPose (*pose, *GetMesh (.Human).skeleton, init_gl_objects = true);
     }
 
     // aabb := PlayerAABB (player);
@@ -184,11 +184,12 @@ DrawPlayer :: (world : World, using player : Player, camera : Camera)
 
     time := cast (float) Basic.to_float64_seconds (Basic.current_time_monotonic ());
     time *= 30;
-    SampleAnimation (g_sprint_anim, time, *pose);
+    SampleAnimation (GetAnimation (g_current_anim), time, *pose);
 
     CalculatePoseTransforms (*pose);
     GenerateSkinningMatrices (*pose, true);
 
-    DebugDrawSkeletonPose (pose, transform_matrix, .{1,1,1,1});
-    DrawSkinnedMesh (g_steve_mesh, pose, g_camera, transform_matrix);
+    if g_settings.show_skeletons
+        DebugDrawSkeletonPose (pose, transform_matrix, .{1,1,1,1});
+    DrawSkinnedMesh (GetMesh (.Human), pose, g_camera, transform_matrix);
 }

@@ -3,6 +3,40 @@
 
 // @Note: we mostly don't care about alignment when we allocate our memory.
 
+MeshID :: enum
+{
+    Human;
+
+    Count;
+}
+
+g_all_meshes : [MeshID.Count]SkinnedMesh;
+
+GetMesh :: inline (id : MeshID) -> *SkinnedMesh #must
+{
+    return *g_all_meshes[id];
+}
+
+AnimationID :: enum
+{
+    Human_Idle;
+    Human_Breathing_Additive;
+    Human_Sneak;
+    Human_Walk;
+    Human_Sprint;
+    Human_Shielding;
+    Human_Swimming_Idle;
+
+    Count;
+}
+
+g_all_animations : [AnimationID.Count]SkeletalAnimation;
+
+GetAnimation :: inline (id : AnimationID) -> *SkeletalAnimation #must
+{
+    return *g_all_animations[id];
+}
+
 SkinnedVertex :: struct
 {
     position : Vec3f;
@@ -286,6 +320,38 @@ LoadSkinnedMeshFromFile :: inline (mesh : *SkinnedMesh, filename : string, init_
     Free (data.data);
 
     return ok;
+}
+
+LoadAllSkinnedMeshes :: () -> bool
+{
+    meshes_info := type_info (MeshID);
+    for i : 0..meshes_info.names.count - 2
+    {
+        name := meshes_info.names[i];
+        if !LoadSkinnedMeshFromFile (*g_all_meshes[i], FormatString ("data/meshes/%.mesh", name))
+        {
+            LogError ("Could not load skinned mesh %", name);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+LoadAllSkeletalAnimations :: () -> bool
+{
+    anims_info := type_info (AnimationID);
+    for i : 0..anims_info.names.count - 2
+    {
+        name := anims_info.names[i];
+        if !LoadSkeletalAnimationFromFile (*g_all_animations[i], FormatString ("data/anims/%.anim", name))
+        {
+            LogError ("Could not load skeletal animation %", name);
+            return false;
+        }
+    }
+
+    return true;
 }
 
 InitSkinnedMeshGLObjects :: (using mesh : *SkinnedMesh)

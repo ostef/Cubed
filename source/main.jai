@@ -67,16 +67,15 @@ g_settings : struct
     render_distance : s32 = 6;
     player_speed_mult := 1.0;
     enable_view_culling := true;
+    show_skeletons := false;
 }
 g_world : World;
 g_player : Player;
+g_current_anim : AnimationID;
 g_physics_breakpoint_hit : bool;
 g_physics_step : bool;
 g_prev_keyboard_state : [SDL_NUM_SCANCODES]bool;
 g_prev_mouse_state : u32;
-
-g_steve_mesh : SkinnedMesh;
-g_sprint_anim : SkeletalAnimation;
 
 Fixed_Delta_Time :: 1 / 60.0;
 
@@ -351,27 +350,17 @@ main :: ()
         return;
     }
 
-    a_aabb := AABB.{.{-1, -1, -1}, .{1, 1, 1}};
-    b_aabb := AABB.{.{2, 2, 2}, .{3, 3, 3}};
-    point := Vec3f.{-1, 0.5, 0.7};
-
     WorldInit (*g_world, 1725362821052241920);//Basic.current_time_monotonic ().low);
     defer WorldFree (*g_world);
 
     #if Basic.MEMORY_DEBUGGER
         Basic.allocations_before_this_call_will_not_be_considered_leaks ();
 
-    if !LoadSkinnedMeshFromFile (*g_steve_mesh, "data/Steve.mesh")
-    {
-        LogError ("Could not load skinned mesh data/Steve.mesh");
+    if !LoadAllSkinnedMeshes ()
         return;
-    }
 
-    if !LoadSkeletalAnimationFromFile (*g_sprint_anim, "data/Sprint_Better.anim")
-    {
-        LogError ("Could not load animation data/Sprint_Better.anim");
+    if !LoadAllSkeletalAnimations ()
         return;
-    }
 
     g_camera.position.y = xx g_world.surface_params.water_level + 10.0;
     g_player.position.y = xx g_world.surface_params.water_level + 10.0;
