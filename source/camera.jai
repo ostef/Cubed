@@ -101,6 +101,8 @@ UpdateFirstPersonCamera :: (using camera : *Camera, player : Player, delta_time 
     euler_angles.pitch = Lerp (euler_angles.pitch, target_euler_angles.pitch, rotation_smoothing);
     euler_angles.yaw = player.orientation;
 
+    target_euler_angles.yaw = euler_angles.yaw;
+
     rotation = QuatfFromEulerAngles (euler_angles);
 }
 
@@ -119,6 +121,8 @@ UpdateThirdPersonCamera :: (using camera : *Camera, player : Player, delta_time 
         euler_angles.yaw = player.orientation + Pi;
     else
         euler_angles.yaw = player.orientation;
+
+    target_euler_angles.yaw = euler_angles.yaw;
 
     rotation = QuatfFromEulerAngles (euler_angles);
 

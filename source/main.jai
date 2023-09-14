@@ -423,6 +423,11 @@ main :: ()
         if (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0 && IsKeyPressed (SDLK_ESCAPE)
             g_should_capture_mouse = !g_should_capture_mouse;
 
+        if IsKeyPressed (SDLK_F5)
+        {
+            g_camera_mode = xx ((cast (s64) g_camera_mode + 1) % 4);
+        }
+
         if g_should_capture_mouse
             SDL_SetRelativeMouseMode (SDL_TRUE);
         else
