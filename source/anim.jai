@@ -722,3 +722,21 @@ GenerateSkinningMatrices :: (using pose : *SkeletonPose, upload_to_uniform_buffe
         }
     }
 }
+
+CopyPose :: (dest : *SkeletonPose, src : SkeletonPose)
+{
+    Assert (dest.skeleton == src.skeleton, "Skeletons do not match");
+
+    for * dest.joints
+        it.sample = src.joints[it_index].sample;
+}
+
+BlendPoses :: (dest : *SkeletonPose, a : SkeletonPose, b : SkeletonPose, t : float)
+{
+    Assert (dest.skeleton == a.skeleton, "Skeletons do not match");
+    Assert (dest.skeleton == b.skeleton, "Skeletons do not match");
+
+    for i : 0..dest.joints.count - 1
+        dest.joints[i].sample = InterpolateJointSamples (a.joints[i], b.joints[i], t);
+}
+
