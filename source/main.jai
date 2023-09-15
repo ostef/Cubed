@@ -370,6 +370,8 @@ main :: ()
     if !LoadAllSkeletalAnimations ()
         return;
 
+    InitPlayer (*g_world, *g_player);
+
     g_camera.position.y = xx g_world.surface_params.water_level + 10.0;
     g_player.position.y = xx g_world.surface_params.water_level + 10.0;
     delta_time := Fixed_Delta_Time;
@@ -485,6 +487,8 @@ main :: ()
         {
             UpdateFreeCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
         }
+
+        UpdatePlayerAnimations (*g_player, delta_time);
 
         // Update the Im3d matrices otherwise all drawn things will be delayed by one frame
         Im3dImpl.NewFrame (
