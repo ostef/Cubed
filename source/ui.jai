@@ -607,7 +607,15 @@ UIShowGameMetricsWindow :: (opened : *bool)
     ImGui.LabelText ("Is Flying", "%s", ifx g_player.flying then "true".data else "false".data);
     ImGui.LabelText ("Is On Ground", "%s", ifx g_player.is_on_ground then "true".data else "false".data);
     ImGui.LabelText ("Fly Toggle Timer", "%.3f", g_player.fly_toggle_timer);
-    ImGuiExt.EnumCombo ("Animation", *g_current_anim, ignore_last_value = true);
+
+    ImGui.SeparatorText ("Animation");
+    {
+        anim := *g_player.animation_state_machine;
+        ImGui.LabelText ("Current State", "%s", ifx anim.current_state then anim.current_state.name.data else "None");
+        ImGui.LabelText ("Next State", "%s", ifx anim.next_state then anim.next_state.name.data else "None");
+        ImGui.LabelText ("Elapsed State Time", "%f", ifx anim.current_state then anim.current_state.elapsed_time else 0.0);
+        ImGui.LabelText ("Normalized Transition Time", "%f", anim.transition_t);
+    }
 }
 
 g_ui_show_demo_window := false;
