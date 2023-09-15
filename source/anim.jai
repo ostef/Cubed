@@ -750,3 +750,100 @@ BlendPoses :: (dest : *SkeletonPose, a : SkeletonPose, b : SkeletonPose, t : flo
         dest.joints[i].sample = InterpolateJointSamples (a.joints[i], b.joints[i], t);
 }
 
+CalculateBlendSpaceWeightsCartesian :: (point : Vec2f, positions : []Vec2f, result : []float)
+{
+    Assert (positions.count == result.count);
+
+    total_weight := 0.0;
+    for it, i : positions
+    {
+        dir := point - it;
+        weight := 1.0;
+        for other, j : positions
+        {
+            if i == j
+                continue;
+
+            other_dir := other - it;
+
+            sqrd_length := Dot (other_dir, other_dir);
+            new_weight := 1 - Dot (dir, other_dir) / sqrd_length;
+            new_weight = Clamp (new_weight, 0, 1);
+            weight = Min (weight, new_weight);
+        }
+
+        result[i] = weight;
+        total_weight += weight;
+    }
+
+    for * result
+        it.* /= total_weight;
+}
+
+CalculateBlendSpaceWeightsPolar :: (point : Vec2f, positions : []Vec2f, result : []float)
+{
+    Assert (positions.count == result.count);
+
+    total_weight := 0.0;
+    point_length := Length (point);
+    for it, i : positions
+    {
+        length := Length (it);
+        weight := 1.0;
+        for other, j : positions
+        {
+            if i == j
+                continue;
+
+            other_length := Length (other);
+            ij_avg_length := (length + other_length) * 0.5;
+
+            ip_length := (point_length - length) * 0.5;
+            ip_angle  := SignedAngle (it, point);
+            ip_vector  := Vec2f.{ip_length, ip_angle * 2};
+
+            ij_length := (other_length - length) * 0.5;
+            ij_angle  := SignedAngle (it, other);
+            ij_vector  := Vec2f.{ij_length, ij_angle * 2};
+
+            sqrd_length := Dot (ij_vector, ij_vector);
+            new_weight := 1 - Dot (ip_vector, ij_vector) / sqrd_length;
+            new_weight = Clamp (new_weight, 0, 1);
+            weight = Min (weight, new_weight);
+        }
+
+        result[i] = weight;
+        total_weight += weight;
+    }
+
+    for * result
+        it.* /= total_weight;
+}
+
+WeightedBlendPoses :: (dest : *SkeletonPose, poses : []*SkeletonPose, weights : []float)
+{
+    Assert (poses.count == weights.count);
+
+    for * joint, joint_id : dest.joints
+    {
+        joint.local_position = .{0,0,0};
+        joint.local_orientation = .{0,0,0,0};
+        joint.local_scale = .{0,0,0};
+
+        for pose, pose_index : poses
+        {
+            Assert (dest.skeleton == pose.skeleton);
+
+            joint.local_position += weights[pose_index] * pose.joints[joint_id].local_position;
+
+            if pose_index != 0 && Dot (joint.local_orientation, pose.joints[joint_id].local_orientation) < 0
+                joint.local_orientation -= weights[pose_index] * pose.joints[joint_id].local_orientation;
+            else
+                joint.local_orientation += weights[pose_index] * pose.joints[joint_id].local_orientation;
+
+            joint.local_scale += weights[pose_index] * pose.joints[joint_id].local_scale;
+        }
+
+        joint.local_orientation = Normalized (joint.local_orientation);
+    }
+}
