@@ -47,6 +47,8 @@ Ceil :: Math.ceil;
 #load "noise_simd.jai";
 #load "profiling.jai";
 #load "anim.jai";
+#load "anim_state.jai";
+
 operator== :: inline (a : Source_Code_Location, b : Source_Code_Location) -> bool
 {
     return a.fully_pathed_filename == b.fully_pathed_filename
