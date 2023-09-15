@@ -66,7 +66,7 @@ CameraMode :: enum
 
 g_window : *SDL_Window;
 g_camera : Camera;
-g_camera_mode := CameraMode.Free_Camera;
+g_camera_mode := CameraMode.Third_Person_Back;
 g_mouse_delta : Vec2f;
 g_should_capture_mouse := true;
 g_settings : struct
@@ -79,7 +79,6 @@ g_settings : struct
 }
 g_world : World;
 g_player : Player;
-g_current_anim : AnimationID;
 g_physics_breakpoint_hit : bool;
 g_physics_step : bool;
 g_prev_keyboard_state : [SDL_NUM_SCANCODES]bool;
