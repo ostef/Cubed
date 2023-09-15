@@ -24,9 +24,7 @@ ProfilingKey :: struct
 
 operator== :: inline (a : ProfilingKey, b : ProfilingKey) -> bool #must
 {
-    return a.location.fully_pathed_filename == b.location.fully_pathed_filename
-        && a.location.line_number == b.location.line_number
-        && a.location.character_number == b.location.character_number
+    return a.location == b.location
         && a.proc_name == b.proc_name
         && a.name == b.name;
 }

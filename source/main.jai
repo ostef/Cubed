@@ -47,6 +47,12 @@ Ceil :: Math.ceil;
 #load "noise_simd.jai";
 #load "profiling.jai";
 #load "anim.jai";
+operator== :: inline (a : Source_Code_Location, b : Source_Code_Location) -> bool
+{
+    return a.fully_pathed_filename == b.fully_pathed_filename
+        && a.line_number == b.line_number
+        && a.character_number == b.character_number;
+}
 
 CameraMode :: enum
 {
