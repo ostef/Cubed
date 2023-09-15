@@ -681,6 +681,8 @@ SampleAnimation :: (
 // those transforms for purposes other than skinning.
 CalculatePoseTransforms :: (using pose : *SkeletonPose)
 {
+    ProfileBlock ();
+
     for * joints
     {
         local_transform := Mat4fTranslate (it.local_position)
@@ -698,6 +700,8 @@ CalculatePoseTransforms :: (using pose : *SkeletonPose)
 GenerateSkinningMatrices :: (using pose : *SkeletonPose, upload_to_uniform_buffer : bool)
 {
     CalculatePoseTransforms (pose);
+
+    ProfileBlock ();
 
     if upload_to_uniform_buffer
     {
