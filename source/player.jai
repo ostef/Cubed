@@ -4,7 +4,7 @@ Player :: struct
     target_orientation : float;
     orientation : float;
     velocity : Vec3f;
-    flying := true;
+    is_flying := true;
     enable_collisions := true;
     was_on_ground, is_on_ground : bool;
     fly_toggle_timer : float;
@@ -12,13 +12,16 @@ Player :: struct
 
     transform_matrix : Mat4f;
 
-    animation_state_machine : AnimationStateMachine;
+    anim_base_fsm : AnimationStateMachine;
+    anim_data : PlayerAnimationData;
+}
 
-    flying_left_intermediate_pose : SkeletonPose;
-    flying_right_intermediate_pose : SkeletonPose;
-    flying_forward_intermediate_pose : SkeletonPose;
-    flying_backward_intermediate_pose : SkeletonPose;
-    flying_idle_intermediate_pose : SkeletonPose;
+PlayerAnimationData :: struct
+{
+    is_on_ground : bool;
+    is_flying : bool;
+    is_falling : bool;
+    smooth_movement_input : Vec3f;
 }
 
 Player_Fly_Toggle_Timer := 0.5; // seconds
@@ -44,19 +47,13 @@ PlayerAABB :: inline (using player : Player) -> AABB #must
 
 InitPlayer :: (world : *World, using player : *Player)
 {
-    InitAnimationStateMachine (*animation_state_machine, *GetMesh (.Human).skeleton);
-    animation_state_machine.user_data = player;
-    AddAnimationState (*animation_state_machine, "Grounded", PlayerGroundedAnimState);
-    AddAnimationState (*animation_state_machine, "Airborne", PlayerAirborneAnimState);
-    AddAnimationState (*animation_state_machine, "Flying", PlayerFlyingAnimState);
+    InitAnimationStateMachine (*anim_base_fsm, *GetMesh (.Human).skeleton);
+    anim_base_fsm.user_data = *anim_data;
+    AddAnimationState (*anim_base_fsm, "Grounded", PlayerGroundedAnimState);
+    AddAnimationState (*anim_base_fsm, "Airborne", PlayerAirborneAnimState);
+    AddAnimationState (*anim_base_fsm, "Flying", PlayerFlyingAnimState);
 
-    TransitionToState (*animation_state_machine, "Grounded");
-
-    InitSkeletonPose (*flying_left_intermediate_pose, *GetMesh (.Human).skeleton);
-    InitSkeletonPose (*flying_right_intermediate_pose, *GetMesh (.Human).skeleton);
-    InitSkeletonPose (*flying_forward_intermediate_pose, *GetMesh (.Human).skeleton);
-    InitSkeletonPose (*flying_backward_intermediate_pose, *GetMesh (.Human).skeleton);
-    InitSkeletonPose (*flying_idle_intermediate_pose, *GetMesh (.Human).skeleton);
+    TransitionToState (*anim_base_fsm, "Grounded");
 }
 
 UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, allow_movement := true)
@@ -72,7 +69,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
         {
             movement_input.x = xx (cast (s32) IsKeyDown (SDLK_d) - cast (s32) IsKeyDown (SDLK_a));
             movement_input.z = xx (cast (s32) IsKeyDown (SDLK_w) - cast (s32) IsKeyDown (SDLK_s));
-            if flying
+            if is_flying
                 movement_input.y = xx (cast (s32) IsKeyDown (SDLK_SPACE) - cast (s32) IsKeyDown (SDLK_LCTRL));
 
             movement_input = Normalized (movement_input);
@@ -83,20 +80,20 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
         }
     }
 
-    if !flying
+    if !is_flying
         velocity.y -= Gravity * delta_time;
 
     if allow_movement && IsKeyPressed (SDLK_SPACE)
     {
         if fly_toggle_timer > 0
         {
-            flying = !flying;
+            is_flying = !is_flying;
         }
         else
         {
             fly_toggle_timer = Player_Fly_Toggle_Timer;
 
-            if !flying && is_on_ground
+            if !is_flying && is_on_ground
                 velocity.y = CalculateJumpForce (Player_Jump_Height, Gravity * delta_time);
         }
     }
@@ -107,7 +104,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     movement_speed *= g_settings.player_speed_mult;
     movement_speed *= delta_time;
 
-    if !flying
+    if !is_flying
     {
         velocity = RightVector (transform_matrix) * movement_input.x * movement_speed
             + ForwardVector (transform_matrix) * movement_input.z * movement_speed
@@ -159,6 +156,11 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
             is_on_ground = true;
     }
 
+    anim_data.is_on_ground = is_on_ground;
+    anim_data.is_flying = is_flying;
+    anim_data.is_falling = velocity.y < 0 && !is_on_ground;
+    anim_data.smooth_movement_input = Linalg.lerp (anim_data.smooth_movement_input, movement_input, 0.3);
+
     transform_matrix = Mat4fTranslate (position) * Mat4fRotate (.{0, 1, 0}, orientation);
 }
 
@@ -190,8 +192,21 @@ UpdateBlockBreaking :: (world : *World, using camera : *Camera, player : *Player
 
 UpdatePlayerAnimations :: (using player : *Player, delta_time : float)
 {
-    UpdateAnimationStateMachine (*animation_state_machine, delta_time);
-    GenerateSkinningMatrices (*animation_state_machine.final_pose, true);
+    time := cast (float) Basic.to_float64_seconds (Basic.current_time_monotonic ()) * 30;
+
+    breathing_additive_pose, rest_pose : SkeletonPose;
+    InitSkeletonPose (*breathing_additive_pose, anim_base_fsm.final_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*rest_pose, anim_base_fsm.final_pose.skeleton, allocator = Temp);
+
+    SampleAnimation (GetAnimation (.Human_Breathing_Additive), time, *breathing_additive_pose);
+
+    SubtractPoses (*breathing_additive_pose, rest_pose);
+
+    UpdateAnimationStateMachine (*anim_base_fsm, delta_time);
+
+    AddPoses (*anim_base_fsm.final_pose, breathing_additive_pose);
+
+    GenerateSkinningMatrices (*anim_base_fsm.final_pose, true);
 }
 
 DrawPlayer :: (world : World, using player : Player, camera : Camera)
@@ -206,16 +221,16 @@ DrawPlayer :: (world : World, using player : Player, camera : Camera)
     glBindTexture (GL_TEXTURE_2D, g_steve_texture);
 
     if g_settings.show_skeletons
-        DebugDrawSkeletonPose (animation_state_machine.final_pose, transform_matrix, .{1,1,1,1});
-    DrawSkinnedMesh (GetMesh (.Human), animation_state_machine.final_pose, camera, transform_matrix);
+        DebugDrawSkeletonPose (anim_base_fsm.final_pose, transform_matrix, .{1,1,1,1});
+    DrawSkinnedMesh (GetMesh (.Human), anim_base_fsm.final_pose, camera, transform_matrix);
 }
 
 PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
 {
-    using data := cast (*Player) machine.user_data;
+    using data := cast (*PlayerAnimationData) machine.user_data;
     if !is_on_ground
         TransitionToState (machine, "Airborne");
-    if flying
+    if is_flying
         TransitionToState (machine, "Flying");
 
     SampleAnimation (GetAnimation (.Human_Idle), elapsed_time * 30, *state_pose);
@@ -223,33 +238,64 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
 
 PlayerAirborneAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
 {
-    using data := cast (*Player) machine.user_data;
+    Time_To_Fall_Anim :: 0.5;
+    Fall_Transition_Time :: 1.4;
+
+    using data := cast (*PlayerAnimationData) machine.user_data;
     if is_on_ground
         TransitionToState (machine, "Grounded");
-    if flying
+    if is_flying
         TransitionToState (machine, "Flying");
 
-    SampleAnimation (GetAnimation (.Human_Fall_High), elapsed_time * 30, *state_pose);
+    jump_to_fall_t := (elapsed_time - Time_To_Fall_Anim) / Fall_Transition_Time;
+    if !is_falling || jump_to_fall_t <= 0
+    {
+        jump_up := GetAnimation (.Human_Jump_Up);
+        SampleAnimation (jump_up, Clamp (elapsed_time * 30, 0, cast (float) jump_up.pose_count - 1), *state_pose);
+    }
+    if jump_to_fall_t >= 1
+    {
+        SampleAnimation (GetAnimation (.Human_Fall_High), elapsed_time * 30, *state_pose);
+    }
+    else
+    {
+        jump_pose, fall_pose : SkeletonPose;
+        InitSkeletonPose (*jump_pose, state_pose.skeleton, allocator = Temp);
+        InitSkeletonPose (*fall_pose, state_pose.skeleton, allocator = Temp);
+
+        jump_up := GetAnimation (.Human_Jump_Up);
+        SampleAnimation (jump_up, Clamp (elapsed_time * 30, 0, cast (float) jump_up.pose_count - 1), *jump_pose);
+        SampleAnimation (GetAnimation (.Human_Fall_High), elapsed_time * 30, *fall_pose);
+
+        BlendPoses (*state_pose, jump_pose, fall_pose, jump_to_fall_t);
+    }
 }
 
 PlayerFlyingAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
 {
-    using data := cast (*Player) machine.user_data;
-    if !flying
+    using data := cast (*PlayerAnimationData) machine.user_data;
+    if !is_flying
         TransitionToState (machine, "Airborne");
 
-    SampleAnimation (GetAnimation (.Human_Flying_Left), elapsed_time * 30, *flying_left_intermediate_pose);
-    SampleAnimation (GetAnimation (.Human_Flying_Right), elapsed_time * 30, *flying_right_intermediate_pose);
-    SampleAnimation (GetAnimation (.Human_Flying_Forward), elapsed_time * 30, *flying_forward_intermediate_pose);
-    SampleAnimation (GetAnimation (.Human_Flying_Backward), elapsed_time * 30, *flying_backward_intermediate_pose);
-    SampleAnimation (GetAnimation (.Human_Flying_Idle), elapsed_time * 30, *flying_idle_intermediate_pose);
+    left_pose, right_pose, forward_pose, backward_pose, idle_pose : SkeletonPose;
+    InitSkeletonPose (*left_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*right_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*forward_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*backward_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*idle_pose, state_pose.skeleton, allocator = Temp);
+
+    SampleAnimation (GetAnimation (.Human_Flying_Left), elapsed_time * 30, *left_pose);
+    SampleAnimation (GetAnimation (.Human_Flying_Right), elapsed_time * 30, *right_pose);
+    SampleAnimation (GetAnimation (.Human_Flying_Forward), elapsed_time * 30, *forward_pose);
+    SampleAnimation (GetAnimation (.Human_Flying_Backward), elapsed_time * 30, *backward_pose);
+    SampleAnimation (GetAnimation (.Human_Flying_Idle), elapsed_time * 30, *idle_pose);
 
     blend_space_poses : [5]*SkeletonPose = .[
-        *flying_idle_intermediate_pose,
-        *flying_right_intermediate_pose,
-        *flying_left_intermediate_pose,
-        *flying_backward_intermediate_pose,
-        *flying_forward_intermediate_pose
+        *idle_pose,
+        *right_pose,
+        *left_pose,
+        *backward_pose,
+        *forward_pose
     ];
 
     blend_space_positions : [5]Vec2f = .[
@@ -262,6 +308,6 @@ PlayerFlyingAnimState :: (machine : *AnimationStateMachine, using state : *Anima
 
     blend_space_weights : [5]float = ---;
 
-    CalculateBlendSpaceWeightsPolar (.{movement_input.x * mult, movement_input.z * mult}, blend_space_positions, blend_space_weights);
+    CalculateBlendSpaceWeightsCartesian (.{smooth_movement_input.x * mult, smooth_movement_input.z * mult}, blend_space_positions, blend_space_weights);
     WeightedBlendPoses (*state_pose, blend_space_poses, blend_space_weights);
 }
