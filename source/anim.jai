@@ -26,6 +26,8 @@ AnimationID :: enum
     Human_Sprint;
     Human_Shielding;
     Human_Swimming_Idle;
+    Human_Jump_Forward;
+    Human_Jump_Up;
     Human_Fall_High;
     Human_Flying_Idle;
     Human_Flying_Left;
