@@ -169,7 +169,7 @@ UpdateBlockBreaking :: (world : *World, using camera : *Camera, player : *Player
     hit_result := RayIntersectsWorld (
         world,
         .{
-            origin=camera.position + ForwardVector (transform_matrix) * Player_Size,
+            origin=player.position + .{0, 1.5, 0} + ForwardVector (transform_matrix) * Player_Size,
             direction=ForwardVector (transform_matrix),
             length=Block_Selection_Distance
         }
