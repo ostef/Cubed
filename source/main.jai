@@ -480,7 +480,8 @@ main :: ()
                 UpdateThirdPersonCamera (*g_camera, g_player, delta_time, true);
             }
 
-            UpdateBlockBreaking (*g_world, *g_camera, *g_player);
+            if g_camera_mode != .Free_Camera
+                UpdateBlockBreaking (*g_world, *g_camera, *g_player);
         }
         else
         {
