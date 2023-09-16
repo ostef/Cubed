@@ -849,3 +849,28 @@ WeightedBlendPoses :: (dest : *SkeletonPose, poses : []*SkeletonPose, weights : 
         joint.local_orientation = Normalized (joint.local_orientation);
     }
 }
+
+AddPoses :: (dest : *SkeletonPose, other : SkeletonPose, weight := 1.0)
+{
+    Assert (dest.skeleton == other.skeleton);
+
+    for * dest.joints
+    {
+        it.local_position += other.joints[it_index].local_position * weight;
+        it.local_orientation *= NLerp (Quatf.{}, other.joints[it_index].local_orientation, weight);
+        it.local_scale += other.joints[it_index].local_scale * weight;
+    }
+}
+
+SubtractPoses :: (dest : *SkeletonPose, other : SkeletonPose, weight := 1.0)
+{
+    Assert (dest.skeleton == other.skeleton);
+
+    for * dest.joints
+    {
+        it.local_position -= other.joints[it_index].local_position * weight;
+        weighted_orientation := NLerp (Quatf.{}, other.joints[it_index].local_orientation, weight);
+        it.local_orientation = Inverse (weighted_orientation) * it.local_orientation;
+        it.local_scale -= other.joints[it_index].local_scale * weight;
+    }
+}
