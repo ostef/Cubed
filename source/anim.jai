@@ -6,6 +6,12 @@ AnimationID :: enum
     Human_Breathing_Additive;
     Human_Sneak;
     Human_Walk;
+    Human_Run_Forward;
+    Human_Run_Forward_Left;
+    Human_Run_Forward_Right;
+    Human_Run_Backward;
+    Human_Run_Backward_Left;
+    Human_Run_Backward_Right;
     Human_Sprint;
     Human_Shielding;
     Human_Swimming_Idle;
@@ -17,6 +23,8 @@ AnimationID :: enum
     Human_Flying_Right;
     Human_Flying_Forward;
     Human_Flying_Backward;
+    Human_Flying_Up;
+    Human_Flying_Down;
 
     Count;
 }

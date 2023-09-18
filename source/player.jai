@@ -246,12 +246,50 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
     if is_flying
         TransitionToState (machine, "Flying");
 
-    SampleAnimation (GetAnimation (.Human_Idle), elapsed_time * 30, *state_pose);
+    fleft_pose, fright_pose, bleft_pose, bright_pose, forward_pose, backward_pose, idle_pose : SkeletonPose;
+    InitSkeletonPose (*fleft_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*fright_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*bleft_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*bright_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*forward_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*backward_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*idle_pose, state_pose.skeleton, allocator = Temp);
+
+    SampleAnimation (GetAnimation (.Human_Run_Forward_Left), elapsed_time * 30, *fleft_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Forward_Right), elapsed_time * 30, *fright_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Backward_Left), elapsed_time * 30, *bleft_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Backward_Right), elapsed_time * 30, *bright_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Forward), elapsed_time * 30, *forward_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Backward), elapsed_time * 30, *backward_pose);
+    SampleAnimation (GetAnimation (.Human_Idle), elapsed_time * 30, *idle_pose);
+
+    blend_space_poses : [7]*SkeletonPose = .[
+        *idle_pose,
+        *fright_pose,
+        *fleft_pose,
+        *bright_pose,
+        *bleft_pose,
+        *backward_pose,
+        *forward_pose
+    ];
+
+    blend_space_positions : [7]Vec2f = .[
+        .{0,0},
+        .{-1,0}, .{1,0},
+        Normalized (Vec2f.{-1, -1}), Normalized (Vec2f.{1, -1}),
+        .{0,-1}, .{0,1}
+    ];
+
+    blend_space_weights : [7]float = ---;
+
+    blend_space_point := Vec2f.{smooth_movement_input.x, smooth_movement_input.z};
+    CalculateBlendSpaceWeightsCartesian (blend_space_point, blend_space_positions, blend_space_weights);
+
+    WeightedBlendPoses (*state_pose, blend_space_poses, blend_space_weights);
 }
 
 PlayerAirborneAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
 {
-    Time_To_Fall_Anim :: 0.5;
     Fall_Transition_Time :: 1.4;
 
     using data := cast (*PlayerAnimationData) machine.user_data;
@@ -260,28 +298,20 @@ PlayerAirborneAnimState :: (machine : *AnimationStateMachine, using state : *Ani
     if is_flying
         TransitionToState (machine, "Flying");
 
-    jump_to_fall_t := (elapsed_time - Time_To_Fall_Anim) / Fall_Transition_Time;
-    if !is_falling || jump_to_fall_t <= 0
-    {
-        jump_up := GetAnimation (.Human_Jump_Up);
-        SampleAnimation (jump_up, Clamp (elapsed_time * 30, 0, cast (float) jump_up.pose_count - 1), *state_pose);
-    }
-    if jump_to_fall_t >= 1
-    {
-        SampleAnimation (GetAnimation (.Human_Fall_High), elapsed_time * 30, *state_pose);
-    }
-    else
-    {
-        jump_pose, fall_pose : SkeletonPose;
-        InitSkeletonPose (*jump_pose, state_pose.skeleton, allocator = Temp);
-        InitSkeletonPose (*fall_pose, state_pose.skeleton, allocator = Temp);
+    jump_anim := GetAnimation (.Human_Jump_Forward);
+    jump_to_fall_t := (elapsed_time - jump_anim.pose_count / 30.0) / Fall_Transition_Time;
+    jump_to_fall_t = Clamp (jump_to_fall_t, 0, 1);
 
-        jump_up := GetAnimation (.Human_Jump_Up);
-        SampleAnimation (jump_up, Clamp (elapsed_time * 30, 0, cast (float) jump_up.pose_count - 1), *jump_pose);
-        SampleAnimation (GetAnimation (.Human_Fall_High), elapsed_time * 30, *fall_pose);
+    jump_pose, fall_pose : SkeletonPose;
+    InitSkeletonPose (*jump_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*fall_pose, state_pose.skeleton, allocator = Temp);
 
-        BlendPoses (*state_pose, jump_pose, fall_pose, jump_to_fall_t);
-    }
+    jump_time := Clamp (elapsed_time * 30, 0, cast (float) jump_anim.pose_count - 1);
+
+    SampleAnimation (jump_anim, jump_time, *jump_pose);
+    SampleAnimation (GetAnimation (.Human_Fall_High), elapsed_time * 30, *fall_pose);
+
+    BlendPoses (*state_pose, jump_pose, fall_pose, jump_to_fall_t);
 }
 
 PlayerFlyingAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
@@ -290,17 +320,21 @@ PlayerFlyingAnimState :: (machine : *AnimationStateMachine, using state : *Anima
     if !is_flying
         TransitionToState (machine, "Airborne");
 
-    left_pose, right_pose, forward_pose, backward_pose, idle_pose : SkeletonPose;
+    left_pose, right_pose, forward_pose, backward_pose, down_pose, up_pose, idle_pose : SkeletonPose;
     InitSkeletonPose (*left_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*right_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*forward_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*backward_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*down_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*up_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*idle_pose, state_pose.skeleton, allocator = Temp);
 
     SampleAnimation (GetAnimation (.Human_Flying_Left), elapsed_time * 30, *left_pose);
     SampleAnimation (GetAnimation (.Human_Flying_Right), elapsed_time * 30, *right_pose);
     SampleAnimation (GetAnimation (.Human_Flying_Forward), elapsed_time * 30, *forward_pose);
     SampleAnimation (GetAnimation (.Human_Flying_Backward), elapsed_time * 30, *backward_pose);
+    SampleAnimation (GetAnimation (.Human_Flying_Down), elapsed_time * 30, *down_pose);
+    SampleAnimation (GetAnimation (.Human_Flying_Up), elapsed_time * 30, *up_pose);
     SampleAnimation (GetAnimation (.Human_Flying_Idle), elapsed_time * 30, *idle_pose);
 
     blend_space_poses : [5]*SkeletonPose = .[
@@ -321,6 +355,8 @@ PlayerFlyingAnimState :: (machine : *AnimationStateMachine, using state : *Anima
 
     blend_space_weights : [5]float = ---;
 
-    CalculateBlendSpaceWeightsCartesian (.{smooth_movement_input.x * mult, smooth_movement_input.z * mult}, blend_space_positions, blend_space_weights);
+    blend_space_point := Vec2f.{smooth_movement_input.x, smooth_movement_input.z} * mult;
+    CalculateBlendSpaceWeightsCartesian (blend_space_point, blend_space_positions, blend_space_weights);
+
     WeightedBlendPoses (*state_pose, blend_space_poses, blend_space_weights);
 }
