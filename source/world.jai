@@ -96,6 +96,12 @@ HashVec2l :: inline (vec : Vec2l) -> u64 #must
     return result;
 }
 
+BlockBreakingInfo :: struct
+{
+    x, y, z : s64;
+    stage : u8;
+}
+
 World :: struct
 {
     ChunkMap :: HashMap (Vec2l, *Chunk, hash_func = HashVec2l, comp_func = (a, b) => a == b);
@@ -106,6 +112,9 @@ World :: struct
     // Volatile: all the Chunks in this map are being modified in another thread
     chunks_being_generated : ChunkMap;
     chunk_generation_thread_group : Threads.Thread_Group;
+
+    blocks_being_broken : [..]BlockBreakingInfo;
+    blocks_being_broken_vao, blocks_being_broken_vbo : GLuint;
 }
 
 BlockGetMeshType :: inline (block : BlockID) -> ChunkMeshType #must
@@ -139,15 +148,12 @@ ChunkInit :: (chunk : *Chunk, x : s64, z : s64)
         glBindBuffer (GL_ARRAY_BUFFER, chunk.vbos[i]);
 
         glEnableVertexAttribArray (g_block_shader_attribs.position);
-        glVertexAttribPointer (g_block_shader_attribs.position, 3, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "position"));
         glVertexAttribPointer (g_block_shader_attribs.position, 3, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "position"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.face);
-        glVertexAttribIPointer (g_block_shader_attribs.face, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "face"));
         glVertexAttribIPointer (g_block_shader_attribs.face, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "face"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.block_id);
-        glVertexAttribIPointer (g_block_shader_attribs.block_id, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "block_id"));
         glVertexAttribIPointer (g_block_shader_attribs.block_id, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "block_id"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.face_corner);
@@ -157,8 +163,10 @@ ChunkInit :: (chunk : *Chunk, x : s64, z : s64)
         glVertexAttribPointer (g_block_shader_attribs.block_height, 1, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "block_height"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.temperature);
+        glVertexAttribPointer (g_block_shader_attribs.temperature, 1, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "temperature"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.humidity);
+        glVertexAttribPointer (g_block_shader_attribs.humidity, 1, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "humidity"));
     }
 }
 
@@ -773,6 +781,24 @@ WorldInitBase :: inline (world : *World)
     world.chunk_generation_thread_group.logging = false;
 
     Threads.start (*world.chunk_generation_thread_group);
+
+    GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
+    GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
+
+    glGenVertexArrays (1, *world.blocks_being_broken_vao);
+    glGenBuffers (1, *world.blocks_being_broken_vbo);
+
+    glBindVertexArray (world.blocks_being_broken_vao);
+    glBindBuffer (GL_ARRAY_BUFFER, world.blocks_being_broken_vbo);
+
+    glEnableVertexAttribArray (0);
+    glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, size_of (StaticVertex), cast (*void) OffsetOf (StaticVertex, "position"));
+
+    glEnableVertexAttribArray (1);
+    glVertexAttribPointer (1, 3, GL_FLOAT, GL_FALSE, size_of (StaticVertex), cast (*void) OffsetOf (StaticVertex, "normal"));
+
+    glEnableVertexAttribArray (2);
+    glVertexAttribPointer (2, 2, GL_FLOAT, GL_FALSE, size_of (StaticVertex), cast (*void) OffsetOf (StaticVertex, "tex_coords"));
 }
 
 #scope_export

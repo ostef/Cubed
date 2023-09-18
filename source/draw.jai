@@ -6,6 +6,7 @@ g_skinned_mesh_shader : GLuint;
 g_static_mesh_shader : GLuint;
 g_texture_atlas : GLuint;
 g_grass_overlay_texture : GLuint;
+g_breaking_stages_texture : GLuint;
 g_all_texture_atlases : [6]GLuint; // We also have separate textures for each face, so we can display them using ImGui
 // Atlas is squared so below are both on X and Y axes
 g_texture_atlas_size : s64;
@@ -698,6 +699,13 @@ LoadTextureAtlases :: (textures_dirname : string) -> bool
         return false;
     }
 
+    g_breaking_stages_texture = LoadSingleTexture (FormatToCString (Temp, "%/breaking_stages.png", textures_dirname));
+    if !g_breaking_stages_texture
+    {
+        LogError ("Could not load texture breaking_stages.png");
+        return false;
+    }
+
     LogContentMessage ("Loaded texture atlas: % cells, % by % pixels", g_atlas_cell_count, g_texture_atlas_size, g_texture_atlas_size);
 
     return true;
@@ -784,27 +792,187 @@ DrawCameraFrustum :: (using camera : Camera)
 
 g_chunks_drawn_this_frame := 0;
 
-DrawWorld :: (world : *World, camera : Camera)
+PushBreakingBlockVertices :: (
+    vertices : *[..]StaticVertex,
+    position : Vec3f,
+    block_height : float,
+    breaking_stage : u8
+)
 {
-    #if false
+    Inflate_Amount :: 0.001;
+
+    PushVertex :: (face : BlockFace, corner : BlockFaceCorner) -> *StaticVertex #must #expand
     {
-        current_time := cast (float) Basic.to_float64_seconds (Basic.current_time_monotonic ());
+        v := ArrayPush (`vertices);
+        v.position = `position - .{Inflate_Amount, Inflate_Amount, Inflate_Amount};
 
-        dummy_camera : Camera;
-        // dummy_camera.position.z = Cos (current_time * 0.2) * 100;
-        dummy_camera.position.y = 130;
-        dummy_camera.z_near = 2.0;
-        dummy_camera.z_far = Chunk_Size * 4;
-        dummy_camera.euler_angles.yaw = Cos (current_time * 0.2);
-        // dummy_camera.euler_angles.pitch = Sin (current_time);
-        dummy_camera.rotation = QuatfFromEulerAngles (dummy_camera.euler_angles);
+        if #complete face ==
+        {
+        case .East;  v.normal = .{ 1,0,0};
+        case .West;  v.normal = .{-1,0,0};
+        case .Above; v.normal = .{0, 1,0};
+        case .Below; v.normal = .{0,-1,0};
+        case .North; v.normal = .{0,0, 1};
+        case .South; v.normal = .{0,0,-1};
+        }
 
-        CalculateCameraMatrices (*dummy_camera);
-        view_frustum := MakeViewFrustum (dummy_camera);
+        if #complete corner ==
+        {
+        case .Top_Left;
+            if face != .Above && face != .Below
+                v.tex_coords.y = 1 - `block_height;
+            v.tex_coords.x = 0;
 
-        DrawCameraFrustum (dummy_camera);
+        case .Top_Right;
+            if face != .Above && face != .Below
+                v.tex_coords.y = 1 - `block_height;
+            v.tex_coords.x = 1;
+
+        case .Bottom_Left;
+            v.tex_coords.x = 0;
+            v.tex_coords.y = 1;
+
+        case .Bottom_Right;
+            v.tex_coords.x = 1;
+            v.tex_coords.y = 1;
+        }
+
+        v.tex_coords.x += `breaking_stage;
+        v.tex_coords.x /= 10;
+
+        return v;
     }
 
+    // East
+    {
+        v := PushVertex (.East, .Bottom_Left);
+        v.position += Vec3f.{1, 0, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.East, .Top_Left);
+        v.position += Vec3f.{1, block_height, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.East, .Top_Right);
+        v.position += Vec3f.{1, block_height, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.East, .Bottom_Left);
+        v.position += Vec3f.{1, 0, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.East, .Top_Right);
+        v.position += Vec3f.{1, block_height, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.East, .Bottom_Right);
+        v.position += Vec3f.{1, 0, 1} * (1 + 2 * Inflate_Amount);
+    }
+
+    // West
+    {
+        v := PushVertex (.West, .Bottom_Right);
+        v.position += Vec3f.{0, 0, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.West, .Top_Left);
+        v.position += Vec3f.{0, block_height, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.West, .Top_Right);
+        v.position += Vec3f.{0, block_height, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.West, .Bottom_Right);
+        v.position += Vec3f.{0, 0, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.West, .Bottom_Left);
+        v.position += Vec3f.{0, 0, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.West, .Top_Left);
+        v.position += Vec3f.{0, block_height, 1} * (1 + 2 * Inflate_Amount);
+    }
+
+    // Above
+    {
+        v := PushVertex (.Above, .Bottom_Left);
+        v.position += Vec3f.{0, block_height, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.Above, .Top_Right);
+        v.position += Vec3f.{1, block_height, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.Above, .Bottom_Right);
+        v.position += Vec3f.{1, block_height, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.Above, .Bottom_Left);
+        v.position += Vec3f.{0, block_height, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.Above, .Top_Left);
+        v.position += Vec3f.{0, block_height, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.Above, .Top_Right);
+        v.position += Vec3f.{1, block_height, 1} * (1 + 2 * Inflate_Amount);
+    }
+
+    // Below
+    {
+        v := PushVertex (.Below, .Top_Left);
+        v.position += Vec3f.{0, 0, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.Below, .Top_Right);
+        v.position += Vec3f.{1, 0, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.Below, .Bottom_Right);
+        v.position += Vec3f.{1, 0, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.Below, .Top_Left);
+        v.position += Vec3f.{0, 0, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.Below, .Bottom_Right);
+        v.position += Vec3f.{1, 0, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.Below, .Bottom_Left);
+        v.position += Vec3f.{0, 0, 1} * (1 + 2 * Inflate_Amount);
+    }
+
+    // North
+    {
+        v := PushVertex (.North, .Bottom_Right);
+        v.position += Vec3f.{0, 0, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.North, .Bottom_Left);
+        v.position += Vec3f.{1, 0, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.North, .Top_Left);
+        v.position += Vec3f.{1, block_height, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.North, .Bottom_Right);
+        v.position += Vec3f.{0, 0, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.North, .Top_Left);
+        v.position += Vec3f.{1, block_height, 1} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.North, .Top_Right);
+        v.position += Vec3f.{0, block_height, 1} * (1 + 2 * Inflate_Amount);
+    }
+
+    // South
+    {
+        v := PushVertex (.South, .Bottom_Left);
+        v.position += Vec3f.{0, 0, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.South, .Top_Right);
+        v.position += Vec3f.{1, block_height, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.South, .Bottom_Right);
+        v.position += Vec3f.{1, 0, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.South, .Bottom_Left);
+        v.position += Vec3f.{0, 0, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.South, .Top_Left);
+        v.position += Vec3f.{0, block_height, 0} * (1 + 2 * Inflate_Amount);
+
+        v = PushVertex (.South, .Top_Right);
+        v.position += Vec3f.{1, block_height, 0} * (1 + 2 * Inflate_Amount);
+    }
+}
+
+
+DrawWorld :: (world : *World, camera : Camera)
+{
     view_frustum := MakeViewFrustum (camera);
 
     chunks_to_draw : [..]*Chunk;
@@ -860,4 +1028,38 @@ DrawWorld :: (world : *World, camera : Camera)
         for chunks_to_draw
             DrawChunkMesh (it, camera, xx mesh_type);
     }
+
+    glActiveTexture (GL_TEXTURE0);
+    glBindTexture (GL_TEXTURE_2D, g_breaking_stages_texture);
+
+    glUseProgram (g_static_mesh_shader);
+
+    loc = glGetUniformLocation (g_static_mesh_shader, "u_View_Projection_Matrix");
+    glUniformMatrix4fv (loc, 1, GL_TRUE, *camera.view_projection_matrix.r0c0);
+
+    model_matrix : Mat4f;
+    loc = glGetUniformLocation (g_static_mesh_shader, "u_Model_Matrix");
+    glUniformMatrix4fv (loc, 1, GL_TRUE, *model_matrix.r0c0);
+
+    breaking_block_vertices : [..]StaticVertex;
+    breaking_block_vertices.allocator = Temp;
+    ArrayReserve (*breaking_block_vertices, 6 * 6 * world.blocks_being_broken.count);
+
+    for world.blocks_being_broken
+    {
+        chunk_x, chunk_z := ChunkPositionFromWorldPosition (it.x, it.z);
+        chunk := WorldGetChunk (world, chunk_x, chunk_z);
+        if !chunk
+            continue;
+
+        rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, it.x, it.z);
+        height := BlockGetHeight (chunk, rel_x, it.y, rel_z);
+        PushBreakingBlockVertices (*breaking_block_vertices, .{xx it.x, xx it.y, xx it.z}, height, it.stage);
+    }
+
+    glBindVertexArray (world.blocks_being_broken_vao);
+    glBindBuffer (GL_ARRAY_BUFFER, world.blocks_being_broken_vbo);
+    glBufferData (GL_ARRAY_BUFFER, size_of (StaticVertex) * breaking_block_vertices.count, breaking_block_vertices.data, GL_DYNAMIC_DRAW);
+
+    glDrawArrays (GL_TRIANGLES, 0, xx breaking_block_vertices.count);
 }

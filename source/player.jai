@@ -177,8 +177,18 @@ UpdateBlockBreaking :: (world : *World, using camera : *Camera, player : *Player
         }
     );
 
+    stage := Basic.to_seconds (Basic.current_time_monotonic () * 3);
+    stage %= 10;
+
     if hit_result.hit
     {
+        ArrayClear (*world.blocks_being_broken);
+        breaking := ArrayPush (*world.blocks_being_broken);
+        breaking.x = hit_result.block_x;
+        breaking.y = hit_result.block_y;
+        breaking.z = hit_result.block_z;
+        breaking.stage = xx stage;
+
         block_aabb := BlockAABB (hit_result.block_x, hit_result.block_y, hit_result.block_z);
         Im3d.DrawAlignedBox (block_aabb.min, block_aabb.max);
 
