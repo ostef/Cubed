@@ -10,6 +10,8 @@ using, only (.["+", "-", "*", "/"]) Basic;
 #import "GL";
 GL_Utils :: #import "GL_Utils";
 #import "Random64";
+#import "Binary_Reader";
+#import "File";
 
 Threads :: #import "Thread";
 System :: #import "System";
@@ -46,6 +48,7 @@ Ceil :: Math.ceil;
 #load "biomes.jai";
 #load "noise_simd.jai";
 #load "profiling.jai";
+#load "mesh.jai";
 #load "anim.jai";
 #load "anim_state.jai";
 
