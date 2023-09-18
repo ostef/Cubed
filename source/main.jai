@@ -9,7 +9,7 @@ using, only (.["+", "-", "*", "/"]) Basic;
 #import "SDL";
 #import "GL";
 GL_Utils :: #import "GL_Utils";
-#import "Random64";
+#import "Random64"; // @Todo: remove this and use the one from the compiler
 #import "Binary_Reader";
 #import "File";
 
@@ -69,13 +69,13 @@ CameraMode :: enum
 
 g_window : *SDL_Window;
 g_camera : Camera;
-g_camera_mode := CameraMode.Third_Person_Back;
+g_camera_mode := CameraMode.First_Person;
 g_mouse_delta : Vec2f;
 g_should_capture_mouse := true;
 g_settings : struct
 {
     generate_new_chunks := true;
-    render_distance : s32 = 6;
+    render_distance : s32 = 2;
     player_speed_mult := 1.0;
     enable_view_culling := true;
     show_skeletons := false;
@@ -244,9 +244,16 @@ main :: ()
         entries := LockGlobalProfilingData ();
         defer UnlockGlobalProfilingData ();
 
-        builder : StringBuilder;
-        PrintProfilingData (*builder, entries);
-        LogMessage ("Profiling results:\n%", StringBuilderBuild (*builder));
+        if entries.count == 0
+        {
+            LogMessage ("No profiling data to print");
+        }
+        else
+        {
+            builder : StringBuilder;
+            PrintProfilingData (*builder, entries);
+            LogMessage ("Profiling results:\n%", StringBuilderBuild (*builder));
+        }
     };
 
     #if Basic.MEMORY_DEBUGGER
