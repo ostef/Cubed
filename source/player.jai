@@ -221,6 +221,9 @@ UpdatePlayerAnimations :: (using player : *Player, delta_time : float)
 
 DrawPlayer :: (world : World, using player : Player, camera : Camera)
 {
+    if g_camera_mode == .First_Person
+        return;
+
     // aabb := PlayerAABB (player);
     // Im3d.DrawAlignedBox (aabb.min, aabb.max);
     // Im3d.DrawArrow (position, position + velocity * 60);
