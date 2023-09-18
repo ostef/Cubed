@@ -27,11 +27,11 @@ PlayerAnimationData :: struct
 Player_Fly_Toggle_Timer := 0.5; // seconds
 Player_Height :: 1.8;
 Player_Size :: 0.7;
-Player_Movement_Speed :: 1.0;
-Player_Jump_Height :: 1.01;
+Player_Movement_Speed :: 5.0;
+Player_Jump_Height :: 1.05;
 Player_Rotation_Speed :: 60.0;  // in degrees per second
 Player_Rotation_Smoothing :: 0.3;
-Gravity :: 0.8;
+Gravity :: 0.5;
 Penetration_Threshold :: 0.001;
 Ground_Test_Threshold :: 0.01;
 
@@ -81,7 +81,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     }
 
     if !is_flying
-        velocity.y -= Gravity * delta_time;
+        velocity.y -= Gravity * Fixed_Delta_Time;
 
     if allow_movement && IsKeyPressed (SDLK_SPACE)
     {
@@ -94,15 +94,15 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
             fly_toggle_timer = Player_Fly_Toggle_Timer;
 
             if !is_flying && is_on_ground
-                velocity.y = CalculateJumpForce (Player_Jump_Height, Gravity * delta_time);
+                velocity.y = CalculateJumpForce (Player_Jump_Height, Gravity * Fixed_Delta_Time);
         }
     }
 
     movement_speed := Player_Movement_Speed;
-    if IsKeyDown (SDLK_LSHIFT)
-        movement_speed *= 10;
+    if is_flying && IsKeyDown (SDLK_LSHIFT)
+        movement_speed *= 5;
     movement_speed *= g_settings.player_speed_mult;
-    movement_speed *= delta_time;
+    movement_speed *= Fixed_Delta_Time;
 
     if !is_flying
     {
@@ -118,7 +118,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     }
 
     if g_should_capture_mouse && allow_movement
-        target_orientation += ToRadians (g_mouse_delta.x * Player_Rotation_Speed * delta_time);
+        target_orientation += ToRadians (g_mouse_delta.x * Player_Rotation_Speed * Fixed_Delta_Time);
 
     orientation = Lerp (orientation, target_orientation, Player_Rotation_Smoothing);
 
