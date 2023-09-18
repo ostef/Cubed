@@ -31,7 +31,7 @@ Player_Movement_Speed :: 5.0;
 Player_Jump_Height :: 1.05;
 Player_Rotation_Speed :: 60.0;  // in degrees per second
 Player_Rotation_Smoothing :: 0.3;
-Gravity :: 0.5;
+Gravity :: 0.45;
 Penetration_Threshold :: 0.001;
 Ground_Test_Threshold :: 0.01;
 
@@ -177,25 +177,14 @@ UpdateBlockBreaking :: (world : *World, using camera : *Camera, player : *Player
         }
     );
 
-    stage := Basic.to_seconds (Basic.current_time_monotonic () * 3);
-    stage %= 10;
-
     if hit_result.hit
     {
-        ArrayClear (*world.blocks_being_broken);
-        breaking := ArrayPush (*world.blocks_being_broken);
-        breaking.x = hit_result.block_x;
-        breaking.y = hit_result.block_y;
-        breaking.z = hit_result.block_z;
-        breaking.stage = xx stage;
-
         block_aabb := BlockAABB (hit_result.block_x, hit_result.block_y, hit_result.block_z);
         Im3d.DrawAlignedBox (block_aabb.min, block_aabb.max);
 
-        if !ImGui.GetIO ().WantCaptureMouse && (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0 && IsMouseButtonPressed (SDL_BUTTON_LEFT)
+        if !ImGui.GetIO ().WantCaptureMouse && (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0 && IsMouseButtonDown (SDL_BUTTON_LEFT)
         {
-            block_x, block_z := ChunkAbsoluteToRelativeCoordinates (hit_result.chunk.x, hit_result.chunk.z, hit_result.block_x, hit_result.block_z);
-            ChunkSetBlockInChunk (hit_result.chunk, block_x, hit_result.block_y, block_z, .{});
+            WorldBreakBlock (world, hit_result.block_x, hit_result.block_y, hit_result.block_z);
         }
     }
 }

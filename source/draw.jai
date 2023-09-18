@@ -1054,7 +1054,7 @@ DrawWorld :: (world : *World, camera : Camera)
 
         rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, it.x, it.z);
         height := BlockGetHeight (chunk, rel_x, it.y, rel_z);
-        PushBreakingBlockVertices (*breaking_block_vertices, .{xx it.x, xx it.y, xx it.z}, height, it.stage);
+        PushBreakingBlockVertices (*breaking_block_vertices, .{xx it.x, xx it.y, xx it.z}, height, cast (u8) it.stage);
     }
 
     glBindVertexArray (world.blocks_being_broken_vao);

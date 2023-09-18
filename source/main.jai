@@ -499,6 +499,7 @@ main :: ()
         }
 
         UpdatePlayerAnimations (*g_player, delta_time);
+        WorldUpdateBreakingBlocks (*g_world, delta_time);
 
         // Update the Im3d matrices otherwise all drawn things will be delayed by one frame
         Im3dImpl.NewFrame (

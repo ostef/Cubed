@@ -99,7 +99,8 @@ HashVec2l :: inline (vec : Vec2l) -> u64 #must
 BlockBreakingInfo :: struct
 {
     x, y, z : s64;
-    stage : u8;
+    stage : float;
+    updated_this_frame : bool;
 }
 
 World :: struct
@@ -943,5 +944,61 @@ WorldGenerateAroundPosition :: (world : *World, position : Vec3f, distance_in_ch
                 WorldLaunchThreadedChunkGeneration (world, x, z);
             }
         }
+    }
+}
+
+WorldBreakBlock :: (using world : *World, x : s64, y : s64, z : s64)
+{
+    break_info : *BlockBreakingInfo;
+    index := -1;
+    for * blocks_being_broken
+    {
+        if it.x == x && it.y == y && it.z == z
+        {
+            break_info = it;
+            index = it_index;
+            break;
+        }
+    }
+
+    if !break_info
+    {
+        break_info = ArrayPush (*blocks_being_broken);
+        break_info.x = x;
+        break_info.y = y;
+        break_info.z = z;
+        index = blocks_being_broken.count - 1;
+    }
+
+    break_info.updated_this_frame = true;
+}
+
+WorldUpdateBreakingBlocks :: (using world : *World, delta_time : float)
+{
+    for * blocks_being_broken
+    {
+        if !it.updated_this_frame
+        {
+            remove it;
+            continue;
+        }
+
+        chunk_x, chunk_z := ChunkPositionFromWorldPosition (it.x, it.z);
+        chunk := WorldGetChunk (world, chunk_x, chunk_z);
+        Assert (chunk != null, "Breaking block of a chunk that isn't loaded");
+
+        rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, it.x, it.z);
+
+        it.stage += delta_time * 6;
+
+        if it.stage > 9
+        {
+            ChunkSetBlockInChunk (chunk, rel_x, it.y, rel_z, .{id=.Air});
+
+            remove it;
+            continue;
+        }
+
+        it.updated_this_frame = false;
     }
 }
