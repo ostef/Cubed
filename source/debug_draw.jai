@@ -1,6 +1,6 @@
 #scope_file
 
-Vertex :: struct
+DebugVertex :: struct
 {
     position : Vec3f;
     color : Vec4f;
@@ -8,7 +8,7 @@ Vertex :: struct
 
 g_debug_draw_initialized : bool;
 g_debug_draw_shader : GLuint;
-g_debug_draw_vertices : [10000]Vertex;
+g_debug_draw_vertices : [10000]DebugVertex;
 g_debug_draw_vertex_count : s64;
 g_debug_draw_vao, g_debug_draw_vbo : GLuint;
 
@@ -53,10 +53,10 @@ EnsureInit :: ()
     glBindBuffer (GL_ARRAY_BUFFER, g_debug_draw_vbo);
 
     glEnableVertexAttribArray (0);
-    glVertexAttribPointer (0, 3, GL_FLOAT, false, size_of (Vertex), cast (*void) OffsetOf (Vertex, "position"));
+    glVertexAttribPointer (0, 3, GL_FLOAT, false, size_of (DebugVertex), cast (*void) OffsetOf (DebugVertex, "position"));
 
     glEnableVertexAttribArray (1);
-    glVertexAttribPointer (1, 4, GL_FLOAT, false, size_of (Vertex), cast (*void) OffsetOf (Vertex, "color"));
+    glVertexAttribPointer (1, 4, GL_FLOAT, false, size_of (DebugVertex), cast (*void) OffsetOf (DebugVertex, "color"));
 
     glBindVertexArray (0);
     glBindBuffer (GL_ARRAY_BUFFER, 0);
@@ -117,7 +117,7 @@ DebugDrawFlush :: ()
     vpm_loc := glGetUniformLocation (g_debug_draw_shader, "view_projection_matrix");
     glUniformMatrix4fv (vpm_loc, 1, GL_TRUE, *g_camera.view_projection_matrix.r0c0);
 
-    glBufferData (GL_ARRAY_BUFFER, size_of (Vertex) * g_debug_draw_vertex_count, g_debug_draw_vertices.data, GL_DYNAMIC_DRAW);
+    glBufferData (GL_ARRAY_BUFFER, size_of (DebugVertex) * g_debug_draw_vertex_count, g_debug_draw_vertices.data, GL_DYNAMIC_DRAW);
 
     glDrawArrays (GL_LINES, 0, xx g_debug_draw_vertex_count);
 }

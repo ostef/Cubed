@@ -3,6 +3,7 @@
 
 g_block_shader : GLuint;
 g_skinned_mesh_shader : GLuint;
+g_static_mesh_shader : GLuint;
 g_texture_atlas : GLuint;
 g_grass_overlay_texture : GLuint;
 g_all_texture_atlases : [6]GLuint; // We also have separate textures for each face, so we can display them using ImGui
@@ -32,7 +33,14 @@ Grass_Color_10 := Vec3f.{0.7411, 0.7176, 0.3333};
 Grass_Color_01 := Vec3f.{0.3333, 0.7764, 0.2509};
 Grass_Color_11 := Vec3f.{0.3333, 0.7764, 0.2509};
 
-Vertex :: struct
+StaticVertex :: struct
+{
+    position : Vec3f;
+    normal : Vec3f;
+    tex_coords : Vec2f;
+}
+
+BlockVertex :: struct
 {
     position : Vec3f;
     block_height : float;
@@ -265,6 +273,45 @@ void main ()
 }
 GLSL
 
+GL_Static_Mesh_Vertex_Shader :: #string GLSL
+#version 330 core
+
+layout (location = 0) in vec3 a_Position;
+layout (location = 1) in vec3 a_Normal;
+layout (location = 2) in vec2 a_Tex_Coords;
+
+uniform mat4 u_Model_Matrix;
+uniform mat4 u_View_Projection_Matrix;
+
+out vec2 Tex_Coords;
+out vec3 Normal;
+
+void main ()
+{
+    gl_Position = u_View_Projection_Matrix * u_Model_Matrix * vec4 (a_Position, 1);
+    Tex_Coords = a_Tex_Coords;
+    Tex_Coords.y = 1 - Tex_Coords.y;
+    Normal = (u_Model_Matrix * vec4 (a_Normal, 0)).xyz;
+}
+GLSL
+
+GL_Static_Mesh_Fragment_Shader :: #string GLSL
+#version 330 core
+
+uniform sampler2D u_Texture;
+
+in vec2 Tex_Coords;
+in vec3 Normal;
+
+out vec4 Frag_Color;
+
+void main ()
+{
+    vec4 color = texture (u_Texture, Tex_Coords);
+    Frag_Color = color;
+}
+GLSL
+
 ReloadShaders :: () -> bool
 {
     GetAttribLocation :: inline (shader : GLuint, $name : string, location := #caller_location) -> GLuint, bool
@@ -273,6 +320,8 @@ ReloadShaders :: () -> bool
         if loc < 0
         {
             LogError ("Shader attribute % does not exist", name, location = location);
+            LogMessage ("Note: shader attributes can get optimized out by OpenGL if they are not used in the shader");
+
             return 0xffffffff, false;
         }
 
@@ -382,6 +431,15 @@ ReloadShaders :: () -> bool
 
         skinning_data_uniform_index := glGetUniformBlockIndex (g_skinned_mesh_shader, "Skinning_Data");
         glUniformBlockBinding (g_skinned_mesh_shader, skinning_data_uniform_index, GL_Skinning_Data_Uniform_Binding);
+    }
+
+    {
+        new_shader := GL_Utils.CreateShaderProgram (GL_Static_Mesh_Vertex_Shader, GL_Static_Mesh_Fragment_Shader);
+        if !new_shader
+            return false;
+
+        glDeleteProgram (g_static_mesh_shader);
+        g_static_mesh_shader = new_shader;
     }
 
     return true;

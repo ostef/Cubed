@@ -140,24 +140,25 @@ ChunkInit :: (chunk : *Chunk, x : s64, z : s64)
 
         glEnableVertexAttribArray (g_block_shader_attribs.position);
         glVertexAttribPointer (g_block_shader_attribs.position, 3, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "position"));
+        glVertexAttribPointer (g_block_shader_attribs.position, 3, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "position"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.face);
         glVertexAttribIPointer (g_block_shader_attribs.face, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "face"));
+        glVertexAttribIPointer (g_block_shader_attribs.face, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "face"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.block_id);
         glVertexAttribIPointer (g_block_shader_attribs.block_id, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "block_id"));
+        glVertexAttribIPointer (g_block_shader_attribs.block_id, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "block_id"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.face_corner);
-        glVertexAttribIPointer (g_block_shader_attribs.face_corner, 1, GL_UNSIGNED_BYTE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "corner"));
+        glVertexAttribIPointer (g_block_shader_attribs.face_corner, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "corner"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.block_height);
-        glVertexAttribPointer (g_block_shader_attribs.block_height, 1, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "block_height"));
+        glVertexAttribPointer (g_block_shader_attribs.block_height, 1, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "block_height"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.temperature);
-        glVertexAttribPointer (g_block_shader_attribs.temperature, 1, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "temperature"));
 
         glEnableVertexAttribArray (g_block_shader_attribs.humidity);
-        glVertexAttribPointer (g_block_shader_attribs.humidity, 1, GL_FLOAT, GL_FALSE, size_of (Vertex), cast (*void) OffsetOf (Vertex, "humidity"));
     }
 }
 
@@ -477,7 +478,7 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
 }
 
 PushBlockVertices :: (
-    vertices : *[..]Vertex,
+    vertices : *[..]BlockVertex,
     block : BlockID,
     position : Vec3f,
     visible_faces : BlockFaceFlags,
@@ -486,7 +487,7 @@ PushBlockVertices :: (
     humidity : float
 )
 {
-    PushVertex :: (face : BlockFace, corner : BlockFaceCorner) -> *Vertex #must #expand
+    PushVertex :: (face : BlockFace, corner : BlockFaceCorner) -> *BlockVertex #must #expand
     {
         v := ArrayPush (`vertices);
         v.block_id = cast (u8) `block;
@@ -675,7 +676,7 @@ BlockGetVisibleFaces :: inline (chunk : *Chunk, block : Block, x : s64, y : s64,
     return visible_faces, block_height;
 }
 
-ChunkPushVertices :: (chunk : *Chunk, vertices : *[..]Vertex, mesh_type : ChunkMeshType)
+ChunkPushVertices :: (chunk : *Chunk, vertices : *[..]BlockVertex, mesh_type : ChunkMeshType)
 {
     position := Vec3f.{xx (chunk.x * Chunk_Size), 0, xx (chunk.z * Chunk_Size)};
     for y : 0..Chunk_Height - 1
@@ -717,7 +718,7 @@ ChunkGenerateMeshes :: (chunk : *Chunk)
     state := GetTemporaryStorageState ();
     defer SetTemporaryStorageState (state);
 
-    vertices : [..]Vertex;
+    vertices : [..]BlockVertex;
     vertices.allocator = Temp;
     ArrayReserve (*vertices, 12000);
 
@@ -734,7 +735,7 @@ ChunkGenerateMeshes :: (chunk : *Chunk)
         glBindVertexArray (chunk.vaos[i]);
         glBindBuffer (GL_ARRAY_BUFFER, chunk.vbos[i]);
 
-        glBufferData (GL_ARRAY_BUFFER, size_of (Vertex) * vertices.count, vertices.data, GL_DYNAMIC_DRAW);
+        glBufferData (GL_ARRAY_BUFFER, size_of (BlockVertex) * vertices.count, vertices.data, GL_DYNAMIC_DRAW);
 
         ArrayClear (*vertices);
     }
@@ -874,9 +875,6 @@ WorldHandleNewlyGeneratedChunks :: (using world : *World)
 
         Free (data);
     }
-
-    // if completed.count > 0
-    //     LogMessage ("Generated % new chunks", completed.count);
 }
 
 WorldLaunchThreadedChunkGeneration :: inline (using world : *World, x : s64, z : s64)
