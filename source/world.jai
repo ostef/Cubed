@@ -991,7 +991,7 @@ WorldUpdateBreakingBlocks :: (using world : *World, delta_time : float)
 
         it.stage += delta_time * 6;
 
-        if it.stage > 9
+        if it.stage > 10
         {
             ChunkSetBlockInChunk (chunk, rel_x, it.y, rel_z, .{id=.Air});
 
