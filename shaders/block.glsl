@@ -120,10 +120,9 @@ void main ()
         Frag_Color.rgb *= Grass_Color;
     Frag_Color.a = sampled.a;
 
-    vec4 grass_overlay_sample = vec4 (0, 0, 0, 0);
     if (Block_ID == Block_Grass && Block_Face != Block_Face_Above && Block_Face != Block_Face_Below)
     {
-        grass_overlay_sample = texture (u_Grass_Overlay, Block_Tex_Coords);
+        vec4 grass_overlay_sample = texture (u_Grass_Overlay, Block_Tex_Coords);
         grass_overlay_sample.rgb *= Grass_Color;
         Frag_Color = mix (Frag_Color, grass_overlay_sample, grass_overlay_sample.a);
     }
