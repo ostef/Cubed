@@ -31,7 +31,7 @@ Player_Movement_Speed :: 5.0;
 Player_Jump_Height :: 1.05;
 Player_Rotation_Speed :: 60.0;  // in degrees per second
 Player_Rotation_Smoothing :: 0.3;
-Gravity :: 0.45;
+Gravity :: 0.5;
 Penetration_Threshold :: 0.001;
 Ground_Test_Threshold :: 0.01;
 
