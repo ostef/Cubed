@@ -139,6 +139,22 @@ StringBuilderAppend :: (using builder : *StringBuilder, buff : *void, size : s64
     return written;
 }
 
+StringBuilderAppend :: (builder : *StringBuilder, other : StringBuilder) -> s64
+{
+    EnsureInit (builder);
+
+    i := 0;
+    page := *other.base_page;
+    while page && page.count > 0
+    {
+        StringBuilderAppend (builder, page.data.data, page.count);
+        i += page.count;
+        page = page.next;
+    }
+
+    return i;
+}
+
 StringBuilderAppend :: inline (using builder : *StringBuilder, str : string) -> s64
 {
     return StringBuilderAppend (builder, str.data, str.count);
