@@ -99,6 +99,13 @@ TrapAllocatorProc :: (mode: Allocator_Mode, requested_size: s64, old_size: s64, 
     return null;
 }
 
+AllocatorScope :: (allocator : Allocator) #expand
+{
+    prev := context.allocator;
+    context.allocator = allocator;
+    `defer context.allocator = prev;
+}
+
 #scope_module
 
 Basic :: #import "Basic";
