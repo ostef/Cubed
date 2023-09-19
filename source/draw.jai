@@ -56,9 +56,7 @@ Max_Joints :: 1000;
 
 GL_Skinning_Data_Uniform_Binding :: 1;
 
-GL_Block_Shader_Header :: #string GLSL
-#version 330 core
-
+Block_Definitions_Shader_Export :: #string GLSL
 const int Atlas_Cell_Size_No_Border = %;
 const int Atlas_Cell_Border_Size = %;
 const int Atlas_Cell_Size = Atlas_Cell_Size_No_Border + Atlas_Cell_Border_Size * 2;
@@ -81,236 +79,6 @@ const int Block_Corner_Top_Left     = 0;
 const int Block_Corner_Top_Right    = 1;
 const int Block_Corner_Bottom_Left  = 2;
 const int Block_Corner_Bottom_Right = 3;
-
-GLSL
-
-GL_Block_Shader_Vertex :: #string GLSL
-layout (location = 0) in vec3 a_Position;
-layout (location = 1) in int a_Block_Id;
-layout (location = 2) in int a_Face;
-layout (location = 3) in int a_Face_Corner;
-layout (location = 4) in float a_Block_Height;
-layout (location = 5) in float a_Temperature;
-layout (location = 6) in float a_Humidity;
-
-flat out int Block_ID;
-flat out int Block_Face;
-out vec3 Normal;
-centroid out vec3 Atlas_Tex_Coords;
-centroid out vec2 Block_Tex_Coords;
-out vec3 Grass_Color;
-
-uniform mat4 u_View_Projection_Matrix;
-uniform sampler2DArray u_Texture_Atlases;
-
-vec3 BilinearMix (vec3 a, vec3 b, vec3 c, vec3 d, float s, float t)
-{
-    vec3 x = mix (a, b, s);
-    vec3 y = mix (c, d, s);
-
-    return mix (x, y, t);
-}
-
-void main ()
-{
-    gl_Position = u_View_Projection_Matrix * vec4 (a_Position, 1);
-
-    switch (a_Face)
-    {
-    case Block_Face_East:  Normal = vec3 ( 1, 0, 0); break;
-    case Block_Face_West:  Normal = vec3 (-1, 0, 0); break;
-    case Block_Face_Above: Normal = vec3 (0,  1, 0); break;
-    case Block_Face_Below: Normal = vec3 (0, -1, 0); break;
-    case Block_Face_North: Normal = vec3 (0, 0,  1); break;
-    case Block_Face_South: Normal = vec3 (0, 0, -1); break;
-    }
-
-    int atlas_cell_x = a_Block_Id % Atlas_Cell_Count;
-    int atlas_cell_y = a_Block_Id / Atlas_Cell_Count;
-    int atlas_tex_x = atlas_cell_x * Atlas_Cell_Size + Atlas_Cell_Border_Size;
-    int atlas_tex_y = atlas_cell_y * Atlas_Cell_Size + Atlas_Cell_Border_Size;
-
-    bool is_side_face = a_Face != Block_Face_Above && a_Face != Block_Face_Below;
-
-    Grass_Color = BilinearMix (Grass_Color_00, Grass_Color_10, Grass_Color_01, Grass_Color_11, a_Temperature, a_Humidity);
-
-    Block_Tex_Coords = vec2 (0, 0);
-    switch (a_Face_Corner)
-    {
-    case Block_Corner_Top_Left:
-        if (is_side_face)
-        {
-            atlas_tex_y += int ((1 - a_Block_Height) * Atlas_Cell_Size_No_Border);
-            Block_Tex_Coords.y = 1 - a_Block_Height;
-        }
-        break;
-
-    case Block_Corner_Top_Right:
-        if (is_side_face)
-        {
-            atlas_tex_y += int ((1 - a_Block_Height) * Atlas_Cell_Size_No_Border);
-            Block_Tex_Coords.y = 1 - a_Block_Height;
-        }
-        Block_Tex_Coords.x = 1;
-        atlas_tex_x += Atlas_Cell_Size_No_Border;
-        break;
-
-    case Block_Corner_Bottom_Left:
-        atlas_tex_y += Atlas_Cell_Size_No_Border;
-        Block_Tex_Coords.y = 1;
-        break;
-
-    case Block_Corner_Bottom_Right:
-        Block_Tex_Coords.x = 1;
-        Block_Tex_Coords.y = 1;
-        atlas_tex_x += Atlas_Cell_Size_No_Border;
-        atlas_tex_y += Atlas_Cell_Size_No_Border;
-        break;
-    }
-
-    ivec3 atlas_size = textureSize (u_Texture_Atlases, 0);
-    Atlas_Tex_Coords.x = float (atlas_tex_x) / float (atlas_size.x);
-    Atlas_Tex_Coords.y = float (atlas_tex_y) / float (atlas_size.y);
-    Atlas_Tex_Coords.z = a_Face;
-
-    Block_ID = a_Block_Id;
-    Block_Face = a_Face;
-}
-GLSL
-
-GL_Block_Shader_Fragment :: #string GLSL
-flat in int Block_ID;
-flat in int Block_Face;
-in vec3 Normal;
-centroid in vec3 Atlas_Tex_Coords;
-centroid in vec2 Block_Tex_Coords;
-in vec3 Grass_Color;
-
-out vec4 Frag_Color;
-
-uniform sampler2DArray u_Texture_Atlases;
-uniform sampler2D u_Grass_Overlay;
-
-void main ()
-{
-    vec3 light_direction = normalize (vec3 (0.5, 1, 0.2));
-    vec4 sampled = texture (u_Texture_Atlases, Atlas_Tex_Coords);
-
-    Frag_Color.rgb = sampled.rgb;
-    if (Block_ID == Block_Grass && Block_Face == Block_Face_Above)
-        Frag_Color.rgb *= Grass_Color;
-    Frag_Color.a = sampled.a;
-
-    vec4 grass_overlay_sample = vec4 (0, 0, 0, 0);
-    if (Block_ID == Block_Grass && Block_Face != Block_Face_Above && Block_Face != Block_Face_Below)
-    {
-        grass_overlay_sample = texture (u_Grass_Overlay, Block_Tex_Coords);
-        grass_overlay_sample.rgb *= Grass_Color;
-        Frag_Color = mix (Frag_Color, grass_overlay_sample, grass_overlay_sample.a);
-    }
-
-    Frag_Color.rgb *= max (dot (Normal, light_direction), 0.25);
-}
-GLSL
-
-GL_Skinned_Mesh_Vertex_Shader :: #string GLSL
-#version 330 core
-
-const int Max_Joints = 1000;
-
-layout (location = 0) in vec3 a_Position;
-layout (location = 1) in vec3 a_Normal;
-layout (location = 2) in vec2 a_Tex_Coords;
-layout (location = 3) in int a_Joint_Id;
-
-uniform mat4 u_Model_Matrix;
-uniform mat4 u_View_Projection_Matrix;
-
-layout (std140) uniform Skinning_Data
-{
-    mat4 u_Skinning_Matrices[Max_Joints];
-};
-
-out vec2 Tex_Coords;
-out vec3 Normal;
-
-void main ()
-{
-    vec3 model_position = vec3 (0);
-    vec3 model_normal = vec3 (0);
-    if (a_Joint_Id < 0)
-    {
-        model_position = a_Position;
-        model_normal   = a_Normal;
-    }
-    else
-    {
-        mat4 skinning_matrix = u_Skinning_Matrices[a_Joint_Id];
-        model_position = (skinning_matrix * vec4 (a_Position, 1)).xyz;
-        model_normal = (skinning_matrix * vec4 (a_Normal, 0)).xyz;
-    }
-
-    gl_Position = u_View_Projection_Matrix * u_Model_Matrix * vec4 (model_position, 1);
-    Tex_Coords = a_Tex_Coords;
-    Tex_Coords.y = 1 - Tex_Coords.y;
-    Normal = (u_Model_Matrix * vec4 (model_normal, 0)).xyz;
-}
-GLSL
-
-GL_Skinned_Mesh_Fragment_Shader :: #string GLSL
-#version 330 core
-
-uniform sampler2D u_Texture;
-
-in vec2 Tex_Coords;
-in vec3 Normal;
-
-out vec4 Frag_Color;
-
-void main ()
-{
-    vec4 color = texture (u_Texture, Tex_Coords);
-    Frag_Color = color;
-}
-GLSL
-
-GL_Static_Mesh_Vertex_Shader :: #string GLSL
-#version 330 core
-
-layout (location = 0) in vec3 a_Position;
-layout (location = 1) in vec3 a_Normal;
-layout (location = 2) in vec2 a_Tex_Coords;
-
-uniform mat4 u_Model_Matrix;
-uniform mat4 u_View_Projection_Matrix;
-
-out vec2 Tex_Coords;
-out vec3 Normal;
-
-void main ()
-{
-    gl_Position = u_View_Projection_Matrix * u_Model_Matrix * vec4 (a_Position, 1);
-    Tex_Coords = a_Tex_Coords;
-    Tex_Coords.y = 1 - Tex_Coords.y;
-    Normal = (u_Model_Matrix * vec4 (a_Normal, 0)).xyz;
-}
-GLSL
-
-GL_Static_Mesh_Fragment_Shader :: #string GLSL
-#version 330 core
-
-uniform sampler2D u_Texture;
-
-in vec2 Tex_Coords;
-in vec3 Normal;
-
-out vec4 Frag_Color;
-
-void main ()
-{
-    vec4 color = texture (u_Texture, Tex_Coords);
-    Frag_Color = color;
-}
 GLSL
 
 ReloadShaders :: () -> bool
@@ -329,36 +97,44 @@ ReloadShaders :: () -> bool
         return xx loc, true;
     }
 
+    ProfileBlock ();
+    AllocatorScope (Temp);
+
+    block_ids_string : string;
     {
-        block_ids_string : string;
-        {
-            builder : StringBuilder;
-            builder.allocator = Temp;
+        builder : StringBuilder;
 
-            for i : 0..BlockID.Count
-                StringBuilderAppend (*builder, "const int Block_% = %;\n", i, cast (int) i);
+        for i : 0..BlockID.Count
+            StringBuilderAppend (*builder, "const int Block_% = %;\n", i, cast (int) i);
 
-            block_ids_string = StringBuilderBuild (*builder, allocator = Temp);
-        }
+        block_ids_string = StringBuilderBuild (*builder);
+    }
 
-        shader_header := FormatString (GL_Block_Shader_Header,
-            Atlas_Cell_Size_No_Border, Atlas_Cell_Border_Size, g_atlas_cell_count,
-            Grass_Color_00.r, Grass_Color_00.g, Grass_Color_00.b,
-            Grass_Color_10.r, Grass_Color_10.g, Grass_Color_10.b,
-            Grass_Color_01.r, Grass_Color_01.g, Grass_Color_01.b,
-            Grass_Color_11.r, Grass_Color_11.g, Grass_Color_11.b,
-            block_ids_string
-        );
+    block_defs_export := FormatString (Block_Definitions_Shader_Export,
+        Atlas_Cell_Size_No_Border, Atlas_Cell_Border_Size, g_atlas_cell_count,
+        Grass_Color_00.r, Grass_Color_00.g, Grass_Color_00.b,
+        Grass_Color_10.r, Grass_Color_10.g, Grass_Color_10.b,
+        Grass_Color_01.r, Grass_Color_01.g, Grass_Color_01.b,
+        Grass_Color_11.r, Grass_Color_11.g, Grass_Color_11.b,
+        block_ids_string
+    );
 
-        vertex_source   := StringJoin (shader_header, GL_Block_Shader_Vertex);
-        fragment_source := StringJoin (shader_header, GL_Block_Shader_Fragment);
+    shader_exports := ShaderProgramExport.[
+        .{ "Block_Definitions", block_defs_export }
+    ];
 
-        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source);
+    {
+        pp : ShaderPreprocessor;
+        InitShaderPreprocessor (*pp, "shaders/block.glsl", shader_exports);
+        ok, vertex_source, geometry_source, fragment_source := PreprocessShaderSource (*pp);
+        if !ok
+            return false;
+
+        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = false);
         if !new_shader
             return false;
 
         attribs : type_of (g_block_shader_attribs);
-        ok : bool;
 
         attribs.position, ok = GetAttribLocation (new_shader, "a_Position");
         if !ok
@@ -415,7 +191,13 @@ ReloadShaders :: () -> bool
     }
 
     {
-        new_shader := GL_Utils.CreateShaderProgram (GL_Skinned_Mesh_Vertex_Shader, GL_Skinned_Mesh_Fragment_Shader);
+        pp : ShaderPreprocessor;
+        InitShaderPreprocessor (*pp, "shaders/skinned_mesh.glsl", shader_exports);
+        ok, vertex_source, geometry_source, fragment_source := PreprocessShaderSource (*pp);
+        if !ok
+            return false;
+
+        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = false);
         if !new_shader
             return false;
 
@@ -435,7 +217,13 @@ ReloadShaders :: () -> bool
     }
 
     {
-        new_shader := GL_Utils.CreateShaderProgram (GL_Static_Mesh_Vertex_Shader, GL_Static_Mesh_Fragment_Shader);
+        pp : ShaderPreprocessor;
+        InitShaderPreprocessor (*pp, "shaders/static_mesh.glsl", shader_exports);
+        ok, vertex_source, geometry_source, fragment_source := PreprocessShaderSource (*pp);
+        if !ok
+            return false;
+
+        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = false);
         if !new_shader
             return false;
 

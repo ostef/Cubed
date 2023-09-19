@@ -51,6 +51,7 @@ Ceil :: Math.ceil;
 #load "mesh.jai";
 #load "anim.jai";
 #load "anim_state.jai";
+#load "shader_preprocessor.jai";
 
 operator== :: inline (a : Source_Code_Location, b : Source_Code_Location) -> bool
 {
@@ -370,9 +371,6 @@ main :: ()
     WorldInit (*g_world, 1725362821052241920);//Basic.current_time_monotonic ().low);
     defer WorldFree (*g_world);
 
-    #if Basic.MEMORY_DEBUGGER
-        Basic.allocations_before_this_call_will_not_be_considered_leaks ();
-
     if !LoadAllSkinnedMeshes ()
         return;
 
@@ -380,6 +378,9 @@ main :: ()
         return;
 
     InitPlayer (*g_world, *g_player);
+
+    #if Basic.MEMORY_DEBUGGER
+        Basic.allocations_before_this_call_will_not_be_considered_leaks ();
 
     g_camera.position.y = xx g_world.surface_params.water_level + 10.0;
     g_player.position.y = xx g_world.surface_params.water_level + 10.0;
