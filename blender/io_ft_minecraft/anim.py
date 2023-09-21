@@ -103,7 +103,7 @@ class SampledAnimation:
             result.name_to_joint_id.update ({ bone.name : joint_count })
             joint_count += 1
 
-        for frame in range (frame_begin, frame_end, frame_step):
+        for frame in range (frame_begin, frame_end + 1, frame_step):
             bpy.context.scene.frame_set (frame)
             AppendPose (result, blender_obj.pose)
 
