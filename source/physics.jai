@@ -1,3 +1,71 @@
+// This is used as a filter for intersection tests
+BlockFlags :: struct
+{
+    Size :: #run cast (int) Ceil (BlockID.Count / 8.0);
+
+    bytes : [Size]u8;
+}
+
+Block_Flags_Solid :: #run () -> BlockFlags
+{
+    flags : BlockFlags;
+    memset (*flags.bytes, 0xff, flags.Size);
+    RemoveBlockFlag (*flags, .Water);
+    RemoveBlockFlag (*flags, .Air);
+
+    return flags;
+} ();
+
+MakeBlockFlags :: inline (blocks : ..BlockID) -> BlockFlags #must
+{
+    result : BlockFlags;
+    SetBlockFlags (*result, ..blocks);
+
+    return result;
+}
+
+BlockFlagIsSet :: inline (using flags : BlockFlags, block : BlockID) -> bool #must
+{
+    byte_index := cast (int) block / 8;
+    bit_index := cast (int) block % 8;
+
+    return (bytes[byte_index] & (cast (u8) 0x1 << bit_index)) != 0;
+}
+
+SetBlockFlag :: inline (using flags : *BlockFlags, block : BlockID)
+{
+    byte_index := cast (int) block / 8;
+    bit_index := cast (int) block % 8;
+    bytes[byte_index] |= cast (u8) 0x1 << bit_index;
+}
+
+SetBlockFlags :: inline (using flags : *BlockFlags, blocks : ..BlockID)
+{
+    for block : blocks
+    {
+        byte_index := cast (int) block / 8;
+        bit_index := cast (int) block % 8;
+        bytes[byte_index] |= cast (u8) 0x1 << bit_index;
+    }
+}
+
+RemoveBlockFlag :: inline (using flags : *BlockFlags, block : BlockID)
+{
+    byte_index := cast (int) block / 8;
+    bit_index := cast (int) block % 8;
+    bytes[byte_index] &= ~(cast (u8) 0x1 << bit_index);
+}
+
+RemoveBlockFlags :: inline (using flags : *BlockFlags, blocks : ..BlockID)
+{
+    for block : blocks
+    {
+        byte_index := cast (int) block / 8;
+        bit_index := cast (int) block % 8;
+        bytes[byte_index] &= ~(cast (u8) 0x1 << bit_index);
+    }
+}
+
 AABB :: struct
 {
     min : Vec3f;
@@ -181,7 +249,7 @@ else
     return result, t_near, t_far;
 }
 
-RayIntersectsWorld :: (world : *World, ray : Ray) -> HitResult #must
+RayIntersectsWorld :: (world : *World, ray : Ray, filter := Block_Flags_Solid) -> HitResult #must
 {
     min_x, max_x := MinMax (ray.origin.x, ray.origin.x + ray.direction.x * ray.length);
     min_y, max_y := MinMax (ray.origin.y, ray.origin.y + ray.direction.y * ray.length);
@@ -218,12 +286,12 @@ RayIntersectsWorld :: (world : *World, ray : Ray) -> HitResult #must
                     continue;
 
                 rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, x, z);
-                block_aabb := BlockAABB (x, y, z);
 
                 block := ChunkGetBlockInChunk (chunk, rel_x, y, rel_z);
-                if block.id == .Air || block.id == .Water
+                if !BlockFlagIsSet (filter, block)
                     continue;
 
+                block_aabb := BlockAABB (x, y, z);
                 result := RayIntersectsAABB (ray, block_aabb);
                 if result.hit && result.distance < closest_hit.distance
                 {
@@ -246,7 +314,7 @@ RayIntersectsWorld :: (world : *World, ray : Ray) -> HitResult #must
     return closest_hit;
 }
 
-SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, length : float) -> HitResult #must
+SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, length : float, filter := Block_Flags_Solid) -> HitResult #must
 {
     ProfileBlock ();
 
@@ -304,12 +372,12 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
                 }
 
                 rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, x, z);
-                block_aabb := BlockAABB (x, y, z);
 
                 block := ChunkGetBlockInChunk (chunk, rel_x, y, rel_z);
-                if block.id == .Air || block.id == .Water
+                if !BlockFlagIsSet (filter, block)
                     continue;
 
+                block_aabb := BlockAABB (x, y, z);
                 result := SweptAABBIntersectsAABB (aabb, block_aabb, direction, length);
                 if result.hit && result.distance < closest_hit.distance
                 {
