@@ -400,6 +400,55 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
     return closest_hit;
 }
 
+AABBIntersectsWorld :: (world : *World, aabb : AABB, filter := Block_Flags_Solid) -> bool #must
+{
+    ProfileBlock ();
+
+    min_x, max_x := Floor (aabb.min.x), Ceil (aabb.max.x);
+    min_y, max_y := Floor (aabb.min.y), Ceil (aabb.max.y);
+    min_z, max_z := Floor (aabb.min.z), Ceil (aabb.max.z);
+
+    chunk_x, chunk_z := ChunkPositionFromWorldPosition (cast (int) min_x, cast (int)  min_z);
+    chunk := WorldGetChunk (world, chunk_x, chunk_z);
+
+    // This is not supposed to happen. If it does, it will provoke an infinite loop, so we debug break
+    // to debug it when we'll encounter that case
+    if max_x < min_x || max_y < min_y || max_z < min_z
+        debug_break ();
+
+    for y : cast (int) min_y..cast (int) max_y
+    {
+        for z : cast (int) min_z..cast (int) max_z
+        {
+            for x : cast (int) min_x..cast (int) max_x
+            {
+                curr_chunk_x, curr_chunk_z := ChunkPositionFromWorldPosition (x, z);
+                if chunk_x != curr_chunk_x || chunk_z != curr_chunk_z
+                {
+                    chunk_x = curr_chunk_x;
+                    chunk_z = curr_chunk_z;
+                    chunk = WorldGetChunk (world, chunk_x, chunk_z);
+                }
+
+                if !chunk
+                    continue;
+
+                rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, x, z);
+
+                block := ChunkGetBlockInChunk (chunk, rel_x, y, rel_z);
+                if !BlockFlagIsSet (filter, block)
+                    continue;
+
+                block_aabb := BlockAABB (x, y, z);
+                if AABBIntersectsAABB (aabb, block_aabb)
+                    return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 BlockFaceFromNormal :: inline (normal : Vec3f) -> BlockFace #must
 {
     if ApproxEquals (normal, .{1, 0, 0}, 0.00001)
