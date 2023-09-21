@@ -606,6 +606,7 @@ UIShowGameMetricsWindow :: (opened : *bool)
     ImGuiExt.EnumCombo ("Camera Mode", *g_camera_mode);
     ImGui.LabelText ("Is Flying", "%s", ifx g_player.is_flying then "true".data else "false".data);
     ImGui.LabelText ("Is On Ground", "%s", ifx g_player.is_on_ground then "true".data else "false".data);
+    ImGui.LabelText ("Is In Water", "%s", ifx g_player.is_in_water then "true".data else "false".data);
     ImGui.LabelText ("Fly Toggle Timer", "%.3f", g_player.fly_toggle_timer);
 
     ImGui.SeparatorText ("Animation");

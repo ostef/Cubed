@@ -9,6 +9,7 @@ Player :: struct
     was_on_ground, is_on_ground : bool;
     fly_toggle_timer : float;
     movement_input : Vec3f;
+    is_in_water : bool;
 
     transform_matrix : Mat4f;
 
@@ -147,14 +148,16 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
 
     position += velocity;
 
+    player_aabb := PlayerAABB (player);
+
     was_on_ground = is_on_ground;
     is_on_ground = false;
-    {
-        player_aabb := PlayerAABB (player);
-        ground_test := SweptAABBIntersectsWorld (world, player_aabb, .{0, -1, 0}, Ground_Test_Threshold);
-        if ground_test.hit && ground_test.block_face == .Above
-            is_on_ground = true;
-    }
+
+    ground_test := SweptAABBIntersectsWorld (world, player_aabb, .{0, -1, 0}, Ground_Test_Threshold);
+    if ground_test.hit && ground_test.block_face == .Above
+        is_on_ground = true;
+
+    is_in_water = AABBIntersectsWorld (world, player_aabb, MakeBlockFlags (.Water));
 
     anim_data.is_on_ground = is_on_ground;
     anim_data.is_flying = is_flying;
@@ -216,6 +219,7 @@ DrawPlayer :: (world : World, using player : Player, camera : Camera)
     // aabb := PlayerAABB (player);
     // Im3d.DrawAlignedBox (aabb.min, aabb.max);
     // Im3d.DrawArrow (position, position + velocity * 60);
+
     GL_Utils.StateBlock (GL_ACTIVE_TEXTURE, (prev : GLenum) {glActiveTexture (prev);});
     GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D_ARRAY, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D_ARRAY, prev);});
 
