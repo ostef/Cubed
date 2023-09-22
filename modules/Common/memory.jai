@@ -120,3 +120,9 @@ TemporaryAlloc :: Basic.temporary_allocator_proc;
 GetTemporaryStorageState :: Basic.get_temporary_storage_mark;
 SetTemporaryStorageState :: Basic.set_temporary_storage_mark;
 ResetTemporaryStorage :: Basic.reset_temporary_storage;
+
+TemporaryStorageScope :: () #expand
+{
+    state := GetTemporaryStorageState ();
+    defer `SetTemporaryStorageState (state);
+}
