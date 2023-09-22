@@ -8,6 +8,10 @@ Basic :: #import "Basic";
 Lexer :: struct
 {
     name : string;
+
+    #place name;
+    filename : string;
+
     text : string;
     byte_index : s64;
     column := 1;
