@@ -40,7 +40,7 @@ InitShaderPreprocessor :: (pp : *ShaderPreprocessor, filename : string, program_
 {
     AllocatorScope (allocator);
 
-    pp.original_filename = filename;
+    pp.original_filename = get_absolute_path (filename);
     pp.program_exports = program_exports;
     pp.allocator = allocator;
     pp.file_stack.allocator = allocator;
@@ -50,38 +50,70 @@ InitShaderPreprocessor :: (pp : *ShaderPreprocessor, filename : string, program_
     pp.fragment_builder.allocator = allocator;
     pp.current_builder = *pp.header_builder;
 
-    file_contents, ok := read_entire_file (filename, log_errors = false);
+    file_contents, ok := read_entire_file (pp.original_filename, log_errors = false);
     if !ok
     {
         LogError ("Could not open file '%'", filename);
         return false;
     }
 
-    AddFile (pp, filename, file_contents);
+    return AddFile (pp, pp.original_filename, file_contents);
+}
+
+FreeShaderPreprocessor :: (using pp : *ShaderPreprocessor)
+{
+    AllocatorScope (allocator);
+
+    for * pp.file_stack
+    {
+        Free (it.text.data);
+        Free (it.filename.data);
+    }
+
+    ArrayFree (*pp.file_stack);
+    StringBuilderFree (*pp.header_builder);
+    StringBuilderFree (*pp.vertex_builder);
+    StringBuilderFree (*pp.geometry_builder);
+    StringBuilderFree (*pp.fragment_builder);
+}
+
+AddFile :: inline (pp : *ShaderPreprocessor, filename : string, file_contents : string) -> bool #must
+{
+    for pp.file_stack
+    {
+        if filename == it.name
+            return false;
+    }
+
+    pp.current_lexer = ArrayPush (*pp.file_stack);
+    pp.current_lexer.name = filename;
+    pp.current_lexer.text = file_contents;
 
     return true;
 }
 
-AddFile :: inline (using pp : *ShaderPreprocessor, filename : string, file_contents : string)
-{
-    current_lexer = ArrayPush (*file_stack);
-    current_lexer.name = filename;
-    current_lexer.text = file_contents;
-}
-
 ShaderPreprocessorIsAtEnd :: (using pp : *ShaderPreprocessor) -> bool #must
 {
-    return file_stack.count == 0;
+    return !current_lexer && file_stack.count == 0;
 }
 
 PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := context.allocator) -> bool, vertex : string, geometry : string, fragment : string
 {
+    Error :: (pp : ShaderPreprocessor, fmt_str : string, args : ..Any) #expand
+    {
+        msg := FormatString (Temp, fmt_str, ..args);
+        LogError ("%:%:%, Error: %", name, line, column, msg);
+
+        `return false, "", "", "";
+    }
+
     AllocatorScope (allocator);
 
     while !ShaderPreprocessorIsAtEnd (pp)
     {
         if LexerIsAtEnd (pp)
         {
+            Free (filename.data);
             Free (text.data);
             ArrayPop (*file_stack);
 
@@ -100,12 +132,12 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
         if LexerEqualsAlphaNumeric (pp, "#type_vertex")
         {
             if found_type_vertex
-                SyntaxError (pp, "Duplicate #type_vertex directive");
+                Error (pp, "Duplicate #type_vertex directive");
 
             found_type_vertex = true;
 
             if file_stack.count > 1
-                SyntaxError (pp, "#type directives are only allowed in top-level shaders");
+                Error (pp, "#type directives are only allowed in top-level shaders");
 
             LexerAdvance (pp, "#type_vertex".count);
 
@@ -116,12 +148,12 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
         else if LexerEqualsAlphaNumeric (pp, "#type_geometry")
         {
             if found_type_geometry
-                SyntaxError (pp, "Duplicate #type_geometry directive");
+                Error (pp, "Duplicate #type_geometry directive");
 
             found_type_geometry = true;
 
             if file_stack.count > 1
-                SyntaxError (pp, "#type directives are only allowed in top-level shaders");
+                Error (pp, "#type directives are only allowed in top-level shaders");
 
             LexerAdvance (pp, "#type_geometry".count);
 
@@ -132,12 +164,12 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
         else if LexerEqualsAlphaNumeric (pp, "#type_fragment")
         {
             if found_type_fragment
-                SyntaxError (pp, "Duplicate #type_fragment directive");
+                Error (pp, "Duplicate #type_fragment directive");
 
             found_type_fragment = true;
 
             if file_stack.count > 1
-                SyntaxError (pp, "#type directives are only allowed in top-level shaders");
+                Error (pp, "#type directives are only allowed in top-level shaders");
 
             LexerAdvance (pp, "#type_fragment".count);
 
@@ -151,19 +183,21 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
 
             filename, ok := LexerScanQuotedString (pp, allocator = Temp);
             if !ok
-            {
-                SyntaxError (pp, "Expected a string for #include filename");
-
-                continue;
-            }
+                Error (pp, "Expected a string for #include filename");
 
             filename = FormatString (Temp, "{}{}", String.path_strip_filename (current_lexer.name), filename);
+            filename = get_absolute_path (filename);
 
             file_contents:, ok = read_entire_file (filename, log_errors = false);
-            if !ok
-                SyntaxError (pp, "Could not read file '%'", filename);
 
-            AddFile (pp, filename, file_contents);
+            if !AddFile (pp, filename, file_contents)
+            {
+                Free (file_contents.data);
+                Error (pp, "Circular include detected of file '%'", filename);
+            }
+
+            if !ok
+                Error (pp, "Could not read file '%'", filename);
         }
         else if LexerMatchAlphaNumeric (pp, "#program_import")
         {
@@ -171,11 +205,7 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
 
             import_name, ok := LexerScanQuotedString (pp, allocator = Temp);
             if !ok
-            {
-                SyntaxError (pp, "Expected a string for #program_import name");
-
-                continue;
-            }
+                Error (pp, "Expected a string for #program_import name");
 
             export : *ShaderProgramExport;
             for * program_exports
@@ -188,10 +218,7 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
             }
 
             if !export
-            {
-                SyntaxError (pp, "The program does not export '%'", import_name);
-                continue;
-            }
+                Error (pp, "The program does not export '%'", import_name);
 
             StringBuilderAppend (current_builder, export.code);
         }
@@ -201,9 +228,6 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
             LexerAdvance (pp);
         }
     }
-
-    if has_errors
-        return false, "", "", "";
 
     return true,
         ifx found_type_vertex   then StringBuilderBuild (*vertex_builder,   allocator = source_allocator) else "",

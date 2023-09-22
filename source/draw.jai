@@ -124,6 +124,8 @@ ReloadShaders :: () -> bool
     ];
 
     {
+        TemporaryStorageScope ();
+
         pp : ShaderPreprocessor;
         InitShaderPreprocessor (*pp, "shaders/block.glsl", shader_exports);
         ok, vertex_source, geometry_source, fragment_source := PreprocessShaderSource (*pp);
@@ -191,6 +193,8 @@ ReloadShaders :: () -> bool
     }
 
     {
+        TemporaryStorageScope ();
+
         pp : ShaderPreprocessor;
         InitShaderPreprocessor (*pp, "shaders/skinned_mesh.glsl", shader_exports);
         ok, vertex_source, geometry_source, fragment_source := PreprocessShaderSource (*pp);
@@ -217,6 +221,8 @@ ReloadShaders :: () -> bool
     }
 
     {
+        TemporaryStorageScope ();
+
         pp : ShaderPreprocessor;
         InitShaderPreprocessor (*pp, "shaders/static_mesh.glsl", shader_exports);
         ok, vertex_source, geometry_source, fragment_source := PreprocessShaderSource (*pp);
