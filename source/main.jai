@@ -109,7 +109,7 @@ GLMessageCallback :: (
         {
         case GL_DEBUG_SOURCE_API; source_str = "API ";
         case GL_DEBUG_SOURCE_WINDOW_SYSTEM; source_str = "window system ";
-        case GL_DEBUG_SOURCE_SHADER_COMPILER; source_str = "chader compiler ";
+        case GL_DEBUG_SOURCE_SHADER_COMPILER; source_str = "shader compiler ";
         case GL_DEBUG_SOURCE_THIRD_PARTY; source_str = "third party ";
         case GL_DEBUG_SOURCE_APPLICATION; source_str = "application ";
         case; source_str = "";
