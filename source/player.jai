@@ -262,6 +262,8 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
 
     blend_space_poses : [9]*SkeletonPose = .[
         *idle_pose,
+        *right_pose,
+        *left_pose,
         *fright_pose,
         *fleft_pose,
         *bright_pose,
@@ -278,7 +280,6 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
         .{0,-1}, .{0,1}
     ];
 
-    blend_space_weights : [7]float = ---;
     blend_space_weights : [9]float = ---;
 
     blend_space_point := Vec2f.{smooth_movement_input.x, smooth_movement_input.z};
