@@ -115,7 +115,7 @@ void main ()
     vec3 light_direction = normalize (vec3 (0.5, 1, 0.2));
     vec4 sampled = texture (u_Texture_Atlases, Atlas_Tex_Coords);
 
-    Frag_Color = sampled;
+    Frag_Color.rgb = sampled.rgb;
     if (Block_ID == Block_Grass && Block_Face == Block_Face_Above)
         Frag_Color.rgb *= Grass_Color;
 
@@ -123,8 +123,9 @@ void main ()
     {
         vec4 grass_overlay_sample = texture (u_Grass_Overlay, Block_Tex_Coords);
         grass_overlay_sample.rgb *= Grass_Color;
-        Frag_Color = mix (Frag_Color, grass_overlay_sample, grass_overlay_sample.a);
+        Frag_Color.rgb = mix (Frag_Color.rgb, grass_overlay_sample.rgb, grass_overlay_sample.a);
     }
 
     Frag_Color.rgb *= max (dot (Normal, light_direction), 0.25);
+    Frag_Color.a = 1;
 }

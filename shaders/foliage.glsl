@@ -65,10 +65,12 @@ uniform sampler2DArray u_Texture_Atlases;
 void main ()
 {
     vec4 sampled = texture (u_Texture_Atlases, vec3(Atlas_Tex_Coords, 0));
-    if (sampled.a < 0.7)
+    if (sampled.a < 1)
         discard;
 
-    Frag_Color = sampled;
+    Frag_Color.rgb = sampled.rgb;
     if (Block_ID == Block_Grass_Foliage)
         Frag_Color.rgb *= Grass_Color;
+
+    Frag_Color.a = 1;
 }
