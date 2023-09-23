@@ -76,7 +76,7 @@ g_should_capture_mouse := true;
 g_settings : struct
 {
     generate_new_chunks := true;
-    render_distance : s32 = 2;
+    render_distance : s32 = 6;
     player_speed_mult := 1.0;
     enable_view_culling := true;
     show_skeletons := false;
