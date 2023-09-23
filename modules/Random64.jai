@@ -115,6 +115,11 @@ RandomRangeFloat :: (rng : *RNG, min: float, max: float) -> float {
     return result;
 }
 
+RandomChance :: (rng : *RNG, chance : float) -> bool
+{
+    return RandomGetZeroToOneOpen (rng) < chance;
+}
+
 RNG :: struct {
     low :  u64;
     high : u64;
