@@ -322,43 +322,6 @@ BiomeGetSurfaceBlock :: inline (world : World, chunk : *Chunk, biome : Biome, su
         return .{id=biome.surface_block};
 }
 
-#no_reset
-Offsets : [Perlin_Fractal_Max_Octaves]Vec3f;
-#no_reset
-Offsets2 : [Perlin_Fractal_Max_Octaves]Vec3f;
-
-#run {
-    PerlinGenerateOffsets (*context.random_number_generator, Offsets);
-    PerlinGenerateOffsets (*context.random_number_generator, Offsets2);
-};
-
-Cheese_Cave_Noise_Params := NoiseParams.{
-    scale = 0.0478,
-    octaves = 4,
-    persistance = 0.545,
-    lacunarity = 0.323
-};
-
-Cheese_Cave_Threshold := 0.245;
-
-Spaggetti_Cave_Noise_Params := NoiseParams.{
-    scale = 0.03283,
-    octaves = 3,
-    persistance = 0.345,
-    lacunarity = 1.738
-};
-
-Spaggetti_Cave_Threshold := 0.245;
-
-Noodle_Cave_Noise_Params := NoiseParams.{
-    scale = 0.03283,
-    octaves = 3,
-    persistance = 0.345,
-    lacunarity = 1.738
-};
-
-Noodle_Cave_Threshold := 0.245;
-
 // Careful: this routine must be thread safe!
 ChunkGenerate :: (world : World, chunk : *Chunk)
 {
@@ -374,7 +337,10 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
 
     surface_height_map : [Chunk_Size * Chunk_Size]float = ---;
     surface_thickness_map : [Chunk_Size * Chunk_Size]float = ---;
+
     {
+        ProfileBlock ("Calculate Terrain Params");
+
         terrain_params : [TerrainParam.Count]float = ---;
         for z : 0..Chunk_Size - 1
         {
@@ -383,9 +349,9 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
                 sample_x := x + chunk.x * Chunk_Size;
                 sample_z := z + chunk.z * Chunk_Size;
 
-                index := ChunkBlockIndex (x, 0, z);
                 CalculateTerrainParams (world, *terrain_params, xx sample_x, xx sample_z);
 
+                index := ChunkBlockIndex (x, 0, z);
                 chunk.biome_values[index] = CalculateBiomeValuesFromTerrainParams (terrain_params);
                 biome := *Biomes[chunk.biome_values[index].biome_id];
 
@@ -395,91 +361,45 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
         }
     }
 
-    for y : 0..Chunk_Height - 1
     {
-        for z : 0..Chunk_Size - 1
+        ProfileBlock ("Fill blocks");
+
+        for y : 0..Chunk_Height - 1
         {
-            for x : 0..Chunk_Size - 1
+            for z : 0..Chunk_Size - 1
             {
-                index := ChunkBlockIndex (x, y, z);
-                surface_index := ChunkBlockIndex (x, 0, z);
-                surface_height := surface_height_map[surface_index];
-                surface_thickness := surface_thickness_map[surface_index];
-                biome_id := chunk.biome_values[surface_index].biome_id;
-                biome := *Biomes[biome_id];
+                for x : 0..Chunk_Size - 1
+                {
+                    index := ChunkBlockIndex (x, y, z);
+                    surface_index := ChunkBlockIndex (x, 0, z);
+                    surface_height := surface_height_map[surface_index];
+                    surface_thickness := surface_thickness_map[surface_index];
+                    biome_id := chunk.biome_values[surface_index].biome_id;
+                    biome := *Biomes[biome_id];
 
-                if y == 0
-                {
-                    chunk.blocks[index].id = .Bedrock;
-                }
-                else if y > cast (int) surface_height
-                {
-                    if y <= world.surface_params.water_level
-                        chunk.blocks[index].id = biome.fluid_block;
-                    else
-                        chunk.blocks[index].id = .Air;
-                }
-                else if y > cast (int) (surface_height - surface_thickness)
-                {
-                    chunk.blocks[index] = BiomeGetSurfaceBlock (world, chunk, biome, surface_height, x, y, z);
-                }
-                // else if y == cast (int) surface_height
-                // {
-                //     chunk.blocks[index].id = biome.surface_block;
-                // }
-                // else if y > cast (int) surface_height - 5
-                // {
-                //     chunk.blocks[index].id = .Dirt;
-                // }
-                else if y > cast (int) (surface_height - 15)
-                {
-                    chunk.blocks[index].id = .Stone;
-                }
-                else
-                {
-                    // Noodle caves threshold ~ 0.1
-                    // Spaggetti caves threshold ~ 0.1
-
-                    sample_x := x + chunk.x * Chunk_Size;
-                    sample_z := z + chunk.z * Chunk_Size;
-
-                    is_air := false;
-                    cheese_cave_value := PerlinFractalNoise (Cheese_Cave_Noise_Params, Offsets, xx sample_x, xx y, xx sample_z);
-                    cheese_cave_value /= PerlinFractalMax (Cheese_Cave_Noise_Params.octaves, Cheese_Cave_Noise_Params.persistance);
-                    cheese_cave_value = (cheese_cave_value + 1) * 0.5;
-                    if cheese_cave_value < Cheese_Cave_Threshold
+                    if y == 0
                     {
-                        is_air = true;
+                        chunk.blocks[index].id = .Bedrock;
                     }
-                    else
+                    else if y > cast (int) surface_height
                     {
-                        spaggetti1 := PerlinFractalNoise (Spaggetti_Cave_Noise_Params, Offsets, xx sample_x, xx y, xx sample_z);
-                        spaggetti1 /= PerlinFractalMax (Spaggetti_Cave_Noise_Params.octaves, Spaggetti_Cave_Noise_Params.persistance);
-                        spaggetti2 := PerlinFractalNoise (Spaggetti_Cave_Noise_Params, Offsets, xx sample_x, xx y + 40.0, xx sample_z);
-                        spaggetti2 /= PerlinFractalMax (Spaggetti_Cave_Noise_Params.octaves, Spaggetti_Cave_Noise_Params.persistance);
-                        spaggetti_cave_value := (spaggetti1 * spaggetti1 + spaggetti2 * spaggetti2) / Spaggetti_Cave_Threshold;
-
-                        if spaggetti_cave_value < Spaggetti_Cave_Threshold
-                        {
-                            is_air = true;
-                        }
+                        if y <= world.surface_params.water_level
+                            chunk.blocks[index].id = biome.fluid_block;
                         else
-                        {
-                            noodle1 := PerlinFractalNoise (Noodle_Cave_Noise_Params, Offsets2, xx sample_x, xx y, xx sample_z);
-                            noodle1 /= PerlinFractalMax (Noodle_Cave_Noise_Params.octaves, Noodle_Cave_Noise_Params.persistance);
-                            noodle2 := PerlinFractalNoise (Noodle_Cave_Noise_Params, Offsets2, xx sample_x, xx y + 40.0, xx sample_z);
-                            noodle2 /= PerlinFractalMax (Noodle_Cave_Noise_Params.octaves, Noodle_Cave_Noise_Params.persistance);
-                            noodle_cave_value := (noodle1 * noodle1 + noodle2 * noodle2) / Noodle_Cave_Threshold;
-
-                            if noodle_cave_value < Noodle_Cave_Threshold
-                                is_air = true;
-                        }
+                            chunk.blocks[index].id = .Air;
                     }
-
-                    if is_air
-                        chunk.blocks[index].id = .Air;
+                    else if y > cast (int) (surface_height - surface_thickness)
+                    {
+                        chunk.blocks[index].id = biome.surface_block;
+                    }
+                    else if y == cast (int) surface_height
+                    {
+                        chunk.blocks[index].id = biome.surface_block;
+                    }
                     else
+                    {
                         chunk.blocks[index].id = .Stone;
+                    }
                 }
             }
         }
