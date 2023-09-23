@@ -115,10 +115,9 @@ void main ()
     vec3 light_direction = normalize (vec3 (0.5, 1, 0.2));
     vec4 sampled = texture (u_Texture_Atlases, Atlas_Tex_Coords);
 
-    Frag_Color.rgb = sampled.rgb;
+    Frag_Color = sampled;
     if (Block_ID == Block_Grass && Block_Face == Block_Face_Above)
         Frag_Color.rgb *= Grass_Color;
-    Frag_Color.a = sampled.a;
 
     if (Block_ID == Block_Grass && Block_Face != Block_Face_Above && Block_Face != Block_Face_Below)
     {
