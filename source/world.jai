@@ -39,6 +39,7 @@ BlockID :: enum u8
     Red_Sand;
     Snow;
     Snowy_Grass;
+    Grass_Foliage;
 
     Count;
 }
@@ -55,6 +56,7 @@ ChunkMeshType :: enum u8
 {
     Solid;
     Water;
+    Foliage;
 
     Count;
 
@@ -126,6 +128,8 @@ BlockGetMeshType :: inline (block : BlockID) -> ChunkMeshType #must
         return .Invisible;
     case .Water;
         return .Water;
+    case .Grass_Foliage;
+        return .Foliage;
     case;
         return .Solid;
     }
@@ -143,31 +147,93 @@ ChunkInit :: (chunk : *Chunk, x : s64, z : s64)
     GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
     GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
 
-    for i : 0..ChunkMeshType.Count - 1
+    for i : 0..ChunkMeshType.Water
     {
         glBindVertexArray (chunk.vaos[i]);
         glBindBuffer (GL_ARRAY_BUFFER, chunk.vbos[i]);
 
-        glEnableVertexAttribArray (g_block_shader_attribs.position);
-        glVertexAttribPointer (g_block_shader_attribs.position, 3, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "position"));
+        if g_block_shader_attribs.position >= 0
+        {
+            glEnableVertexAttribArray (xx g_block_shader_attribs.position);
+            glVertexAttribPointer (xx g_block_shader_attribs.position, 3, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "position"));
+        }
 
-        glEnableVertexAttribArray (g_block_shader_attribs.face);
-        glVertexAttribIPointer (g_block_shader_attribs.face, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "face"));
+        if g_block_shader_attribs.face >= 0
+        {
+            glEnableVertexAttribArray (xx g_block_shader_attribs.face);
+            glVertexAttribIPointer (xx g_block_shader_attribs.face, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "face"));
+        }
 
-        glEnableVertexAttribArray (g_block_shader_attribs.block_id);
-        glVertexAttribIPointer (g_block_shader_attribs.block_id, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "block_id"));
+        if g_block_shader_attribs.block_id >= 0
+        {
+            glEnableVertexAttribArray (xx g_block_shader_attribs.block_id);
+            glVertexAttribIPointer (xx g_block_shader_attribs.block_id, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "block_id"));
+        }
 
-        glEnableVertexAttribArray (g_block_shader_attribs.face_corner);
-        glVertexAttribIPointer (g_block_shader_attribs.face_corner, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "corner"));
+        if g_block_shader_attribs.face_corner >= 0
+        {
+            glEnableVertexAttribArray (xx g_block_shader_attribs.face_corner);
+            glVertexAttribIPointer (xx g_block_shader_attribs.face_corner, 1, GL_UNSIGNED_BYTE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "corner"));
+        }
 
-        glEnableVertexAttribArray (g_block_shader_attribs.block_height);
-        glVertexAttribPointer (g_block_shader_attribs.block_height, 1, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "block_height"));
+        if g_block_shader_attribs.block_height >= 0
+        {
+            glEnableVertexAttribArray (xx g_block_shader_attribs.block_height);
+            glVertexAttribPointer (xx g_block_shader_attribs.block_height, 1, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "block_height"));
+        }
 
-        glEnableVertexAttribArray (g_block_shader_attribs.temperature);
-        glVertexAttribPointer (g_block_shader_attribs.temperature, 1, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "temperature"));
+        if g_block_shader_attribs.temperature >= 0
+        {
+            glEnableVertexAttribArray (xx g_block_shader_attribs.temperature);
+            glVertexAttribPointer (xx g_block_shader_attribs.temperature, 1, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "temperature"));
+        }
 
-        glEnableVertexAttribArray (g_block_shader_attribs.humidity);
-        glVertexAttribPointer (g_block_shader_attribs.humidity, 1, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "humidity"));
+        if g_block_shader_attribs.humidity >= 0
+        {
+            glEnableVertexAttribArray (xx g_block_shader_attribs.humidity);
+            glVertexAttribPointer (xx g_block_shader_attribs.humidity, 1, GL_FLOAT, GL_FALSE, size_of (BlockVertex), cast (*void) OffsetOf (BlockVertex, "humidity"));
+        }
+    }
+
+    {
+        glBindVertexArray (chunk.vaos[ChunkMeshType.Foliage]);
+        glBindBuffer (GL_ARRAY_BUFFER, chunk.vbos[ChunkMeshType.Foliage]);
+
+        if g_foliage_shader_attribs.position >= 0
+        {
+            glEnableVertexAttribArray (xx g_foliage_shader_attribs.position);
+            glVertexAttribPointer (xx g_foliage_shader_attribs.position, 3, GL_FLOAT, GL_FALSE, size_of (FoliageVertex), cast (*void) OffsetOf (FoliageVertex, "position"));
+        }
+
+        if g_foliage_shader_attribs.normal >= 0
+        {
+            glEnableVertexAttribArray (xx g_foliage_shader_attribs.normal);
+            glVertexAttribPointer (xx g_foliage_shader_attribs.normal, 3, GL_FLOAT, GL_FALSE, size_of (FoliageVertex), cast (*void) OffsetOf (FoliageVertex, "normal"));
+        }
+
+        if g_foliage_shader_attribs.tex_coords >= 0
+        {
+            glEnableVertexAttribArray (xx g_foliage_shader_attribs.tex_coords);
+            glVertexAttribPointer (xx g_foliage_shader_attribs.tex_coords, 2, GL_FLOAT, GL_FALSE, size_of (FoliageVertex), cast (*void) OffsetOf (FoliageVertex, "tex_coords"));
+        }
+
+        if g_foliage_shader_attribs.block_id >= 0
+        {
+            glEnableVertexAttribArray (xx g_foliage_shader_attribs.block_id);
+            glVertexAttribIPointer (xx g_foliage_shader_attribs.block_id, 1, GL_UNSIGNED_BYTE, size_of (FoliageVertex), cast (*void) OffsetOf (FoliageVertex, "block_id"));
+        }
+
+        if g_foliage_shader_attribs.temperature >= 0
+        {
+            glEnableVertexAttribArray (xx g_foliage_shader_attribs.temperature);
+            glVertexAttribPointer (xx g_foliage_shader_attribs.temperature, 1, GL_FLOAT, GL_FALSE, size_of (FoliageVertex), cast (*void) OffsetOf (FoliageVertex, "temperature"));
+        }
+
+        if g_foliage_shader_attribs.humidity >= 0
+        {
+            glEnableVertexAttribArray (xx g_foliage_shader_attribs.humidity);
+            glVertexAttribPointer (xx g_foliage_shader_attribs.humidity, 1, GL_FLOAT, GL_FALSE, size_of (FoliageVertex), cast (*void) OffsetOf (FoliageVertex, "humidity"));
+        }
     }
 }
 
@@ -335,6 +401,9 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
     surface_thickness_rng : RNG;
     RandomSeed (*surface_thickness_rng, world.seed + 57483593 + HashS64 (chunk.x) + HashS64 (chunk.z));
 
+    grass_rng : RNG;
+    RandomSeed (*grass_rng, world.seed + 67649503 + HashS64 (chunk.x) + HashS64 (chunk.z));
+
     surface_height_map : [Chunk_Size * Chunk_Size]float = ---;
     surface_thickness_map : [Chunk_Size * Chunk_Size]float = ---;
 
@@ -385,6 +454,8 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
                     {
                         if y <= world.surface_params.water_level
                             chunk.blocks[index].id = biome.fluid_block;
+                        else if y == cast (int) surface_height + 1
+                            chunk.blocks[index].id = ifx RandomChance (*grass_rng, 0.2) then .Grass_Foliage else .Air;
                         else
                             chunk.blocks[index].id = .Air;
                     }
@@ -605,7 +676,7 @@ BlockGetVisibleFaces :: inline (chunk : *Chunk, block : Block, x : s64, y : s64,
     return visible_faces, block_height;
 }
 
-ChunkPushVertices :: (chunk : *Chunk, vertices : *[..]BlockVertex, mesh_type : ChunkMeshType)
+ChunkPushBlockVertices :: (chunk : *Chunk, vertices : *[..]BlockVertex, mesh_type : ChunkMeshType)
 {
     position := Vec3f.{xx (chunk.x * Chunk_Size), 0, xx (chunk.z * Chunk_Size)};
     for y : 0..Chunk_Height - 1
@@ -635,6 +706,66 @@ ChunkPushVertices :: (chunk : *Chunk, vertices : *[..]BlockVertex, mesh_type : C
     }
 }
 
+PushFoliageVertices :: (
+    vertices : *[..]FoliageVertex,
+    block : BlockID,
+    position : Vec3f,
+    temperature : float,
+    humidity : float
+)
+{
+    GetFoliageMesh :: inline (id : BlockID) -> *SkinnedMesh #must
+    {
+        if id ==
+        {
+        case .Grass_Foliage; return GetMesh (.Grass);
+        case; Panic ("Unhandled case %", id);
+        }
+
+        return null;
+    }
+
+    mesh := GetFoliageMesh (block);
+    for mesh.indices
+    {
+        mesh_vertex := mesh.vertices[it];
+        vertex := ArrayPush (vertices);
+        vertex.position = position + mesh_vertex.position;
+        vertex.normal = mesh_vertex.normal;
+        vertex.tex_coords = mesh_vertex.tex_coords;
+        vertex.block_id = xx block;
+        vertex.temperature = temperature;
+        vertex.humidity = humidity;
+    }
+}
+
+ChunkPushFoliageVertices :: (chunk : *Chunk, vertices : *[..]FoliageVertex)
+{
+    position := Vec3f.{xx (chunk.x * Chunk_Size), 0, xx (chunk.z * Chunk_Size)};
+    for y : 0..Chunk_Height - 1
+    {
+        for z : 0..Chunk_Size - 1
+        {
+            for x : 0..Chunk_Size - 1
+            {
+                block := ChunkGetBlockInChunk (chunk, x, y, z);
+                if BlockGetMeshType (block) != .Foliage
+                    continue;
+
+                biome_values := chunk.biome_values[ChunkBlockIndex (x, 0, z)];
+
+                PushFoliageVertices (
+                    vertices,
+                    block,
+                    position + Vec3f.{xx x + 0.5, xx y, xx z + 0.5},
+                    Min (biome_values.temperature / 3.0, 1.0),
+                    Min (biome_values.humidity / 3.0, 1.0)
+                );
+            }
+        }
+    }
+}
+
 ChunkGenerateMeshes :: (chunk : *Chunk)
 {
     if !chunk.is_dirty
@@ -644,29 +775,45 @@ ChunkGenerateMeshes :: (chunk : *Chunk)
 
     defer chunk.is_dirty = false;
 
-    state := GetTemporaryStorageState ();
-    defer SetTemporaryStorageState (state);
-
-    vertices : [..]BlockVertex;
-    vertices.allocator = Temp;
-    ArrayReserve (*vertices, 12000);
+    TemporaryStorageScope ();
 
     GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
     GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
 
     chunk.total_vertex_count = 0;
-    for i : 0..ChunkMeshType.Count - 1
+
     {
-        ChunkPushVertices (chunk, *vertices, xx i);
-        chunk.vertex_counts[i] = vertices.count;
+        vertices : [..]BlockVertex;
+        vertices.allocator = Temp;
+        ArrayReserve (*vertices, 12000);
+
+        for i : 0..ChunkMeshType.Water
+        {
+            ChunkPushBlockVertices (chunk, *vertices, xx i);
+            chunk.vertex_counts[i] = vertices.count;
+            chunk.total_vertex_count += vertices.count;
+
+            glBindVertexArray (chunk.vaos[i]);
+            glBindBuffer (GL_ARRAY_BUFFER, chunk.vbos[i]);
+
+            glBufferData (GL_ARRAY_BUFFER, size_of (BlockVertex) * vertices.count, vertices.data, GL_DYNAMIC_DRAW);
+
+            ArrayClear (*vertices);
+        }
+    }
+    {
+        vertices : [..]FoliageVertex;
+        vertices.allocator = Temp;
+        ArrayReserve (*vertices, 12000);
+
+        ChunkPushFoliageVertices (chunk, *vertices);
+        chunk.vertex_counts[ChunkMeshType.Foliage] = vertices.count;
         chunk.total_vertex_count += vertices.count;
 
-        glBindVertexArray (chunk.vaos[i]);
-        glBindBuffer (GL_ARRAY_BUFFER, chunk.vbos[i]);
+        glBindVertexArray (chunk.vaos[ChunkMeshType.Foliage]);
+        glBindBuffer (GL_ARRAY_BUFFER, chunk.vbos[ChunkMeshType.Foliage]);
 
-        glBufferData (GL_ARRAY_BUFFER, size_of (BlockVertex) * vertices.count, vertices.data, GL_DYNAMIC_DRAW);
-
-        ArrayClear (*vertices);
+        glBufferData (GL_ARRAY_BUFFER, size_of (FoliageVertex) * vertices.count, vertices.data, GL_DYNAMIC_DRAW);
     }
 }
 

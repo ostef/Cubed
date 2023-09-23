@@ -2,25 +2,38 @@
 // of the blocks. Atlas[BlockFace] is the texture atlas for a given block face
 
 g_block_shader : GLuint;
+g_foliage_shader : GLuint;
 g_skinned_mesh_shader : GLuint;
 g_static_mesh_shader : GLuint;
-g_texture_atlas : GLuint;
-g_grass_overlay_texture : GLuint;
-g_breaking_stages_texture : GLuint;
-g_all_texture_atlases : [6]GLuint; // We also have separate textures for each face, so we can display them using ImGui
+
 // Atlas is squared so below are both on X and Y axes
 g_texture_atlas_size : s64;
 g_atlas_cell_count : s64;
+g_texture_atlas : GLuint;
+g_all_texture_atlases : [6]GLuint; // We also have separate textures for each face, so we can display them using ImGui
+
+g_grass_overlay_texture : GLuint;
+g_breaking_stages_texture : GLuint;
 
 g_block_shader_attribs : struct
 {
-    position : GLuint;
-    block_id : GLuint;
-    face : GLuint;
-    face_corner : GLuint;
-    block_height : GLuint;
-    temperature : GLuint;
-    humidity : GLuint;
+    position : GLint;
+    block_id : GLint;
+    face : GLint;
+    face_corner : GLint;
+    block_height : GLint;
+    temperature : GLint;
+    humidity : GLint;
+};
+
+g_foliage_shader_attribs : struct
+{
+    position : GLint;
+    normal : GLint;
+    tex_coords : GLint;
+    block_id : GLint;
+    temperature : GLint;
+    humidity : GLint;
 };
 
 g_steve_texture : GLuint;
@@ -49,6 +62,16 @@ BlockVertex :: struct
     humidity : float;
     face : BlockFace;
     corner : BlockFaceCorner;
+    block_id : u8;
+}
+
+FoliageVertex :: struct
+{
+    position : Vec3f;
+    normal : Vec3f;
+    tex_coords : Vec2f;
+    temperature : float;
+    humidity : float;
     block_id : u8;
 }
 
@@ -83,18 +106,16 @@ GLSL
 
 ReloadShaders :: () -> bool
 {
-    GetAttribLocation :: inline (shader : GLuint, $name : string, location := #caller_location) -> GLuint, bool
+    GetAttribLocation :: inline (shader : GLuint, $name : string, location := #caller_location) -> GLint
     {
         loc := glGetAttribLocation (shader, name);
         if loc < 0
         {
-            LogError ("Shader attribute % does not exist", name, location = location);
+            LogWarning ("Shader attribute % does not exist", name, location = location);
             LogMessage ("Note: shader attributes can get optimized out by OpenGL if they are not used in the shader");
-
-            return 0xffffffff, false;
         }
 
-        return xx loc, true;
+        return loc;
     }
 
     ProfileBlock ();
@@ -137,59 +158,43 @@ ReloadShaders :: () -> bool
             return false;
 
         attribs : type_of (g_block_shader_attribs);
-
-        attribs.position, ok = GetAttribLocation (new_shader, "a_Position");
-        if !ok
-        {
-            glDeleteProgram (new_shader);
-            return false;
-        }
-
-        attribs.block_id, ok = GetAttribLocation (new_shader, "a_Block_Id");
-        if !ok
-        {
-            glDeleteProgram (new_shader);
-            return false;
-        }
-
-        attribs.face, ok = GetAttribLocation (new_shader, "a_Face");
-        if !ok
-        {
-            glDeleteProgram (new_shader);
-            return false;
-        }
-
-        attribs.face_corner, ok = GetAttribLocation (new_shader, "a_Face_Corner");
-        if !ok
-        {
-            glDeleteProgram (new_shader);
-            return false;
-        }
-
-        attribs.block_height, ok = GetAttribLocation (new_shader, "a_Block_Height");
-        if !ok
-        {
-            glDeleteProgram (new_shader);
-            return false;
-        }
-
-        attribs.temperature, ok = GetAttribLocation (new_shader, "a_Temperature");
-        if !ok
-        {
-            glDeleteProgram (new_shader);
-            return false;
-        }
-
-        attribs.humidity, ok = GetAttribLocation (new_shader, "a_Humidity");
-        if !ok
-        {
-            glDeleteProgram (new_shader);
-            return false;
-        }
+        attribs.position = GetAttribLocation (new_shader, "a_Position");
+        attribs.block_id = GetAttribLocation (new_shader, "a_Block_Id");
+        attribs.face = GetAttribLocation (new_shader, "a_Face");
+        attribs.face_corner = GetAttribLocation (new_shader, "a_Face_Corner");
+        attribs.block_height = GetAttribLocation (new_shader, "a_Block_Height");
+        attribs.temperature = GetAttribLocation (new_shader, "a_Temperature");
+        attribs.humidity = GetAttribLocation (new_shader, "a_Humidity");
 
         glDeleteProgram (g_block_shader);
         g_block_shader = new_shader;
         g_block_shader_attribs = attribs;
+    }
+
+    {
+        TemporaryStorageScope ();
+
+        pp : ShaderPreprocessor;
+        InitShaderPreprocessor (*pp, "shaders/foliage.glsl", shader_exports);
+        ok, vertex_source, geometry_source, fragment_source := PreprocessShaderSource (*pp);
+        if !ok
+            return false;
+
+        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = false);
+        if !new_shader
+            return false;
+
+        attribs : type_of (g_foliage_shader_attribs);
+        attribs.position = GetAttribLocation (new_shader, "a_Position");
+        attribs.normal = GetAttribLocation (new_shader, "a_Normal");
+        attribs.tex_coords = GetAttribLocation (new_shader, "a_Tex_Coords");
+        attribs.block_id = GetAttribLocation (new_shader, "a_Block_Id");
+        attribs.temperature = GetAttribLocation (new_shader, "a_Temperature");
+        attribs.humidity = GetAttribLocation (new_shader, "a_Humidity");
+
+        glDeleteProgram (g_foliage_shader);
+        g_foliage_shader = new_shader;
+        g_foliage_shader_attribs = attribs;
     }
 
     {
@@ -361,6 +366,7 @@ LoadTextureAtlases :: (textures_dirname : string) -> bool
         "red_sand",
         "snow",
         "grass_block_snow",
+        "grass",
     ];
 
     g_atlas_cell_count = cast (int) Ceil (Sqrt (Texture_Names.count + 1));
@@ -822,6 +828,19 @@ DrawWorld :: (world : *World, camera : Camera)
 
     for mesh_type : 0..ChunkMeshType.Count - 1
     {
+        if mesh_type == ChunkMeshType.Foliage
+        {
+            glDisable (GL_CULL_FACE);
+
+            glUseProgram (g_foliage_shader);
+
+            loc = glGetUniformLocation (g_foliage_shader, "u_View_Projection_Matrix");
+            glUniformMatrix4fv (loc, 1, GL_TRUE, *camera.view_projection_matrix.r0c0);
+
+            loc = glGetUniformLocation (g_foliage_shader, "u_Texture_Atlases");
+            glUniform1i (loc, 0);
+        }
+
         for chunks_to_draw
             DrawChunkMesh (it, camera, xx mesh_type);
     }

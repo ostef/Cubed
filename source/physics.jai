@@ -12,6 +12,7 @@ Block_Flags_Solid :: #run () -> BlockFlags
     memset (*flags.bytes, 0xff, flags.Size);
     RemoveBlockFlag (*flags, .Water);
     RemoveBlockFlag (*flags, .Air);
+    RemoveBlockFlag (*flags, .Grass_Foliage);
 
     return flags;
 } ();

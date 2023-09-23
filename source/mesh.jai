@@ -1,6 +1,7 @@
 MeshID :: enum
 {
     Human;
+    Grass;
 
     Count;
 }
