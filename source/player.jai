@@ -4,12 +4,13 @@ Player :: struct
     target_orientation : float;
     orientation : float;
     velocity : Vec3f;
-    is_flying := true;
+    is_flying := false;
     enable_collisions := true;
     was_on_ground, is_on_ground : bool;
     fly_toggle_timer : float;
     movement_input : Vec3f;
     is_in_water : bool;
+    is_underwater : bool;
 
     transform_matrix : Mat4f;
 
@@ -33,6 +34,7 @@ Player_Jump_Height :: 1.05;
 Player_Rotation_Speed :: 60.0;  // in degrees per second
 Player_Rotation_Smoothing :: 0.3;
 Gravity :: 0.5;
+Water_Drag :: 0.7;
 Penetration_Threshold :: 0.001;
 Ground_Test_Threshold :: 0.01;
 
@@ -82,7 +84,9 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     }
 
     if !is_flying
+    {
         velocity.y -= Gravity * Fixed_Delta_Time;
+    }
 
     if allow_movement && IsKeyPressed (SDLK_SPACE)
     {
@@ -94,9 +98,15 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
         {
             fly_toggle_timer = Player_Fly_Toggle_Timer;
 
-            if !is_flying && is_on_ground
+            // Jump!
+            if !is_flying && is_on_ground && !is_in_water
                 velocity.y = CalculateJumpForce (Player_Jump_Height, Gravity * Fixed_Delta_Time);
         }
+    }
+
+    if allow_movement && !is_flying && is_underwater && IsKeyDown (SDLK_SPACE)
+    {
+        velocity.y = CalculateJumpForce (Player_Jump_Height, Gravity * Fixed_Delta_Time);
     }
 
     movement_speed := Player_Movement_Speed;
@@ -117,6 +127,9 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
             + UpVector (transform_matrix) * movement_input.y * movement_speed
             + ForwardVector (transform_matrix) * movement_input.z * movement_speed;
     }
+
+    if !is_flying && is_in_water
+        velocity *= Water_Drag;
 
     if g_should_capture_mouse && allow_movement
         target_orientation += ToRadians (g_mouse_delta.x * Player_Rotation_Speed * Fixed_Delta_Time);
@@ -158,6 +171,10 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
         is_on_ground = true;
 
     is_in_water = AABBIntersectsWorld (world, player_aabb, MakeBlockFlags (.Water));
+
+    submerged_aabb := player_aabb;
+    submerged_aabb.min.y += 0.5;
+    is_underwater = AABBIntersectsWorld (world, submerged_aabb, MakeBlockFlags (.Water));
 
     anim_data.is_on_ground = is_on_ground;
     anim_data.is_flying = is_flying;
