@@ -239,7 +239,9 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
     if is_flying
         TransitionToState (machine, "Flying");
 
-    fleft_pose, fright_pose, bleft_pose, bright_pose, forward_pose, backward_pose, idle_pose : SkeletonPose;
+    left_pose, right_pose, fleft_pose, fright_pose, bleft_pose, bright_pose, forward_pose, backward_pose, idle_pose : SkeletonPose;
+    InitSkeletonPose (*left_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*right_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*fleft_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*fright_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*bleft_pose, state_pose.skeleton, allocator = Temp);
@@ -248,6 +250,8 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
     InitSkeletonPose (*backward_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*idle_pose, state_pose.skeleton, allocator = Temp);
 
+    SampleAnimation (GetAnimation (.Human_Run_Left), elapsed_time * 30, *left_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Right), elapsed_time * 30, *right_pose);
     SampleAnimation (GetAnimation (.Human_Run_Forward_Left), elapsed_time * 30, *fleft_pose);
     SampleAnimation (GetAnimation (.Human_Run_Forward_Right), elapsed_time * 30, *fright_pose);
     SampleAnimation (GetAnimation (.Human_Run_Backward_Left), elapsed_time * 30, *bleft_pose);
@@ -256,7 +260,7 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
     SampleAnimation (GetAnimation (.Human_Run_Backward), elapsed_time * 30, *backward_pose);
     SampleAnimation (GetAnimation (.Human_Idle), elapsed_time * 30, *idle_pose);
 
-    blend_space_poses : [7]*SkeletonPose = .[
+    blend_space_poses : [9]*SkeletonPose = .[
         *idle_pose,
         *fright_pose,
         *fleft_pose,
@@ -266,14 +270,16 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
         *forward_pose
     ];
 
-    blend_space_positions : [7]Vec2f = .[
+    blend_space_positions : [9]Vec2f = .[
         .{0,0},
         .{-1,0}, .{1,0},
+        Normalized (Vec2f.{-1, 1}), Normalized (Vec2f.{1, 1}),
         Normalized (Vec2f.{-1, -1}), Normalized (Vec2f.{1, -1}),
         .{0,-1}, .{0,1}
     ];
 
     blend_space_weights : [7]float = ---;
+    blend_space_weights : [9]float = ---;
 
     blend_space_point := Vec2f.{smooth_movement_input.x, smooth_movement_input.z};
     CalculateBlendSpaceWeightsCartesian (blend_space_point, blend_space_positions, blend_space_weights);

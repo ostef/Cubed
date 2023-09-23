@@ -7,6 +7,8 @@ AnimationID :: enum
     Human_Sneak;
     Human_Walk;
     Human_Run_Forward;
+    Human_Run_Right;
+    Human_Run_Left;
     Human_Run_Forward_Left;
     Human_Run_Forward_Right;
     Human_Run_Backward;
