@@ -70,7 +70,7 @@ CameraMode :: enum
 
 g_window : *SDL_Window;
 g_camera : Camera;
-g_camera_mode := CameraMode.First_Person;
+g_camera_mode := CameraMode.Third_Person_Back;
 g_mouse_delta : Vec2f;
 g_should_capture_mouse := true;
 g_settings : struct
