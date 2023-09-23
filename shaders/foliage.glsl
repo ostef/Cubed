@@ -68,9 +68,7 @@ void main ()
     if (sampled.a < 1)
         discard;
 
-    Frag_Color.rgb = sampled.rgb;
+    Frag_Color = sampled;
     if (Block_ID == Block_Grass_Foliage)
         Frag_Color.rgb *= Grass_Color;
-
-    Frag_Color.a = 1;
 }
