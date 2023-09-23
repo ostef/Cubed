@@ -251,7 +251,10 @@ DrawInit :: (textures_directory : string) -> bool
     steve_filename := FormatToCString ("%/steve.png", textures_directory);
     g_steve_texture = LoadSingleTexture (steve_filename);
     if !g_steve_texture
+    {
+        LogError ("Could not load texture steve.png");
         return false;
+    }
 
     if !ReloadShaders ()
         return false;
