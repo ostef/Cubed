@@ -23,6 +23,7 @@ PlayerAnimationData :: struct
     is_on_ground : bool;
     is_flying : bool;
     is_falling : bool;
+    is_underwater : bool;
     smooth_movement_input : Vec3f;
 }
 
@@ -55,6 +56,7 @@ InitPlayer :: (world : *World, using player : *Player)
     AddAnimationState (*anim_base_fsm, "Grounded", PlayerGroundedAnimState);
     AddAnimationState (*anim_base_fsm, "Airborne", PlayerAirborneAnimState);
     AddAnimationState (*anim_base_fsm, "Flying", PlayerFlyingAnimState);
+    AddAnimationState (*anim_base_fsm, "Underwater", PlayerUnderwaterAnimState);
 
     TransitionToState (*anim_base_fsm, "Grounded");
 }
@@ -179,6 +181,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     anim_data.is_on_ground = is_on_ground;
     anim_data.is_flying = is_flying;
     anim_data.is_falling = velocity.y < 0 && !is_on_ground;
+    anim_data.is_underwater = is_underwater;
     anim_data.smooth_movement_input = Linalg.lerp (anim_data.smooth_movement_input, movement_input, 0.3);
 
     transform_matrix = Mat4fTranslate (position) * Mat4fRotate (.{0, 1, 0}, orientation);
@@ -318,6 +321,8 @@ PlayerAirborneAnimState :: (machine : *AnimationStateMachine, using state : *Ani
         TransitionToState (machine, "Grounded");
     if is_flying
         TransitionToState (machine, "Flying");
+    if is_underwater
+        TransitionToState (machine, "Underwater");
 
     jump_anim := GetAnimation (.Human_Jump_Forward);
     jump_to_fall_t := (elapsed_time - jump_anim.pose_count / 30.0) / Fall_Transition_Time;
@@ -377,6 +382,39 @@ PlayerFlyingAnimState :: (machine : *AnimationStateMachine, using state : *Anima
     blend_space_weights : [5]float = ---;
 
     blend_space_point := Vec2f.{smooth_movement_input.x, smooth_movement_input.z} * mult;
+    CalculateBlendSpaceWeightsCartesian (blend_space_point, blend_space_positions, blend_space_weights);
+
+    WeightedBlendPoses (*state_pose, blend_space_poses, blend_space_weights);
+}
+
+PlayerUnderwaterAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
+{
+    using data := cast (*PlayerAnimationData) machine.user_data;
+    if !is_underwater
+        TransitionToState (machine, "Airborne");
+
+    idle_pose, forward_pose, backward_pose : SkeletonPose;
+    InitSkeletonPose (*idle_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*forward_pose, state_pose.skeleton, allocator = Temp);
+    InitSkeletonPose (*backward_pose, state_pose.skeleton, allocator = Temp);
+
+    SampleAnimation (GetAnimation (.Human_Swim_Underwater_Idle), elapsed_time * 30, *idle_pose);
+    SampleAnimation (GetAnimation (.Human_Swim_Underwater_Forward), elapsed_time * 30, *forward_pose);
+    SampleAnimation (GetAnimation (.Human_Swim_Underwater_Backward), elapsed_time * 30, *backward_pose);
+
+    blend_space_poses : [3]*SkeletonPose = .[
+        *idle_pose,
+        *forward_pose,
+        *backward_pose,
+    ];
+
+    blend_space_positions : [3]Vec2f = .[
+        .{0,0}, .{0,1}, .{0,-1}
+    ];
+
+    blend_space_weights : [3]float = ---;
+
+    blend_space_point := Vec2f.{smooth_movement_input.x, smooth_movement_input.z};
     CalculateBlendSpaceWeightsCartesian (blend_space_point, blend_space_positions, blend_space_weights);
 
     WeightedBlendPoses (*state_pose, blend_space_poses, blend_space_weights);

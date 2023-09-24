@@ -5,7 +5,6 @@ AnimationID :: enum
     Human_Idle;
     Human_Breathing_Additive;
     Human_Sneak;
-    Human_Walk;
     Human_Run_Forward;
     Human_Run_Right;
     Human_Run_Left;
@@ -14,7 +13,6 @@ AnimationID :: enum
     Human_Run_Backward;
     Human_Run_Backward_Left;
     Human_Run_Backward_Right;
-    Human_Sprint;
     Human_Shielding;
     Human_Swimming_Idle;
     Human_Jump_Forward;
@@ -27,6 +25,9 @@ AnimationID :: enum
     Human_Flying_Backward;
     Human_Flying_Up;
     Human_Flying_Down;
+    Human_Swim_Underwater_Idle;
+    Human_Swim_Underwater_Forward;
+    Human_Swim_Underwater_Backward;
 
     Count;
 }
