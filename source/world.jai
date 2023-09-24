@@ -26,24 +26,6 @@ BlockFaceCorner :: enum u8
     Bottom_Right;
 }
 
-BlockID :: enum u8
-{
-    Air;
-    Water;
-    Stone;
-    Bedrock;
-    Dirt;
-    Grass;
-    Sand;
-    Gravel;
-    Red_Sand;
-    Snow;
-    Snowy_Grass;
-    Grass_Foliage;
-
-    Count;
-}
-
 Block :: struct
 {
     #as id : BlockID;
@@ -122,17 +104,7 @@ World :: struct
 
 BlockGetMeshType :: inline (block : BlockID) -> ChunkMeshType #must
 {
-    if block ==
-    {
-    case .Air;
-        return .Invisible;
-    case .Water;
-        return .Water;
-    case .Grass_Foliage;
-        return .Foliage;
-    case;
-        return .Solid;
-    }
+    return Block_Infos[block].mesh_type;
 }
 
 ChunkInit :: (chunk : *Chunk, x : s64, z : s64)
@@ -903,6 +875,17 @@ WorldGetChunk :: inline (world : *World, x : s64, z : s64) -> *Chunk #must
     return HashMapGet (*world.all_loaded_chunks, .{x, z});
 }
 
+WorldGetBlock :: inline (world : *World, x : s64, y : s64, z : s64) -> Block #must
+{
+    chunk_x, chunk_z := ChunkPositionFromWorldPosition (x, z);
+    chunk := WorldGetChunk (world, chunk_x, chunk_z);
+    Assert (chunk != null, "Chunk is not loaded");
+
+    rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, x, z);
+
+    return ChunkGetBlockInChunk (chunk, rel_x, y, rel_z);
+}
+
 WorldCreateChunk :: (world : *World, x : s64, z : s64) -> *Chunk #must
 {
     chunk := WorldGetChunk (world, x, z);
@@ -1016,6 +999,10 @@ WorldGenerateAroundPosition :: (world : *World, position : Vec3f, distance_in_ch
 
 WorldDestroyBlock :: (using world : *World, x : s64, y : s64, z : s64)
 {
+    block := WorldGetBlock (world, x, y, z);
+    if Block_Infos[block.id].time_to_destroy < 0
+        return;
+
     destroy_info : *BlockDestroyInfo;
     index := -1;
     for * blocks_being_destroyed
@@ -1055,8 +1042,9 @@ WorldUpdateBlockDestruction :: (using world : *World, delta_time : float)
         Assert (chunk != null, "Breaking block of a chunk that isn't loaded");
 
         rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, it.x, it.z);
+        block := ChunkGetBlockInChunk (chunk, rel_x, it.y, rel_z);
 
-        it.stage += delta_time * 6;
+        it.stage += (delta_time / Block_Infos[block.id].time_to_destroy) * 10;
 
         if it.stage > 10
         {

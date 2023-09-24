@@ -42,6 +42,7 @@ Ceil :: Math.ceil;
 #load "physics.jai";
 #load "noise.jai";
 #load "world.jai";
+#load "blocks.jai";
 #load "generation.jai";
 #load "ui.jai";
 #load "player.jai";
