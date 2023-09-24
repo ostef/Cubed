@@ -98,7 +98,7 @@ HashVec2l :: inline (vec : Vec2l) -> u64 #must
     return result;
 }
 
-BlockBreakingInfo :: struct
+BlockDestroyInfo :: struct
 {
     x, y, z : s64;
     stage : float;
@@ -116,8 +116,8 @@ World :: struct
     chunks_being_generated : ChunkMap;
     chunk_generation_thread_group : Threads.Thread_Group;
 
-    blocks_being_broken : [..]BlockBreakingInfo;
-    blocks_being_broken_vao, blocks_being_broken_vbo : GLuint;
+    blocks_being_destroyed : [..]BlockDestroyInfo;
+    blocks_being_destroyed_vao, blocks_being_destroyed_vbo : GLuint;
 }
 
 BlockGetMeshType :: inline (block : BlockID) -> ChunkMeshType #must
@@ -853,11 +853,11 @@ WorldInitBase :: inline (world : *World)
     GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
     GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
 
-    glGenVertexArrays (1, *world.blocks_being_broken_vao);
-    glGenBuffers (1, *world.blocks_being_broken_vbo);
+    glGenVertexArrays (1, *world.blocks_being_destroyed_vao);
+    glGenBuffers (1, *world.blocks_being_destroyed_vbo);
 
-    glBindVertexArray (world.blocks_being_broken_vao);
-    glBindBuffer (GL_ARRAY_BUFFER, world.blocks_being_broken_vbo);
+    glBindVertexArray (world.blocks_being_destroyed_vao);
+    glBindBuffer (GL_ARRAY_BUFFER, world.blocks_being_destroyed_vbo);
 
     glEnableVertexAttribArray (0);
     glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, size_of (StaticVertex), cast (*void) OffsetOf (StaticVertex, "position"));
@@ -1014,35 +1014,35 @@ WorldGenerateAroundPosition :: (world : *World, position : Vec3f, distance_in_ch
     }
 }
 
-WorldBreakBlock :: (using world : *World, x : s64, y : s64, z : s64)
+WorldDestroyBlock :: (using world : *World, x : s64, y : s64, z : s64)
 {
-    break_info : *BlockBreakingInfo;
+    destroy_info : *BlockDestroyInfo;
     index := -1;
-    for * blocks_being_broken
+    for * blocks_being_destroyed
     {
         if it.x == x && it.y == y && it.z == z
         {
-            break_info = it;
+            destroy_info = it;
             index = it_index;
             break;
         }
     }
 
-    if !break_info
+    if !destroy_info
     {
-        break_info = ArrayPush (*blocks_being_broken);
-        break_info.x = x;
-        break_info.y = y;
-        break_info.z = z;
-        index = blocks_being_broken.count - 1;
+        destroy_info = ArrayPush (*blocks_being_destroyed);
+        destroy_info.x = x;
+        destroy_info.y = y;
+        destroy_info.z = z;
+        index = blocks_being_destroyed.count - 1;
     }
 
-    break_info.updated_this_frame = true;
+    destroy_info.updated_this_frame = true;
 }
 
-WorldUpdateBreakingBlocks :: (using world : *World, delta_time : float)
+WorldUpdateBlockDestruction :: (using world : *World, delta_time : float)
 {
-    for * blocks_being_broken
+    for * blocks_being_destroyed
     {
         if !it.updated_this_frame
         {

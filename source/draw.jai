@@ -13,7 +13,7 @@ g_texture_atlas : GLuint;
 g_all_texture_atlases : [6]GLuint; // We also have separate textures for each face, so we can display them using ImGui
 
 g_grass_overlay_texture : GLuint;
-g_breaking_stages_texture : GLuint;
+g_destroy_stages_texture : GLuint;
 
 g_block_shader_attribs : struct
 {
@@ -502,10 +502,10 @@ LoadTextureAtlases :: (textures_dirname : string) -> bool
         return false;
     }
 
-    g_breaking_stages_texture = LoadSingleTexture (FormatToCString (Temp, "%/breaking_stages.png", textures_dirname));
-    if !g_breaking_stages_texture
+    g_destroy_stages_texture = LoadSingleTexture (FormatToCString (Temp, "%/destroy_stages.png", textures_dirname));
+    if !g_destroy_stages_texture
     {
-        LogError ("Could not load texture breaking_stages.png");
+        LogError ("Could not load texture destroy_stages.png");
         return false;
     }
 
@@ -595,7 +595,7 @@ DrawCameraFrustum :: (using camera : Camera)
 
 g_chunks_drawn_this_frame := 0;
 
-PushBreakingBlockVertices :: (
+PushDestroyingBlockVertices :: (
     vertices : *[..]StaticVertex,
     position : Vec3f,
     block_height : float,
@@ -846,7 +846,7 @@ DrawWorld :: (world : *World, camera : Camera)
     }
 
     glActiveTexture (GL_TEXTURE0);
-    glBindTexture (GL_TEXTURE_2D, g_breaking_stages_texture);
+    glBindTexture (GL_TEXTURE_2D, g_destroy_stages_texture);
 
     glUseProgram (g_static_mesh_shader);
 
@@ -857,11 +857,11 @@ DrawWorld :: (world : *World, camera : Camera)
     loc = glGetUniformLocation (g_static_mesh_shader, "u_Model_Matrix");
     glUniformMatrix4fv (loc, 1, GL_TRUE, *model_matrix.r0c0);
 
-    breaking_block_vertices : [..]StaticVertex;
-    breaking_block_vertices.allocator = Temp;
-    ArrayReserve (*breaking_block_vertices, 6 * 6 * world.blocks_being_broken.count);
+    destroying_blocks_vertices : [..]StaticVertex;
+    destroying_blocks_vertices.allocator = Temp;
+    ArrayReserve (*destroying_blocks_vertices, 6 * 6 * world.blocks_being_destroyed.count);
 
-    for world.blocks_being_broken
+    for world.blocks_being_destroyed
     {
         chunk_x, chunk_z := ChunkPositionFromWorldPosition (it.x, it.z);
         chunk := WorldGetChunk (world, chunk_x, chunk_z);
@@ -870,12 +870,12 @@ DrawWorld :: (world : *World, camera : Camera)
 
         rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, it.x, it.z);
         height := BlockGetHeight (chunk, rel_x, it.y, rel_z);
-        PushBreakingBlockVertices (*breaking_block_vertices, .{xx it.x, xx it.y, xx it.z}, height, cast (u8) it.stage);
+        PushDestroyingBlockVertices (*destroying_blocks_vertices, .{xx it.x, xx it.y, xx it.z}, height, cast (u8) it.stage);
     }
 
-    glBindVertexArray (world.blocks_being_broken_vao);
-    glBindBuffer (GL_ARRAY_BUFFER, world.blocks_being_broken_vbo);
-    glBufferData (GL_ARRAY_BUFFER, size_of (StaticVertex) * breaking_block_vertices.count, breaking_block_vertices.data, GL_DYNAMIC_DRAW);
+    glBindVertexArray (world.blocks_being_destroyed_vao);
+    glBindBuffer (GL_ARRAY_BUFFER, world.blocks_being_destroyed_vbo);
+    glBufferData (GL_ARRAY_BUFFER, size_of (StaticVertex) * destroying_blocks_vertices.count, destroying_blocks_vertices.data, GL_DYNAMIC_DRAW);
 
-    glDrawArrays (GL_TRIANGLES, 0, xx breaking_block_vertices.count);
+    glDrawArrays (GL_TRIANGLES, 0, xx destroying_blocks_vertices.count);
 }

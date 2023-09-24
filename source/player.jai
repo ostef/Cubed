@@ -189,7 +189,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
 
 Block_Selection_Distance :: 4.0;
 
-UpdateBlockBreaking :: (world : *World, using camera : *Camera, player : *Player)
+UpdateBlockSelectionAndDestruction :: (world : *World, using camera : *Camera, player : *Player)
 {
     filter := Block_Flags_Solid;
     SetBlockFlag (*filter, .Grass_Foliage);
@@ -211,7 +211,7 @@ UpdateBlockBreaking :: (world : *World, using camera : *Camera, player : *Player
 
         if !ImGui.GetIO ().WantCaptureMouse && (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0 && IsMouseButtonDown (SDL_BUTTON_LEFT)
         {
-            WorldBreakBlock (world, hit_result.block_x, hit_result.block_y, hit_result.block_z);
+            WorldDestroyBlock (world, hit_result.block_x, hit_result.block_y, hit_result.block_z);
         }
     }
 }
