@@ -188,13 +188,17 @@ Block_Selection_Distance :: 4.0;
 
 UpdateBlockBreaking :: (world : *World, using camera : *Camera, player : *Player)
 {
+    filter := Block_Flags_Solid;
+    SetBlockFlag (*filter, .Grass_Foliage);
+
     hit_result := RayIntersectsWorld (
         world,
         .{
             origin=player.position + .{0, 1.5, 0} + ForwardVector (transform_matrix) * Player_Size,
             direction=ForwardVector (transform_matrix),
             length=Block_Selection_Distance
-        }
+        },
+        filter
     );
 
     if hit_result.hit
