@@ -35,7 +35,7 @@ Block_Infos :: BlockInfo.[
     .{
         id = .Stone,
         mesh_type = .Solid,
-        time_to_destroy = 10,
+        time_to_destroy = 5,
     },
     .{
         id = .Bedrock,
@@ -44,37 +44,37 @@ Block_Infos :: BlockInfo.[
     .{
         id = .Dirt,
         mesh_type = .Solid,
-        time_to_destroy = 1,
+        time_to_destroy = 0.9,
     },
     .{
         id = .Grass,
         mesh_type = .Solid,
-        time_to_destroy = 1,
+        time_to_destroy = 0.9,
     },
     .{
         id = .Sand,
         mesh_type = .Solid,
-        time_to_destroy = 1,
+        time_to_destroy = 0.9,
     },
     .{
         id = .Gravel,
         mesh_type = .Solid,
-        time_to_destroy = 1,
+        time_to_destroy = 0.9,
     },
     .{
         id = .Red_Sand,
         mesh_type = .Solid,
-        time_to_destroy = 1,
+        time_to_destroy = 0.9,
     },
     .{
         id = .Snow,
         mesh_type = .Solid,
-        time_to_destroy = 0.5,
+        time_to_destroy = 0.9,
     },
     .{
         id = .Snowy_Grass,
         mesh_type = .Solid,
-        time_to_destroy = 1,
+        time_to_destroy = 0.9,
     },
     .{
         id = .Grass_Foliage,
