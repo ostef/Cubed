@@ -274,14 +274,14 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
     InitSkeletonPose (*backward_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*idle_pose, state_pose.skeleton, allocator = Temp);
 
-    SampleAnimation (GetAnimation (.Human_Run_Left), elapsed_time * 30, *left_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Right), elapsed_time * 30, *right_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Forward_Left), elapsed_time * 30, *fleft_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Forward_Right), elapsed_time * 30, *fright_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Backward_Left), elapsed_time * 30, *bleft_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Backward_Right), elapsed_time * 30, *bright_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Forward), elapsed_time * 30, *forward_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Backward), elapsed_time * 30, *backward_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Left), elapsed_time * 30 * 1.2, *left_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Right), elapsed_time * 30 * 1.2, *right_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Forward_Left), elapsed_time * 30 * 1.2, *fleft_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Forward_Right), elapsed_time * 30 * 1.2, *fright_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Backward_Left), elapsed_time * 30 * 1.2, *bleft_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Backward_Right), elapsed_time * 30 * 1.2, *bright_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Forward), elapsed_time * 30 * 1.2, *forward_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Backward), elapsed_time * 30 * 1.2, *backward_pose);
     SampleAnimation (GetAnimation (.Human_Idle), elapsed_time * 30, *idle_pose);
 
     blend_space_poses : [9]*SkeletonPose = .[
