@@ -93,12 +93,12 @@ UpdateFirstPersonCamera :: (using camera : *Camera, player : Player, delta_time 
     euler_angles.yaw = player.orientation;
 
     mouse_delta := ifx g_should_capture_mouse then g_mouse_delta else .{};
-    rotation_delta := mouse_delta * rotation_speed * delta_time;
+    rotation_delta := mouse_delta * Player_Rotation_Speed * Fixed_Delta_Time;
 
     target_euler_angles.pitch += ToRadians (rotation_delta.y);
     target_euler_angles.pitch = Clamp (target_euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
 
-    euler_angles.pitch = Lerp (euler_angles.pitch, target_euler_angles.pitch, rotation_smoothing);
+    euler_angles.pitch = Lerp (euler_angles.pitch, target_euler_angles.pitch, Player_Rotation_Smoothing);
     euler_angles.yaw = player.orientation;
 
     target_euler_angles.yaw = euler_angles.yaw;
@@ -111,12 +111,12 @@ UpdateThirdPersonCamera :: (using camera : *Camera, player : Player, delta_time 
     defer CalculateCameraMatrices (camera);
 
     mouse_delta := ifx g_should_capture_mouse then g_mouse_delta else .{};
-    rotation_delta := mouse_delta * rotation_speed * delta_time;
+    rotation_delta := mouse_delta * Player_Rotation_Speed * Fixed_Delta_Time;
 
     target_euler_angles.pitch += ToRadians (rotation_delta.y);
     target_euler_angles.pitch = Clamp (target_euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
 
-    euler_angles.pitch = Lerp (euler_angles.pitch, target_euler_angles.pitch, rotation_smoothing);
+    euler_angles.pitch = Lerp (euler_angles.pitch, target_euler_angles.pitch, Player_Rotation_Smoothing);
     if front
         euler_angles.yaw = player.orientation + Pi;
     else
