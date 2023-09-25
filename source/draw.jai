@@ -1,10 +1,10 @@
-// We use a texture array of 6 textures to store our texture atlas for each side
-// of the blocks. Atlas[BlockFace] is the texture atlas for a given block face
-
 g_block_shader : GLuint;
 g_foliage_shader : GLuint;
 g_skinned_mesh_shader : GLuint;
 g_static_mesh_shader : GLuint;
+
+// We use a texture array of 6 textures to store our texture atlas for each side
+// of the blocks. Atlas[BlockFace] is the texture atlas for a given block face
 
 // Atlas is squared so below are both on X and Y axes
 g_texture_atlas_size : s64;
