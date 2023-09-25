@@ -15,7 +15,7 @@ Vec2f :: Linalg.Vec2f;
 Vec2i :: Linalg.Vec2i;
 Vec2l :: Linalg.Vec2l;
 Vec3f :: Linalg.Vec3f;
-Vec3l :: Linalg.Vec2l;
+Vec3l :: Linalg.Vec3l;
 Vec4f :: Linalg.Vec4f;
 
 Matrix :: Linalg.Matrix;
