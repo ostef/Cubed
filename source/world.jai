@@ -351,10 +351,9 @@ ChunkGetBlock :: inline (chunk : *Chunk, x : s64, y : s64, z : s64) -> Block #mu
 
 BiomeGetSurfaceBlock :: inline (world : World, chunk : *Chunk, biome : Biome, surface_height : float, x : s64, y : s64, z : s64) -> Block #must
 {
-    isurface_height := cast (int) surface_height;
     if y < world.water_level
         return .{id=biome.flooded_surface_block};
-    else if y == isurface_height
+    else if y == cast (int) surface_height
         return .{id=biome.surface_top_block};
     else
         return .{id=biome.surface_block};
@@ -431,11 +430,11 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
                         else
                             chunk.blocks[index].id = .Air;
                     }
-                    else if y > cast (int) (surface_height - surface_thickness)
-                    {
-                        chunk.blocks[index].id = biome.surface_block;
-                    }
                     else if y == cast (int) surface_height
+                    {
+                        chunk.blocks[index].id = biome.surface_top_block;
+                    }
+                    else if y > cast (int) (surface_height - surface_thickness)
                     {
                         chunk.blocks[index].id = biome.surface_block;
                     }
