@@ -23,6 +23,8 @@ void main ()
 #type_fragment
 
 uniform sampler2D u_Texture;
+uniform bool u_Use_Texture;
+uniform vec4 u_Color;
 
 in vec2 Tex_Coords;
 in vec3 Normal;
@@ -31,6 +33,13 @@ out vec4 Frag_Color;
 
 void main ()
 {
-    vec4 color = texture (u_Texture, Tex_Coords);
-    Frag_Color = color;
+    if (u_Use_Texture)
+    {
+        vec4 color = texture (u_Texture, Tex_Coords);
+        Frag_Color = color * u_Color;
+    }
+    else
+    {
+        Frag_Color = u_Color;
+    }
 }

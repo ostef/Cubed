@@ -602,7 +602,7 @@ PushDestroyingBlockVertices :: (
     breaking_stage : u8
 )
 {
-    Inflate_Amount :: 0.001;
+    Inflate_Amount :: 0.0008;
 
     PushVertex :: (face : BlockFace, corner : BlockFaceCorner) -> *StaticVertex #must #expand
     {
@@ -855,6 +855,12 @@ DrawWorld :: (world : *World, camera : Camera)
     model_matrix : Mat4f;
     loc = glGetUniformLocation (g_static_mesh_shader, "u_Model_Matrix");
     glUniformMatrix4fv (loc, 1, GL_TRUE, *model_matrix.r0c0);
+
+    loc = glGetUniformLocation (g_static_mesh_shader, "u_Use_Texture");
+    glUniform1i (loc, 1);
+
+    loc = glGetUniformLocation (g_static_mesh_shader, "u_Color");
+    glUniform4f (loc, 1, 1, 1, 1);
 
     destroying_blocks_vertices : [..]StaticVertex;
     destroying_blocks_vertices.allocator = Temp;
