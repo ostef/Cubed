@@ -886,7 +886,7 @@ DrawWorld :: (world : *World, camera : Camera)
     glDrawArrays (GL_TRIANGLES, 0, xx destroying_blocks_vertices.count);
 }
 
-DrawBlockOutline :: (position : Vec3f, color : Vec4f, camera : Camera)
+DrawBlockOutline :: (position : Vec3f, min : Vec3f, max : Vec3f, color : Vec4f, camera : Camera)
 {
     GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
     GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
@@ -915,9 +915,13 @@ DrawBlockOutline :: (position : Vec3f, color : Vec4f, camera : Camera)
     glUniformMatrix4fv (loc, 1, GL_TRUE, *camera.view_projection_matrix.r0c0);
 
     Inflate_Amount :: 0.003;
+
+    inflation := Vec3f.{Inflate_Amount,Inflate_Amount,Inflate_Amount};
+    size := max - min;
+
     model_matrix :=
-        Mat4fTranslate (position - Vec3f.{Inflate_Amount,Inflate_Amount,Inflate_Amount} * 0.5)
-        * Mat4fScale (.{1 + Inflate_Amount,1 + Inflate_Amount,1 + Inflate_Amount});
+        Mat4fTranslate (position + min - inflation * 0.5)
+        * Mat4fScale (size + inflation);
 
     loc = glGetUniformLocation (g_static_mesh_shader, "u_Model_Matrix");
     glUniformMatrix4fv (loc, 1, GL_TRUE, *model_matrix.r0c0);

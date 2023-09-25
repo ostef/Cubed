@@ -292,7 +292,7 @@ RayIntersectsWorld :: (world : *World, ray : Ray, filter := Block_Flags_Solid) -
                 if !BlockFlagIsSet (filter, block)
                     continue;
 
-                block_aabb := BlockAABB (x, y, z);
+                block_aabb := BlockAABB (block, x, y, z);
                 result := RayIntersectsAABB (ray, block_aabb);
                 if result.hit && result.distance < closest_hit.distance
                 {
@@ -378,7 +378,7 @@ SweptAABBIntersectsWorld :: (world : *World, aabb : AABB, direction : Vec3f, len
                 if !BlockFlagIsSet (filter, block)
                     continue;
 
-                block_aabb := BlockAABB (x, y, z);
+                block_aabb := BlockAABB (block, x, y, z);
                 result := SweptAABBIntersectsAABB (aabb, block_aabb, direction, length);
                 if result.hit && result.distance < closest_hit.distance
                 {
@@ -440,7 +440,7 @@ AABBIntersectsWorld :: (world : *World, aabb : AABB, filter := Block_Flags_Solid
                 if !BlockFlagIsSet (filter, block)
                     continue;
 
-                block_aabb := BlockAABB (x, y, z);
+                block_aabb := BlockAABB (block, x, y, z);
                 if AABBIntersectsAABB (aabb, block_aabb)
                     return true;
             }

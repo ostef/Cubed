@@ -533,12 +533,12 @@ main :: ()
 
         if g_player.block_is_selected
         {
+            pos := g_player.selected_block;
+            block := WorldGetBlock (*g_world, pos.x, pos.y, pos.z);
+
             DrawBlockOutline (
-                .{
-                    xx g_player.selected_block.x,
-                    xx g_player.selected_block.y,
-                    xx g_player.selected_block.z
-                },
+                .{ xx pos.x, xx pos.y, xx pos.z },
+                Block_Infos[block.id].box_min, Block_Infos[block.id].box_max,
                 .{0,0,0,0.8},
                 g_camera
             );

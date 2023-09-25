@@ -248,11 +248,11 @@ ChunkAABB :: inline (x : s64, z : s64) -> AABB #must
     return result;
 }
 
-BlockAABB :: inline (x : s64, y : s64, z : s64) -> AABB #must
+BlockAABB :: inline (id : BlockID, x : s64, y : s64, z : s64) -> AABB #must
 {
     result : AABB = ---;
-    result.min = .{xx x, xx y, xx z};
-    result.max = result.min + .{1, 1, 1};
+    result.min = Vec3f.{xx x, xx y, xx z} + Block_Infos[id].box_min;
+    result.max = Vec3f.{xx x, xx y, xx z} + Block_Infos[id].box_max;
 
     return result;
 }
