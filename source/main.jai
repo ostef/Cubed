@@ -371,7 +371,7 @@ main :: ()
         return;
     }
 
-    WorldInit (*g_world, 1725362821052241920);//Basic.current_time_monotonic ().low);
+    WorldInit (*g_world, 1725362821052241920);
     defer WorldFree (*g_world);
 
     if !LoadAllSkinnedMeshes ()
@@ -530,6 +530,19 @@ main :: ()
         if PhysicsIsRunning ()
             DrawPlayer (g_world, g_player, g_camera);
         DrawWorld (*g_world, *g_camera);
+
+        if g_player.block_is_selected
+        {
+            DrawBlockOutline (
+                .{
+                    xx g_player.selected_block.x,
+                    xx g_player.selected_block.y,
+                    xx g_player.selected_block.z
+                },
+                .{0,0,0,0.8},
+                g_camera
+            );
+        }
 
         // Draw crosshair
         Crosshair_Size :: 16.0;

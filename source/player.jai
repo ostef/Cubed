@@ -12,6 +12,9 @@ Player :: struct
     is_in_water : bool;
     is_underwater : bool;
 
+    block_is_selected : bool;
+    selected_block : Vec3l;
+
     transform_matrix : Mat4f;
 
     anim_base_fsm : AnimationStateMachine;
@@ -34,6 +37,7 @@ Player_Movement_Speed :: 5.0;
 Player_Jump_Height :: 1.05;
 Player_Rotation_Speed :: 60.0;  // in degrees per second
 Player_Rotation_Smoothing :: 0.3;
+Block_Selection_Distance :: 4.5;
 Gravity :: 0.5;
 Water_Drag :: 0.7;
 Penetration_Threshold :: 0.001;
@@ -187,8 +191,6 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     transform_matrix = Mat4fTranslate (position) * Mat4fRotate (.{0, 1, 0}, orientation);
 }
 
-Block_Selection_Distance :: 4.0;
-
 UpdateBlockSelectionAndDestruction :: (world : *World, using camera : *Camera, player : *Player)
 {
     filter := Block_Flags_Solid;
@@ -206,13 +208,17 @@ UpdateBlockSelectionAndDestruction :: (world : *World, using camera : *Camera, p
 
     if hit_result.hit
     {
-        block_aabb := BlockAABB (hit_result.block_x, hit_result.block_y, hit_result.block_z);
-        Im3d.DrawAlignedBox (block_aabb.min, block_aabb.max);
+        player.block_is_selected = true;
+        player.selected_block = .{hit_result.block_x, hit_result.block_y, hit_result.block_z};
 
         if !ImGui.GetIO ().WantCaptureMouse && (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0 && IsMouseButtonDown (SDL_BUTTON_LEFT)
         {
             WorldDestroyBlock (world, hit_result.block_x, hit_result.block_y, hit_result.block_z);
         }
+    }
+    else
+    {
+        player.block_is_selected = false;
     }
 }
 

@@ -42,6 +42,7 @@ Atlas_Cell_Size_No_Border :: 16;
 Atlas_Cell_Border_Size :: 4;
 Atlas_Cell_Size :: Atlas_Cell_Size_No_Border + Atlas_Cell_Border_Size * 2;
 
+// @Todo: sample from a texture
 Grass_Color_00 := Vec3f.{0.5372, 0.6980, 0.6078};
 Grass_Color_10 := Vec3f.{0.7411, 0.7176, 0.3333};
 Grass_Color_01 := Vec3f.{0.3333, 0.7764, 0.2509};
@@ -884,3 +885,119 @@ DrawWorld :: (world : *World, camera : Camera)
 
     glDrawArrays (GL_TRIANGLES, 0, xx destroying_blocks_vertices.count);
 }
+
+DrawBlockOutline :: (position : Vec3f, color : Vec4f, camera : Camera)
+{
+    GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
+    GL_Utils.StateBlock (GL_ARRAY_BUFFER_BINDING, (prev : GLuint) {glBindBuffer (GL_ARRAY_BUFFER, prev);});
+
+    if !g_block_outline_vao
+    {
+        InitBlockOutlineGLObjects ();
+    }
+    else
+    {
+        glBindVertexArray (g_block_outline_vao);
+        glBindBuffer (GL_ARRAY_BUFFER, g_block_outline_vbo);
+    }
+
+    GL_Utils.EnableBlock (GL_BLEND);
+    GL_Utils.BlendFuncStateBlock ();
+    GL_Utils.EnableBlock (GL_DEPTH_TEST);
+    GL_Utils.DisableBlock (GL_CULL_FACE);
+    GL_Utils.StateBlock (GL_CURRENT_PROGRAM, (prev : GLuint) {glUseProgram (prev);});
+
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glUseProgram (g_static_mesh_shader);
+
+    loc := glGetUniformLocation (g_static_mesh_shader, "u_View_Projection_Matrix");
+    glUniformMatrix4fv (loc, 1, GL_TRUE, *camera.view_projection_matrix.r0c0);
+
+    Inflate_Amount :: 0.003;
+    model_matrix :=
+        Mat4fTranslate (position - Vec3f.{Inflate_Amount,Inflate_Amount,Inflate_Amount} * 0.5)
+        * Mat4fScale (.{1 + Inflate_Amount,1 + Inflate_Amount,1 + Inflate_Amount});
+
+    loc = glGetUniformLocation (g_static_mesh_shader, "u_Model_Matrix");
+    glUniformMatrix4fv (loc, 1, GL_TRUE, *model_matrix.r0c0);
+
+    loc = glGetUniformLocation (g_static_mesh_shader, "u_Use_Texture");
+    glUniform1i (loc, 0);
+
+    loc = glGetUniformLocation (g_static_mesh_shader, "u_Color");
+    glUniform4f (loc, color.r, color.g, color.b, color.a);
+
+    glLineWidth (2.5);
+
+    glDrawArrays (GL_LINES, 0, Block_Outline_Vertices.count);
+}
+
+#scope_file
+
+g_block_outline_vao, g_block_outline_vbo : GLuint;
+
+Block_Outline_Vertices :: StaticVertex.[
+    //
+    .{position = .{0,0,0}},
+    .{position = .{0,1,0}},
+
+    .{position = .{0,0,0}},
+    .{position = .{1,0,0}},
+
+    .{position = .{1,0,0}},
+    .{position = .{1,1,0}},
+
+    .{position = .{1,1,0}},
+    .{position = .{0,1,0}},
+
+    //
+    .{position = .{0,0,1}},
+    .{position = .{0,1,1}},
+
+    .{position = .{0,0,1}},
+    .{position = .{1,0,1}},
+
+    .{position = .{1,0,1}},
+    .{position = .{1,1,1}},
+
+    .{position = .{1,1,1}},
+    .{position = .{0,1,1}},
+
+    //
+    .{position = .{0,0,0}},
+    .{position = .{0,0,1}},
+
+    .{position = .{0,1,0}},
+    .{position = .{0,1,1}},
+
+    //
+    .{position = .{1,0,0}},
+    .{position = .{1,0,1}},
+
+    .{position = .{1,1,0}},
+    .{position = .{1,1,1}}
+];
+
+
+InitBlockOutlineGLObjects :: ()
+{
+    glGenVertexArrays (1, *g_block_outline_vao);
+    glGenBuffers (1, *g_block_outline_vbo);
+
+    glBindVertexArray (g_block_outline_vao);
+    glBindBuffer (GL_ARRAY_BUFFER, g_block_outline_vbo);
+
+    glBufferData (GL_ARRAY_BUFFER, size_of (type_of (Block_Outline_Vertices)), Block_Outline_Vertices.data, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray (0);
+    glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, size_of (StaticVertex), cast (*void) OffsetOf (StaticVertex, "position"));
+
+    glEnableVertexAttribArray (1);
+    glVertexAttribPointer (1, 3, GL_FLOAT, GL_FALSE, size_of (StaticVertex), cast (*void) OffsetOf (StaticVertex, "normal"));
+
+    glEnableVertexAttribArray (2);
+    glVertexAttribPointer (2, 2, GL_FLOAT, GL_FALSE, size_of (StaticVertex), cast (*void) OffsetOf (StaticVertex, "tex_coords"));
+}
+
+#scope_export
