@@ -22,6 +22,8 @@ ImGui :: #import "ImGui";
 ImGuiSDL :: #import "ImGui/Impl/SDL";
 ImGuiGL :: #import "ImGui/Impl/GL";
 
+Stylo :: #import "Stylo";
+
 Math :: #import "Math";
 Pi :: Math.PI;
 Cos :: Math.cos;
@@ -71,7 +73,7 @@ CameraMode :: enum
 
 g_window : *SDL_Window;
 g_camera : Camera;
-g_camera_mode := CameraMode.Third_Person_Back;
+g_camera_mode := CameraMode.First_Person;
 g_mouse_delta : Vec2f;
 g_should_capture_mouse := true;
 g_settings : struct
@@ -528,6 +530,22 @@ main :: ()
         if PhysicsIsRunning ()
             DrawPlayer (g_world, g_player, g_camera);
         DrawWorld (*g_world, *g_camera);
+
+        // Draw crosshair
+        Crosshair_Size :: 16.0;
+        Crosshair_Thickness :: 1.0;
+
+        Stylo.PushRect (
+            .{window_w * 0.5 - Crosshair_Thickness * 0.5, window_h * 0.5 - Crosshair_Size * 0.5},
+            .{window_w * 0.5 + Crosshair_Thickness * 0.5, window_h * 0.5 + Crosshair_Size * 0.5},
+        );
+
+        Stylo.PushRect (
+            .{window_w * 0.5 - Crosshair_Size * 0.5, window_h * 0.5 - Crosshair_Thickness * 0.5},
+            .{window_w * 0.5 + Crosshair_Size * 0.5, window_h * 0.5 + Crosshair_Thickness * 0.5},
+        );
+
+        Stylo.GLRenderDrawLists (window_w, window_h);
 
         if PhysicsIsRunning ()
             Im3d.EndFrame ();
