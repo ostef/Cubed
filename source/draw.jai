@@ -773,10 +773,9 @@ PushDestroyingBlockVertices :: (
     }
 }
 
-
 DrawWorld :: (world : *World, camera : Camera)
 {
-    view_frustum := MakeViewFrustum (camera);
+    view_frustum := MakeViewFrustum (camera, cast (float) (g_settings.render_distance + 1) * Chunk_Size);
 
     chunks_to_draw : [..]*Chunk;
     chunks_to_draw.allocator = Temp;

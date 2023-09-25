@@ -168,10 +168,13 @@ AABBIsInFrontOrOnPlane :: (aabb : AABB, plane : Plane) -> bool #must
     return dist_to_plane > 0 || Abs (dist_to_plane) <= r;
 }
 
-MakeViewFrustum :: (using camera : Camera) -> Frustum #must
+MakeViewFrustum :: (using camera : Camera, distance := -1.0) -> Frustum #must
 {
     w, h : s32;
     SDL_GetWindowSize (g_window, *w, *h);
+
+    if distance < 0
+        distance = z_far;
 
     aspect_ratio :=  cast (float) w / cast (float) h;
     inv_aspect_ratio := cast (float) h / cast (float) w;
@@ -181,10 +184,10 @@ MakeViewFrustum :: (using camera : Camera) -> Frustum #must
     half_near_h_hypothenuse := Sqrt (z_near * z_near + half_near_h_side * half_near_h_side);
     half_near_v_hypothenuse := Sqrt (z_near * z_near + half_near_v_side * half_near_v_side);
 
-    half_far_v_side := z_far * Tan (ToRadians (fov_in_degrees * 0.5));
+    half_far_v_side := distance * Tan (ToRadians (fov_in_degrees * 0.5));
     half_far_h_side := half_far_v_side * aspect_ratio;
-    half_far_h_hypothenuse := Sqrt (z_far * z_far + half_far_h_side * half_far_h_side);
-    half_far_v_hypothenuse := Sqrt (z_far * z_far + half_far_v_side * half_far_v_side);
+    half_far_h_hypothenuse := Sqrt (distance * distance + half_far_h_side * half_far_h_side);
+    half_far_v_hypothenuse := Sqrt (distance * distance + half_far_v_side * half_far_v_side);
 
     right   := RightVector (transform_matrix);
     up      := UpVector (transform_matrix);
@@ -192,9 +195,9 @@ MakeViewFrustum :: (using camera : Camera) -> Frustum #must
 
     using result : Frustum = ---;
     near_plane   = MakePlane (position + z_near * forward, forward);
-    far_plane    = MakePlane (position + z_far * forward, -forward);
+    far_plane    = MakePlane (position + distance * forward, -forward);
 
-    far_center := z_far * forward;
+    far_center := distance * forward;
 
     far_right := far_center + right * half_far_h_side;
     far_left  := far_center - right * half_far_h_side;
