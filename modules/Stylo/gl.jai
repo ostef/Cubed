@@ -59,6 +59,8 @@ GLRenderDrawLists :: (width : s32, height : s32)
     {
         glGenVertexArrays (1, *g_vao);
         glGenBuffers (1, *g_vbo);
+        Assert (g_vao != 0, "Stylo: glGenVertexArrays failed");
+        Assert (g_vbo != 0, "Stylo: glGenBuffers failed");
 
         glBindVertexArray (g_vao);
         glBindBuffer (GL_ARRAY_BUFFER, g_vbo);
@@ -103,6 +105,9 @@ GLRenderDrawLists :: (width : s32, height : s32)
 
     loc_view_proj := glGetUniformLocation (g_shader, "u_View_Projection_Matrix");
     glUniformMatrix4fv (loc_view_proj, 1, GL_TRUE, *view_projection_matrix.r0c0);
+
+    loc_texture := glGetUniformLocation (g_shader, "u_Texture");
+    glUniform1i (loc_texture, 0);
 
     loc_use_texture := glGetUniformLocation (g_shader, "u_Use_Texture");
 
