@@ -561,9 +561,9 @@ CreateWindow :: (viewport : *ImGui.Viewport) #c_call
         if SDL_GetWindowWMInfo (vp_data.window, *info)
         {
             #if OS == .WINDOWS
-                main_viewport.PlatformHandleRaw = info.info.win.window;
+                viewport.PlatformHandleRaw = info.info.win.window;
             else #if OS == .MACOS
-                main_viweport.PlatformHandleRaw = info.info.cocoa.window;
+                viweport.PlatformHandleRaw = info.info.cocoa.window;
         }
     }
 }
