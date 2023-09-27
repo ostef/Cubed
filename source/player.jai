@@ -28,6 +28,11 @@ PlayerAnimationData :: struct
     is_falling : bool;
     is_underwater : bool;
     smooth_movement_input : Vec3f;
+    leading_foot : enum
+    {
+        Right;
+        Left;
+    };
 }
 
 Player_Fly_Toggle_Timer := 0.5; // seconds
@@ -280,15 +285,21 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
     InitSkeletonPose (*backward_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*idle_pose, state_pose.skeleton, allocator = Temp);
 
-    SampleAnimation (GetAnimation (.Human_Run_Left), elapsed_time * 30 * 1.2, *left_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Right), elapsed_time * 30 * 1.2, *right_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Forward_Left), elapsed_time * 30 * 1.2, *fleft_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Forward_Right), elapsed_time * 30 * 1.2, *fright_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Backward_Left), elapsed_time * 30 * 1.2, *bleft_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Backward_Right), elapsed_time * 30 * 1.2, *bright_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Forward), elapsed_time * 30 * 1.2, *forward_pose);
-    SampleAnimation (GetAnimation (.Human_Run_Backward), elapsed_time * 30 * 1.2, *backward_pose);
-    SampleAnimation (GetAnimation (.Human_Idle), elapsed_time * 30, *idle_pose);
+    reference_anim := GetAnimation (.Human_Run_Forward);
+    animation_time := elapsed_time * 30 * 1.2;
+    normalized_anim_time := animation_time / cast (float) reference_anim.pose_count;
+    normalized_anim_time -= Floor (normalized_anim_time);
+    leading_foot = ifx normalized_anim_time > 0.5 then .Left else .Right;
+
+    SampleAnimation (GetAnimation (.Human_Run_Left), animation_time, *left_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Right), animation_time, *right_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Forward_Left), animation_time, *fleft_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Forward_Right), animation_time, *fright_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Backward_Left), animation_time, *bleft_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Backward_Right), animation_time, *bright_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Forward), animation_time, *forward_pose);
+    SampleAnimation (GetAnimation (.Human_Run_Backward), animation_time, *backward_pose);
+    SampleAnimation (GetAnimation (.Human_Idle), animation_time, *idle_pose);
 
     blend_space_poses : [9]*SkeletonPose = .[
         *idle_pose,
@@ -338,9 +349,13 @@ PlayerAirborneAnimState :: (machine : *AnimationStateMachine, using state : *Ani
     InitSkeletonPose (*jump_pose, state_pose.skeleton, allocator = Temp);
     InitSkeletonPose (*fall_pose, state_pose.skeleton, allocator = Temp);
 
-    jump_time := Clamp (elapsed_time * 30, 0, cast (float) jump_anim.pose_count - 1);
+    normalized_jump_time := elapsed_time * 30 / cast (float) jump_anim.pose_count;
+    if leading_foot == .Right
+        normalized_jump_time = Clamp (normalized_jump_time, 0, 0.5);
+    else
+        normalized_jump_time = Clamp (normalized_jump_time + 0.5, 0.5, 1);
 
-    SampleAnimation (jump_anim, jump_time, *jump_pose);
+    SampleAnimation (jump_anim, normalized_jump_time * jump_anim.pose_count, *jump_pose);
     SampleAnimation (GetAnimation (.Human_Fall_High), elapsed_time * 30, *fall_pose);
 
     BlendPoses (*state_pose, jump_pose, fall_pose, jump_to_fall_t);
