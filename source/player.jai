@@ -17,6 +17,7 @@ Player :: struct
 
     transform_matrix : Mat4f;
 
+    anim_first_person_fsm : AnimationStateMachine;
     anim_base_fsm : AnimationStateMachine;
     anim_data : PlayerAnimationData;
 }
@@ -69,6 +70,12 @@ InitPlayer :: (world : *World, using player : *Player)
     AddAnimationState (*anim_base_fsm, "Underwater", PlayerUnderwaterAnimState);
 
     TransitionToState (*anim_base_fsm, "Grounded");
+
+    InitAnimationStateMachine (*anim_first_person_fsm, *GetMesh (.Human_FPS).skeleton);
+    anim_first_person_fsm.user_data = *anim_data;
+    AddAnimationState (*anim_first_person_fsm, "Grounded", PlayerFirstPersonGroundedAnimState);
+
+    TransitionToState (*anim_first_person_fsm, "Grounded");
 }
 
 UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, allow_movement := true)
@@ -228,7 +235,7 @@ UpdateBlockSelectionAndDestruction :: (world : *World, using camera : *Camera, p
     }
 }
 
-UpdatePlayerAnimations :: (using player : *Player, delta_time : float)
+UpdateThirdPersonPlayerAnimations :: (using player : *Player, delta_time : float)
 {
     time := cast (float) Basic.to_float64_seconds (Basic.current_time_monotonic ()) * 30;
 
@@ -247,15 +254,15 @@ UpdatePlayerAnimations :: (using player : *Player, delta_time : float)
     GenerateSkinningMatrices (*anim_base_fsm.final_pose, true);
 }
 
-DrawPlayer :: (world : World, using player : Player, camera : Camera)
+UpdateFirstPersonPlayerAnimations :: (using player : *Player, delta_time : float)
 {
-    if g_camera_mode == .First_Person
-        return;
+    UpdateAnimationStateMachine (*anim_first_person_fsm, delta_time);
 
-    // aabb := PlayerAABB (player);
-    // Im3d.DrawAlignedBox (aabb.min, aabb.max);
-    // Im3d.DrawArrow (position, position + velocity * 60);
+    GenerateSkinningMatrices (*anim_first_person_fsm.final_pose, true);
+}
 
+DrawThirdPersonPlayer :: (world : World, using player : Player, camera : Camera)
+{
     GL_Utils.StateBlock (GL_ACTIVE_TEXTURE, (prev : GLenum) {glActiveTexture (prev);});
     GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D_ARRAY, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D_ARRAY, prev);});
 
@@ -265,6 +272,17 @@ DrawPlayer :: (world : World, using player : Player, camera : Camera)
     if g_settings.show_skeletons
         DebugDrawSkeletonPose (anim_base_fsm.final_pose, transform_matrix, .{1,1,1,1});
     DrawSkinnedMesh (GetMesh (.Human), anim_base_fsm.final_pose, camera, transform_matrix);
+}
+
+DrawFirstPersonPlayer :: (world : World, using player : Player, camera : Camera)
+{
+    GL_Utils.StateBlock (GL_ACTIVE_TEXTURE, (prev : GLenum) {glActiveTexture (prev);});
+    GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D_ARRAY, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D_ARRAY, prev);});
+
+    glActiveTexture (GL_TEXTURE0);
+    glBindTexture (GL_TEXTURE_2D, g_steve_texture);
+
+    DrawSkinnedMesh (GetMesh (.Human_FPS), anim_first_person_fsm.final_pose, camera, .{});
 }
 
 PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
@@ -440,4 +458,11 @@ PlayerUnderwaterAnimState :: (machine : *AnimationStateMachine, using state : *A
     CalculateBlendSpaceWeightsCartesian (blend_space_point, blend_space_positions, blend_space_weights);
 
     WeightedBlendPoses (*state_pose, blend_space_poses, blend_space_weights);
+}
+
+PlayerFirstPersonGroundedAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
+{
+    using data := cast (*PlayerAnimationData) machine.user_data;
+
+    SampleAnimation (GetAnimation (.Human_FPS_Run), elapsed_time * 30, *state_pose);
 }

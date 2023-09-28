@@ -22,6 +22,8 @@ Camera :: struct
     view_projection_matrix : Mat4f;
 }
 
+First_Person_FOV :: 70.0;
+
 Plane :: struct
 {
     origin : Vec3f;

@@ -80,7 +80,7 @@ g_should_capture_mouse := true;
 g_settings : struct
 {
     generate_new_chunks := true;
-    render_distance : s32 = 6;
+    render_distance : s32 = 2;
     player_speed_mult := 1.0;
     enable_view_culling := true;
     show_skeletons := false;
@@ -507,7 +507,11 @@ main :: ()
             UpdateFreeCamera (*g_camera, delta_time, !ImGui.GetIO ().WantCaptureKeyboard);
         }
 
-        UpdatePlayerAnimations (*g_player, delta_time);
+        if g_camera_mode == .First_Person
+            UpdateFirstPersonPlayerAnimations (*g_player, delta_time);
+        else
+            UpdateThirdPersonPlayerAnimations (*g_player, delta_time);
+
         WorldUpdateBlockDestruction (*g_world, *g_player, delta_time);
 
         // Update the Im3d matrices otherwise all drawn things will be delayed by one frame
@@ -538,8 +542,8 @@ main :: ()
         glClearColor (0.1, 0.1, 0.1, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        if PhysicsIsRunning ()
-            DrawPlayer (g_world, g_player, g_camera);
+        if g_camera_mode != .First_Person
+            DrawThirdPersonPlayer (g_world, g_player, g_camera);
         DrawWorld (*g_world, *g_camera);
 
         if g_player.block_is_selected
@@ -555,6 +559,23 @@ main :: ()
             );
         }
 
+        if g_camera_mode == .First_Person
+        {
+            UseFramebuffer (*g_framebuffers.first_person);
+
+            glViewport (0, 0, xx window_w, xx window_h);
+            glClearColor (0, 0, 0, 0);
+            glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            first_person_camera : Camera;;
+            first_person_camera.position.y = 1;
+            first_person_camera.rotation = g_camera.rotation;
+            first_person_camera.fov_in_degrees = First_Person_FOV;
+            CalculateCameraMatrices (*first_person_camera);
+
+            DrawFirstPersonPlayer (g_world, g_player, first_person_camera);
+        }
+
         UseFramebuffer (null);
 
         glViewport (0, 0, xx window_w, xx window_h);
@@ -562,6 +583,8 @@ main :: ()
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         RenderFramebuffer (g_framebuffers.main);
+        if g_camera_mode == .First_Person
+            RenderFramebuffer (g_framebuffers.first_person);
 
         // Draw crosshair
         Crosshair_Size :: 16.0;
