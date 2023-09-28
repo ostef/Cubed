@@ -38,6 +38,14 @@ g_foliage_shader_attribs : struct
 
 g_steve_texture : GLuint;
 
+g_framebuffers : struct
+{
+    all : [2]Framebuffer;
+
+    #place all;
+    main, first_person : Framebuffer;
+};
+
 Atlas_Cell_Size_No_Border :: 16;
 Atlas_Cell_Border_Size :: 4;
 Atlas_Cell_Size :: Atlas_Cell_Size_No_Border + Atlas_Cell_Border_Size * 2;
@@ -246,7 +254,7 @@ ReloadShaders :: () -> bool
     return true;
 }
 
-DrawInit :: (textures_directory : string) -> bool
+DrawInit :: (textures_directory : string, width : s32, height : s32) -> bool
 {
     if !LoadTextureAtlases (textures_directory)
     {
@@ -264,6 +272,15 @@ DrawInit :: (textures_directory : string) -> bool
 
     if !ReloadShaders ()
         return false;
+
+    for * g_framebuffers.all
+    {
+        if !CreateFramebuffer (it, width, height)
+        {
+            LogError ("Could not create framebuffer %", it_index);
+            return false;
+        }
+    }
 
     return true;
 }

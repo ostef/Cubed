@@ -55,6 +55,7 @@ Ceil :: Math.ceil;
 #load "anim.jai";
 #load "anim_state.jai";
 #load "shader_preprocessor.jai";
+#load "framebuffer.jai";
 
 operator== :: inline (a : Source_Code_Location, b : Source_Code_Location) -> bool
 {
@@ -324,7 +325,8 @@ main :: ()
 
     LogMessage ("GL version: %", MakeString (glGetString (GL_VERSION)));
 
-    if !DrawInit ("data/textures")
+    SDL_GetWindowSize (g_window, *w, *h);
+    if !DrawInit ("data/textures", w, h)
         return;
 
     ImGui.CreateContext ();
@@ -405,6 +407,7 @@ main :: ()
         g_prev_mouse_state = SDL_GetMouseState (null, null);
 
         g_mouse_delta = .{};
+        main_window_was_resized := false;
         event : SDL_Event;
         while SDL_PollEvent (*event)
         {
@@ -438,6 +441,8 @@ main :: ()
                         quit = true;
                     case SDL_WINDOWEVENT_FOCUS_LOST;
                         g_should_capture_mouse = false;
+                    case SDL_WINDOWEVENT_RESIZED;
+                        main_window_was_resized = true;
                     }
                 }
             }
@@ -503,7 +508,7 @@ main :: ()
         }
 
         UpdatePlayerAnimations (*g_player, delta_time);
-        WorldUpdateBlockDestruction (*g_world, delta_time);
+        WorldUpdateBlockDestruction (*g_world, *g_player, delta_time);
 
         // Update the Im3d matrices otherwise all drawn things will be delayed by one frame
         Im3dImpl.NewFrame (
@@ -514,17 +519,23 @@ main :: ()
             g_camera.transform_matrix, g_camera.projection_matrix, delta_time
         );
 
-        // If we have a dockspace then ImGui will always ask to capture
-        // the keyboard and we won't be able to move the camera
-        // ImGui.DockSpaceOverViewport (null, .PassthruCentralNode);
         UIUpdate ();
 
         WorldHandleNewlyGeneratedChunks (*g_world);
+
         if g_settings.generate_new_chunks
             WorldGenerateAroundPosition (*g_world, g_camera.position, g_settings.render_distance);
 
+        if main_window_was_resized && window_w != 0 && window_h != 0
+        {
+            for * g_framebuffers.all
+                ResizeFramebuffer (it, window_w, window_h);
+        }
+
+        UseFramebuffer (*g_framebuffers.main);
+
         glViewport (0, 0, xx window_w, xx window_h);
-        glClearColor (0.1, 0.1, 0.1, 1.0);
+        glClearColor (0.1, 0.1, 0.1, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if PhysicsIsRunning ()
@@ -543,6 +554,14 @@ main :: ()
                 g_camera
             );
         }
+
+        UseFramebuffer (null);
+
+        glViewport (0, 0, xx window_w, xx window_h);
+        glClearColor (0, 0, 0, 1);
+        glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        RenderFramebuffer (g_framebuffers.main);
 
         // Draw crosshair
         Crosshair_Size :: 16.0;
