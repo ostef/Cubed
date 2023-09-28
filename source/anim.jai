@@ -29,6 +29,11 @@ AnimationID :: enum
     Human_Swim_Underwater_Forward;
     Human_Swim_Underwater_Backward;
 
+    Human_FPS_Hidden;
+    Human_FPS_Idle;
+    Human_FPS_Run;
+    Human_FPS_Punch;
+
     Count;
 }
 
