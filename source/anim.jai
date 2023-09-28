@@ -229,12 +229,9 @@ LoadSkeletalAnimationFromMemory :: (anim : *SkeletalAnimation, data : string, al
 
 LoadSkeletalAnimationFromFile :: inline (anim : *SkeletalAnimation, filename : string, allocator := context.allocator) -> bool
 {
-    data, ok := read_entire_file (filename, log_errors = false);
+    data, ok := read_entire_file (filename);
     if !ok
-    {
-        LogError ("Could not read file '%'", filename);
         return false;
-    }
 
     ok = LoadSkeletalAnimationFromMemory (anim, data, allocator);
     Free (data.data);

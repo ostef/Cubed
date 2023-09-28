@@ -240,12 +240,9 @@ LoadSkinnedMeshFromMemory :: (mesh : *SkinnedMesh, data : string, init_gl_object
 
 LoadSkinnedMeshFromFile :: inline (mesh : *SkinnedMesh, filename : string, init_gl_objects := true, allocator := context.allocator) -> bool
 {
-    data, ok := read_entire_file (filename, log_errors = false);
+    data, ok := read_entire_file (filename);
     if !ok
-    {
-        LogError ("Could not read file '%'", filename);
         return false;
-    }
 
     ok = LoadSkinnedMeshFromMemory (mesh, data, init_gl_objects, allocator);
     Free (data.data);
