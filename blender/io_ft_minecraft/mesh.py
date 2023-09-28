@@ -170,6 +170,7 @@ class Mesh:
 def ExportMeshes (
     context : bpy.types.Context,
     dirname : str,
+    objects_to_ignore : List[str],
     use_selection : bool,
     apply_transform : bool,
     axis_conversion_matrix : mathutils.Matrix
@@ -187,6 +188,9 @@ def ExportMeshes (
         objs = context.scene.objects
 
     for obj in objs:
+        if obj.name in objects_to_ignore:
+            continue
+
         try:
             me = obj.to_mesh ()
         except RuntimeError:

@@ -136,6 +136,8 @@ class SampledAnimation:
 def ExportAnimations (
     context : bpy.types.Context,
     dirname : str,
+    actions_to_ignore : List[str],
+    objects_to_ignore : List[str],
     use_action_frame_range : bool,
     frame_step : int,
     selected_objects_only : bool,
@@ -158,6 +160,9 @@ def ExportAnimations (
 
     exported_actions : List[bpy.types.Action] = []
     for obj in objs:
+        if obj.name in objects_to_ignore:
+            continue
+
         if obj.animation_data is None or obj.pose is None:
             continue
 
@@ -165,11 +170,11 @@ def ExportAnimations (
 
         if active_action_only:
             action = obj.animation_data.action
-            if action is not None and action not in exported_actions and action not in actions_to_export:
+            if action is not None and action not in exported_actions and action not in actions_to_export and action.name not in actions_to_ignore:
                 actions_to_export.append (action)
         else:
             for action in context.blend_data.actions:
-                if action is None or action in exported_actions or action in actions_to_export:
+                if action is None or action in exported_actions or action in actions_to_export or action.name in actions_to_ignore:
                     continue
 
                 if action.name.startswith (action_prefix):
