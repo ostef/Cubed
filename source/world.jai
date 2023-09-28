@@ -1014,13 +1014,11 @@ WorldDestroyBlock :: (using world : *World, x : s64, y : s64, z : s64)
         return;
 
     destroy_info : *BlockDestroyInfo;
-    index := -1;
     for * blocks_being_destroyed
     {
         if it.x == x && it.y == y && it.z == z
         {
             destroy_info = it;
-            index = it_index;
             break;
         }
     }
@@ -1031,13 +1029,13 @@ WorldDestroyBlock :: (using world : *World, x : s64, y : s64, z : s64)
         destroy_info.x = x;
         destroy_info.y = y;
         destroy_info.z = z;
-        index = blocks_being_destroyed.count - 1;
     }
 
     destroy_info.updated_this_frame = true;
 }
 
-WorldUpdateBlockDestruction :: (using world : *World, delta_time : float)
+// @Cleanup: I don't like that I have to take a *Player
+WorldUpdateBlockDestruction :: (using world : *World, player : *Player, delta_time : float)
 {
     for * blocks_being_destroyed
     {
@@ -1059,6 +1057,12 @@ WorldUpdateBlockDestruction :: (using world : *World, delta_time : float)
         if it.stage > 10
         {
             ChunkSetBlockInChunk (chunk, rel_x, it.y, rel_z, .{id=.Air});
+
+            if player.block_is_selected
+            && it.x == player.selected_block.x
+            && it.y == player.selected_block.y
+            && it.z == player.selected_block.z
+                player.block_is_selected = false;
 
             remove it;
             continue;
