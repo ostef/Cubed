@@ -885,6 +885,17 @@ WorldGetBlock :: inline (world : *World, x : s64, y : s64, z : s64) -> Block #mu
     return ChunkGetBlockInChunk (chunk, rel_x, y, rel_z);
 }
 
+WorldSetBlock :: inline (world : *World, x : s64, y : s64, z : s64, block : Block)
+{
+    chunk_x, chunk_z := ChunkPositionFromWorldPosition (x, z);
+    chunk := WorldGetChunk (world, chunk_x, chunk_z);
+    Assert (chunk != null, "Chunk is not loaded");
+
+    rel_x, rel_z := ChunkAbsoluteToRelativeCoordinates (chunk_x, chunk_z, x, z);
+
+    ChunkSetBlockInChunk (chunk, rel_x, y, rel_z, block);
+}
+
 WorldCreateChunk :: (world : *World, x : s64, z : s64) -> *Chunk #must
 {
     chunk := WorldGetChunk (world, x, z);
