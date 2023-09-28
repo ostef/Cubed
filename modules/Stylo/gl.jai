@@ -122,6 +122,9 @@ GLRenderDrawLists :: (width : s32, height : s32)
         {
             cmd := list.commands[cmd_i];
 
+            if cmd.vertex_count == 0
+                continue;
+
             glUniform1i (loc_use_texture, cast (s32) (cmd.texture != 0));
             glBindTexture (GL_TEXTURE_2D, cmd.texture);
 

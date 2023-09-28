@@ -89,8 +89,16 @@ GetDrawCommand :: () -> *DrawCommand #must
     return *list.commands[list.command_count - 1];
 }
 
-SetTexture :: (texture : TextureHandle)
+GetTexture :: inline () -> TextureHandle #must
 {
+    return GetDrawCommand ().texture;
+}
+
+SetTexture :: inline (texture : TextureHandle)
+{
+    if GetTexture () == texture
+        return;
+
     cmd := PushDrawCommand ();
     cmd.texture = texture;
 }
