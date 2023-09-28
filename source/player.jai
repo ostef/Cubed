@@ -37,6 +37,7 @@ PlayerAnimationData :: struct
 
 Player_Fly_Toggle_Timer := 0.5; // seconds
 Player_Height :: 1.8;
+Player_Eyes_Height :: 1.55;
 Player_Size :: 0.7;
 Player_Movement_Speed :: 5.0;
 Player_Jump_Height :: 1.05;

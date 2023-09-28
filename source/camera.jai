@@ -88,7 +88,7 @@ UpdateFirstPersonCamera :: (using camera : *Camera, player : Player, delta_time 
 {
     defer CalculateCameraMatrices (camera);
 
-    position = player.position + .{0, 1.5, 0};
+    position = player.position + .{0, Player_Eyes_Height, 0};
 
     euler_angles.yaw = player.orientation;
 
