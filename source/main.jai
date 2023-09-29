@@ -568,8 +568,15 @@ main :: ()
             glClearColor (0, 0, 0, 0);
             glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            first_person_camera : Camera;;
+            first_person_camera : Camera;
             first_person_camera.position.y = Player_Eyes_Height;
+
+            // Use rotation velocity (current - prev) as our FPS camera
+            // orientation to apply a nice drag to the player's arms
+            first_person_camera.euler_angles.yaw = g_camera.euler_angles.yaw - g_camera.prev_frame_euler_angles.yaw;
+            first_person_camera.euler_angles.pitch = g_camera.euler_angles.pitch - g_camera.prev_frame_euler_angles.pitch;
+            first_person_camera.rotation = QuatfFromEulerAngles (first_person_camera.euler_angles);
+
             first_person_camera.fov_in_degrees = First_Person_FOV;
             CalculateCameraMatrices (*first_person_camera);
 

@@ -3,6 +3,7 @@ Camera :: struct
     position : Vec3f;
     target_euler_angles : EulerAngles;
     euler_angles : EulerAngles;
+    prev_frame_euler_angles : EulerAngles;
     rotation : Quatf;
     mouse_input : Vec2f;
 
@@ -43,6 +44,8 @@ Frustum :: struct
 UpdateFreeCamera :: (using cam : *Camera, delta_time : float, allow_movement : bool)
 {
     defer CalculateCameraMatrices (cam);
+
+    prev_frame_euler_angles = euler_angles;
 
     if (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) == 0
         return;
@@ -90,9 +93,9 @@ UpdateFirstPersonCamera :: (using camera : *Camera, player : Player, delta_time 
 {
     defer CalculateCameraMatrices (camera);
 
-    position = player.position + .{0, Player_Eyes_Height, 0};
+    prev_frame_euler_angles = euler_angles;
 
-    euler_angles.yaw = player.orientation;
+    position = player.position + .{0, Player_Eyes_Height, 0};
 
     mouse_delta := ifx g_should_capture_mouse then g_mouse_delta else .{};
     rotation_delta := mouse_delta * Player_Rotation_Speed * Fixed_Delta_Time;
@@ -111,6 +114,8 @@ UpdateFirstPersonCamera :: (using camera : *Camera, player : Player, delta_time 
 UpdateThirdPersonCamera :: (using camera : *Camera, player : Player, delta_time : float, front := false)
 {
     defer CalculateCameraMatrices (camera);
+
+    prev_frame_euler_angles = euler_angles;
 
     mouse_delta := ifx g_should_capture_mouse then g_mouse_delta else .{};
     rotation_delta := mouse_delta * Player_Rotation_Speed * Fixed_Delta_Time;
