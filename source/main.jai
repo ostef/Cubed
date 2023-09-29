@@ -544,6 +544,7 @@ main :: ()
 
         if g_camera_mode != .First_Person
             DrawThirdPersonPlayer (g_world, g_player, g_camera);
+
         DrawWorld (*g_world, *g_camera);
 
         if g_player.block_is_selected
@@ -568,8 +569,7 @@ main :: ()
             glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             first_person_camera : Camera;;
-            first_person_camera.position.y = 1;
-            first_person_camera.rotation = g_camera.rotation;
+            first_person_camera.position.y = Player_Eyes_Height;
             first_person_camera.fov_in_degrees = First_Person_FOV;
             CalculateCameraMatrices (*first_person_camera);
 
