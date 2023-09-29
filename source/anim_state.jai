@@ -1,4 +1,11 @@
+AnimationEventProc :: #type (*AnimationStateMachine);
 AnimationStateProc :: #type (*AnimationStateMachine, *AnimationState);
+
+AnimationEvent :: struct
+{
+    name : string;
+    proc : AnimationEventProc;
+}
 
 AnimationState :: struct
 {
@@ -10,6 +17,7 @@ AnimationState :: struct
 
 AnimationStateMachine :: struct
 {
+    events : HashMap (string, AnimationEvent);
     states : HashMap (string, AnimationState);
 
     current_state : *AnimationState;
@@ -40,6 +48,28 @@ AddAnimationState :: (using machine : *AnimationStateMachine, name : string, pro
     InitSkeletonPose (*state.state_pose, final_pose.skeleton, allocator = machine.states.allocator);
 }
 
+AddEventListener :: (using machine : *AnimationStateMachine, name : string, proc : AnimationEventProc)
+{
+    _, exists := HashMapInsert (*events, name, .{name=name, proc=proc});
+    if exists
+    {
+        LogWarning ("Overwriting existing event listener '%'", name);
+    }
+}
+
+TriggerEvent :: (using machine : *AnimationStateMachine, name : string)
+{
+    event := HashMapGetPtr (*events, name);
+    if !event
+    {
+        LogError ("Animation event '%' does not exist", name);
+        return;
+    }
+
+    if event.proc
+        event.proc (machine);
+}
+
 TransitionToState :: (using machine : *AnimationStateMachine, name : string, transition_time_in_seconds := 0.1, location := #caller_location)
 {
     if transition_source_location == location
@@ -58,11 +88,22 @@ TransitionToState :: (using machine : *AnimationStateMachine, name : string, tra
         return;
     }
 
-    next_state = state;
-    next_state.elapsed_time = 0;
-    transition_t = 0;
-    time_to_transition = transition_time_in_seconds;
-    transition_source_location = location;
+    if transition_time_in_seconds <= 0
+    {
+        current_state.elapsed_time = 0;
+        current_state = state;
+        next_state = null;
+        transition_t = 0;
+        transition_source_location = .{};
+    }
+    else
+    {
+        next_state = state;
+        next_state.elapsed_time = 0;
+        transition_t = 0;
+        time_to_transition = transition_time_in_seconds;
+        transition_source_location = location;
+    }
 }
 
 UpdateAnimationStateMachine :: (using machine : *AnimationStateMachine, delta_time : float)
