@@ -464,5 +464,5 @@ PlayerFirstPersonGroundedAnimState :: (machine : *AnimationStateMachine, using s
 {
     using data := cast (*PlayerAnimationData) machine.user_data;
 
-    SampleAnimation (GetAnimation (.Human_FPS_Run), elapsed_time * 30, *state_pose);
+    SampleAnimation (GetAnimation (.Human_FPS_Idle), elapsed_time * 30, *state_pose);
 }
