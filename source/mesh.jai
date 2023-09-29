@@ -3,6 +3,7 @@ MeshID :: enum
     Human;
     Human_FPS;
     Grass;
+    Test;
 
     Count;
 }
@@ -34,7 +35,7 @@ SkinnedMesh :: struct
     vertices : []SkinnedVertex;
     indices : []u32;
 
-    using, except (memory_block) skeleton : Skeleton;
+    #as using, except (memory_block) skeleton : Skeleton;
 }
 
 Max_Skeleton_Joint_Name_Length :: 64;
