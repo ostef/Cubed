@@ -34,6 +34,8 @@ PlayerAnimationData :: struct
         Right;
         Left;
     };
+    grounded_movement_t : float;
+    destroying_block : bool;
 }
 
 Player_Fly_Toggle_Timer := 0.3; // seconds
@@ -73,9 +75,15 @@ InitPlayer :: (world : *World, using player : *Player)
 
     InitAnimationStateMachine (*anim_first_person_fsm, *GetMesh (.Human_FPS).skeleton);
     anim_first_person_fsm.user_data = *anim_data;
-    AddAnimationState (*anim_first_person_fsm, "Grounded", PlayerFirstPersonGroundedAnimState);
+    AddAnimationState (*anim_first_person_fsm, "Neutral", PlayerFirstPersonNeutralAnimState);
+    AddAnimationState (*anim_first_person_fsm, "Destroying Block", PlayerFirstPersonDestroyingBlockAnimState);
 
-    TransitionToState (*anim_first_person_fsm, "Grounded");
+    AddEventListener (*anim_first_person_fsm, "Punch", (machine : *AnimationStateMachine)
+    {
+        TransitionToState (machine, "Destroying Block", 0);
+    });
+
+    TransitionToState (*anim_first_person_fsm, "Neutral");
 }
 
 UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, allow_movement := true)
@@ -201,6 +209,15 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     anim_data.is_underwater = is_underwater;
     anim_data.smooth_movement_input = Linalg.lerp (anim_data.smooth_movement_input, movement_input, 0.3);
 
+    movement_t := Length (movement_input);
+    if !is_on_ground || is_flying || is_underwater
+        movement_t = 0;
+
+    anim_data.grounded_movement_t = Lerp (anim_data.grounded_movement_t, movement_t, 0.3);
+
+    if IsMouseButtonPressed (SDL_BUTTON_LEFT)
+        TriggerEvent (*anim_first_person_fsm, "Punch");
+
     transform_matrix = Mat4fTranslate (position) * Mat4fRotate (.{0, 1, 0}, orientation);
 }
 
@@ -219,6 +236,8 @@ UpdateBlockSelectionAndDestruction :: (world : *World, using camera : *Camera, p
         filter
     );
 
+    player.anim_data.destroying_block = false;
+
     if hit_result.hit
     {
         player.block_is_selected = true;
@@ -226,6 +245,7 @@ UpdateBlockSelectionAndDestruction :: (world : *World, using camera : *Camera, p
 
         if !ImGui.GetIO ().WantCaptureMouse && (SDL_GetWindowFlags (g_window) & SDL_WINDOW_INPUT_FOCUS) != 0 && IsMouseButtonDown (SDL_BUTTON_LEFT)
         {
+            player.anim_data.destroying_block = true;
             WorldDestroyBlock (world, hit_result.block_x, hit_result.block_y, hit_result.block_z);
         }
     }
@@ -476,9 +496,31 @@ PlayerUnderwaterAnimState :: (machine : *AnimationStateMachine, using state : *A
     WeightedBlendPoses (*state_pose, blend_space_poses, blend_space_weights);
 }
 
-PlayerFirstPersonGroundedAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
+PlayerFirstPersonNeutralAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
 {
     using data := cast (*PlayerAnimationData) machine.user_data;
 
-    SampleAnimation (GetAnimation (.Human_FPS_Idle), elapsed_time * 30, *state_pose);
+    idle_pose, run_pose : SkeletonPose;
+    InitSkeletonPose (*idle_pose, machine.final_pose.skeleton, Temp);
+    InitSkeletonPose (*run_pose, machine.final_pose.skeleton, Temp);
+
+    SampleAnimation (GetAnimation (.Human_FPS_Idle), elapsed_time * 30, *idle_pose);
+    SampleAnimation (GetAnimation (.Human_FPS_Run), elapsed_time * 30, *run_pose);
+
+    BlendPoses (*state_pose, idle_pose, run_pose, grounded_movement_t);
+}
+
+PlayerFirstPersonDestroyingBlockAnimState :: (machine : *AnimationStateMachine, using state : *AnimationState)
+{
+    using data := cast (*PlayerAnimationData) machine.user_data;
+
+    punch_anim := GetAnimation (.Human_FPS_Punch);
+    animation_time := elapsed_time * 30;
+    if !data.destroying_block && animation_time > cast (float) punch_anim.pose_count - 1
+        TransitionToState (machine, "Neutral", 0);
+
+    if data.destroying_block
+        animation_time = Math.fmod_cycling (animation_time, 6);
+
+    SampleAnimation (punch_anim, animation_time, *state_pose);
 }
