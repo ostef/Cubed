@@ -623,7 +623,7 @@ g_ui_show_demo_window := false;
 g_ui_show_perlin_test_window := false;
 g_ui_show_terrain_generator_window := false;
 g_ui_show_texture_atlas_window := false;
-g_ui_show_game_metrics_window := true;
+g_ui_show_game_metrics_window := false;
 
 UIUpdate :: ()
 {

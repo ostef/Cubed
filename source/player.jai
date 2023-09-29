@@ -36,7 +36,7 @@ PlayerAnimationData :: struct
     };
 }
 
-Player_Fly_Toggle_Timer := 0.5; // seconds
+Player_Fly_Toggle_Timer := 0.3; // seconds
 Player_Height :: 1.8;
 Player_Eyes_Height :: 1.55;
 Player_Size :: 0.7;
@@ -257,6 +257,22 @@ UpdateThirdPersonPlayerAnimations :: (using player : *Player, delta_time : float
 UpdateFirstPersonPlayerAnimations :: (using player : *Player, delta_time : float)
 {
     UpdateAnimationStateMachine (*anim_first_person_fsm, delta_time);
+
+    // Sample screen gap additive for wide screen
+    reference_pose, screen_gap_pose : SkeletonPose;
+    InitSkeletonPose (*reference_pose, GetMesh (.Human_FPS), Temp);
+    InitSkeletonPose (*screen_gap_pose, GetMesh (.Human_FPS), Temp);
+
+    screen_w : s32;
+    SDL_GetWindowSize (g_window, *screen_w, null);
+
+    screen_gap_t := InverseLerp (640.0, 1920.0, cast (float) screen_w);
+    screen_gap_t = Clamp (screen_gap_t, 0, 1);
+    screen_gap_t *= GetAnimation (.Human_FPS_Screen_Gap).pose_count - 1;
+
+    SampleAnimation (GetAnimation (.Human_FPS_Screen_Gap), screen_gap_t, *screen_gap_pose);
+    SubtractPoses (*screen_gap_pose, reference_pose);
+    AddPoses (*anim_first_person_fsm.final_pose, screen_gap_pose);
 
     GenerateSkinningMatrices (*anim_first_person_fsm.final_pose, true);
 }

@@ -33,6 +33,7 @@ AnimationID :: enum
     Human_FPS_Idle;
     Human_FPS_Run;
     Human_FPS_Punch;
+    Human_FPS_Screen_Gap;
 
     Test_One;
 
