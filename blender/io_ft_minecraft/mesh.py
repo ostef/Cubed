@@ -197,7 +197,7 @@ def ExportMeshes (
             continue
 
         armature_obj = obj.find_armature ()
-        armature = bpy.types.Armature = None
+        armature : bpy.types.Armature = None
         if armature_obj is not None:
             armature = armature_obj.data.copy ()
 
