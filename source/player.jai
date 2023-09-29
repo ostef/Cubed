@@ -500,6 +500,11 @@ PlayerFirstPersonNeutralAnimState :: (machine : *AnimationStateMachine, using st
 {
     using data := cast (*PlayerAnimationData) machine.user_data;
 
+    if data.destroying_block
+    {
+        TransitionToState (machine, "Destroying Block");
+    }
+
     idle_pose, run_pose : SkeletonPose;
     InitSkeletonPose (*idle_pose, machine.final_pose.skeleton, Temp);
     InitSkeletonPose (*run_pose, machine.final_pose.skeleton, Temp);
@@ -517,7 +522,10 @@ PlayerFirstPersonDestroyingBlockAnimState :: (machine : *AnimationStateMachine, 
     punch_anim := GetAnimation (.Human_FPS_Punch);
     animation_time := elapsed_time * 30;
     if !data.destroying_block && animation_time > cast (float) punch_anim.pose_count - 1
+    {
+        animation_time = 0;
         TransitionToState (machine, "Neutral", 0);
+    }
 
     if data.destroying_block
         animation_time = Math.fmod_cycling (animation_time, 6);
