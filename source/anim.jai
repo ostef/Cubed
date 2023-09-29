@@ -34,6 +34,8 @@ AnimationID :: enum
     Human_FPS_Run;
     Human_FPS_Punch;
 
+    Test_One;
+
     Count;
 }
 
@@ -250,7 +252,7 @@ FreeSkeletalAnimation :: inline (using anim : *SkeletalAnimation, allocator : Al
     Initialize (anim);
 }
 
-InitSkeletonPose :: (pose : *SkeletonPose, skeleton : *Skeleton, init_gl_objects := false, allocator := context.allocator)
+InitSkeletonPose :: (pose : *SkeletonPose, skeleton : *Skeleton, allocator := context.allocator)
 {
     pose.skeleton = skeleton;
     pose.memory_block = Alloc ((size_of (JointPose) + size_of (Mat4f)) * skeleton.joints.count, allocator);
@@ -278,9 +280,6 @@ InitSkeletonPose :: (pose : *SkeletonPose, skeleton : *Skeleton, init_gl_objects
     }
 
     ResetToBindPose (pose);
-
-    if init_gl_objects
-        InitSkeletonPoseGLObjects (pose);
 }
 
 InitSkeletonPoseGLObjects :: (using pose : *SkeletonPose)
