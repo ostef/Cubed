@@ -133,16 +133,13 @@ class SampledAnimation:
                     fw (struct.pack ("<ffff", *joint.local_orientation))
                     fw (struct.pack ("<fff", *joint.local_scale))
 
-def ExportAnimations (
+def ExportAnimationsForArmature (
     context : bpy.types.Context,
     dirname : str,
-    actions_to_ignore : List[str],
-    objects_to_ignore : List[str],
+    armature_obj : bpy.types.Object,
+    actions : List[bpy.types.Action],
     use_action_frame_range : bool,
     frame_step : int,
-    selected_objects_only : bool,
-    active_action_only : bool,
-    action_prefix : str,
     apply_transform : bool,
     axis_conversion_matrix : mathutils.Matrix
 ):
@@ -153,57 +150,32 @@ def ExportAnimations (
     if bpy.ops.object.mode_set.poll ():
         bpy.ops.object.mode_set (mode = 'OBJECT')
 
-    if selected_objects_only:
-        objs = context.selected_objects
-    else:
-        objs = context.scene.objects
+    if armature_obj.animation_data is None or armature_obj.pose is None:
+        return
 
-    exported_actions : List[bpy.types.Action] = []
-    for obj in objs:
-        if obj.name in objects_to_ignore:
-            continue
+    transform_matrix = mathutils.Matrix.Identity (4)
+    if apply_transform:
+        transform_matrix = transform_matrix @ armature_obj.matrix_world
+    if axis_conversion_matrix is not None:
+        transform_matrix = transform_matrix @ axis_conversion_matrix.to_4x4 ()
 
-        if obj.animation_data is None or obj.pose is None:
-            continue
-
-        actions_to_export : List[bpy.types.Action] = []
-
-        if active_action_only:
-            action = obj.animation_data.action
-            if action is not None and action not in exported_actions and action not in actions_to_export and action.name not in actions_to_ignore:
-                actions_to_export.append (action)
+    for action in actions:
+        output_filename = os.path.join (dirname, action.name) + Exporter.filename_ext
+        if use_action_frame_range:
+            frame_begin, frame_end = (
+                int (action.frame_range[0]),
+                int (action.frame_range[1])
+            )
         else:
-            for action in context.blend_data.actions:
-                if action is None or action in exported_actions or action in actions_to_export or action.name in actions_to_ignore:
-                    continue
+            frame_begin, frame_end = (
+                int (context.scene.frame_start),
+                int (context.scene.frame_end)
+            )
 
-                if action.name.startswith (action_prefix):
-                    actions_to_export.append (action)
+        anim = SampledAnimation.FromAction (armature_obj, action, frame_begin, frame_end, frame_step, transform_matrix)
+        anim.WriteBinary (output_filename)
 
-        transform_matrix = mathutils.Matrix.Identity (4)
-        if apply_transform:
-            transform_matrix = transform_matrix @ obj.matrix_world
-        if axis_conversion_matrix is not None:
-            transform_matrix = transform_matrix @ axis_conversion_matrix.to_4x4 ()
-
-        for action in actions_to_export:
-            output_filename = os.path.join (dirname, action.name) + Exporter.filename_ext
-            if use_action_frame_range:
-                frame_begin, frame_end = (
-                    int (action.frame_range[0]),
-                    int (action.frame_range[1])
-                )
-            else:
-                frame_begin, frame_end = (
-                    int (context.scene.frame_start),
-                    int (context.scene.frame_end)
-                )
-
-            anim = SampledAnimation.FromAction (obj, action, frame_begin, frame_end, frame_step, transform_matrix)
-            anim.WriteBinary (output_filename)
-
-            exported_actions.append (action)
-            print (f"Exported animation clip {action.name} to file {output_filename}")
+        print (f"Exported animation clip {action.name} to file {output_filename}")
 
 @orientation_helper (axis_forward = '-Z', axis_up = 'Y')
 class Exporter (bpy.types.Operator, ExportHelper):
