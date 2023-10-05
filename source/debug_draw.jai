@@ -164,7 +164,8 @@ DebugDrawWireframeAABB :: (min : Vec3f, max : Vec3f, color : Vec4f)
 
 DebugDrawSkeletonPose :: (pose : SkeletonPose, transform : Mat4f, color : Vec4f)
 {
-    joint_names := GetJointNamesArray (pose.skeleton);
+    color_u32 : Im3d.Color;
+    Im3d.Color.Constructor (*color_u32, color.xyz, color.a);
 
     for pose.joints
     {
@@ -176,12 +177,12 @@ DebugDrawSkeletonPose :: (pose : SkeletonPose, transform : Mat4f, color : Vec4f)
         start := TranslationVector (parent_transform);
         end   := TranslationVector (world_space_transform);
 
-        Im3d.DrawLine (start, end, 1, .{0xffffffff});
-        Im3d.DrawLine (end, end + RightVector (world_space_transform) * 0.1, 1, .{0xff0000ff});
-        Im3d.DrawLine (end, end + UpVector (world_space_transform) * 0.1, 1, .{0x00ff00ff});
-        Im3d.DrawLine (end, end + ForwardVector (world_space_transform) * 0.1, 1, .{0x0000ffff});
+        Im3d.DrawLine (start, end, 1, color_u32);
+        Im3d.DrawLine (end, end + RightVector (world_space_transform) * 0.1, 1, Im3d.Color_Red);
+        Im3d.DrawLine (end, end + UpVector (world_space_transform) * 0.1, 1, Im3d.Color_Green);
+        Im3d.DrawLine (end, end + ForwardVector (world_space_transform) * 0.1, 1, Im3d.Color_Blue);
 
         joint_name := GetJointName (pose.skeleton, xx it_index);
-        Im3d.Text (end, 1, .{0xffffffff}, cast (u32) Im3d.TextFlags.Default, joint_name.data);
+        Im3d.Text (end, 1, color_u32, cast (u32) Im3d.TextFlags.Default, joint_name.data);
     }
 }
