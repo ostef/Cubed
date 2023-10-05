@@ -113,6 +113,7 @@ CalculateSkeletalAnimationMemoryBlockSize :: inline (joint_count : int, pose_cou
     joint_name_size := size_of (SkeletalAnimation.name_to_joint_id.Entry)
         * HashMapGetMinCapacityForElementCount (SkeletalAnimation.name_to_joint_id.Load_Factor, joint_count)
         + joint_count * (Max_Skeleton_Joint_Name_Length + size_of (SkeletonJoint));
+
     sample_size := size_of (JointSample) * joint_count * pose_count;
 
     return joint_name_size + sample_size;
@@ -366,9 +367,8 @@ CalculatePoseTransforms :: (using pose : *SkeletonPose)
             * Mat4fScale (it.local_scale)
             * Mat4fFromQuat (it.local_orientation);
 
-        parent := it.parent;
-        if parent
-            it.model_space_transform = parent.model_space_transform * local_transform;
+        if it.parent
+            it.model_space_transform = it.parent.model_space_transform * local_transform;
         else
             it.model_space_transform = local_transform;
     }
