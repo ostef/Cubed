@@ -186,3 +186,28 @@ DebugDrawSkeletonPose :: (pose : SkeletonPose, transform : Mat4f, color : Vec4f)
         Im3d.Text (end, 1, color_u32, cast (u32) Im3d.TextFlags.Default, joint_name.data);
     }
 }
+
+DebugDrawSkeleton :: (skeleton : Skeleton, transform : Mat4f, color : Vec4f)
+{
+    color_u32 : Im3d.Color;
+    Im3d.Color.Constructor (*color_u32, color.xyz, color.a);
+
+    for skeleton.joints
+    {
+        parent_transform := ifx it.parent
+            then transform * Inverse (it.parent.inverse_bind_transform)
+            else transform;
+
+        world_space_transform := transform * Inverse (it.inverse_bind_transform);
+        start := TranslationVector (parent_transform);
+        end   := TranslationVector (world_space_transform);
+
+        Im3d.DrawLine (start, end, 1, color_u32);
+        Im3d.DrawLine (end, end + RightVector (world_space_transform) * 0.1, 1, Im3d.Color_Red);
+        Im3d.DrawLine (end, end + UpVector (world_space_transform) * 0.1, 1, Im3d.Color_Green);
+        Im3d.DrawLine (end, end + ForwardVector (world_space_transform) * 0.1, 1, Im3d.Color_Blue);
+
+        joint_name := GetJointName (skeleton, xx it_index);
+        Im3d.Text (end, 1, color_u32, cast (u32) Im3d.TextFlags.Default, joint_name.data);
+    }
+}
