@@ -45,7 +45,8 @@ class Mesh:
     def FromMeshAndArmature (
         blender_obj : bpy.types.Object,
         blender_mesh : bpy.types.Mesh,
-        blender_armature : bpy.types.Armature
+        blender_armature : bpy.types.Armature,
+        reverse_triangle_ordering : bool
     ):
         def AppendHierarchy (joints : List[bpy.types.Bone], bone : bpy.types.Bone):
             joints.append (bone)
@@ -122,7 +123,10 @@ class Mesh:
 
                 tri.append (result_vert_index)
 
-            result.tris.append ((tri[0], tri[1], tri[2]))
+            if reverse_triangle_ordering:
+                result.tris.append ((tri[2], tri[1], tri[0]))
+            else:
+                result.tris.append ((tri[0], tri[1], tri[2]))
 
         return result
 
@@ -173,7 +177,8 @@ def ExportMeshes (
     objects_to_ignore : List[str],
     use_selection : bool,
     apply_transform : bool,
-    axis_conversion_matrix : mathutils.Matrix
+    axis_conversion_matrix : mathutils.Matrix,
+    reverse_triangle_ordering : bool
 ):
     import os
 
@@ -221,7 +226,7 @@ def ExportMeshes (
         bm.to_mesh (me)
         bm.free ()
 
-        result = Mesh.FromMeshAndArmature (obj, me, armature)
+        result = Mesh.FromMeshAndArmature (obj, me, armature, reverse_triangle_ordering)
         output_filename = os.path.join (dirname, obj.name) + Exporter.filename_ext
         result.WriteBinary (output_filename)
         obj.to_mesh_clear ()

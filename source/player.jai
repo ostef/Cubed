@@ -358,12 +358,12 @@ PlayerGroundedAnimState :: (machine : *AnimationStateMachine, using state : *Ani
 
     blend_space_poses : [9]*SkeletonPose = .[
         *idle_pose,
-        *right_pose,
         *left_pose,
-        *fright_pose,
+        *right_pose,
         *fleft_pose,
-        *bright_pose,
+        *fright_pose,
         *bleft_pose,
+        *bright_pose,
         *backward_pose,
         *forward_pose
     ];
@@ -441,8 +441,8 @@ PlayerFlyingAnimState :: (machine : *AnimationStateMachine, using state : *Anima
 
     blend_space_poses : [5]*SkeletonPose = .[
         *idle_pose,
-        *right_pose,
         *left_pose,
+        *right_pose,
         *backward_pose,
         *forward_pose
     ];

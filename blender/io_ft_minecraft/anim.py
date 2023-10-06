@@ -69,11 +69,17 @@ class SampledAnimation:
 
                 matrix : mathutils.Matrix = transform_matrix @ bone.matrix
 
+                # Apply scale fixup of the axis conversion matrix
+                # @Todo: let the caller control this
+                matrix = matrix @ mathutils.Matrix.Scale (-1, 4, (1, 0, 0))
+
                 if bone.parent is not None:
                     parent_matrix = transform_matrix @ bone.parent.matrix
+                    parent_matrix = parent_matrix @ mathutils.Matrix.Scale (-1, 4, (1, 0, 0))
                     matrix = parent_matrix.inverted () @ matrix
 
                 location, orientation, scale = matrix.decompose ()
+
                 joint_index = anim.name_to_joint_id[bone.name]
                 pose.joints[joint_index] = JointSample (
                     location,
