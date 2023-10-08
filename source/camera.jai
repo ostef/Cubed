@@ -80,7 +80,7 @@ UpdateFreeCamera :: (using cam : *Camera, delta_time : float, allow_movement : b
     rotation_delta := mouse_delta * rotation_speed * delta_time;
 
     target_euler_angles.pitch += ToRadians (rotation_delta.y);
-    target_euler_angles.pitch = Clamp (target_euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
+    target_euler_angles.pitch = Clamp (target_euler_angles.pitch, ToRadians (-90.0), ToRadians (90.0));
     target_euler_angles.yaw   += ToRadians (rotation_delta.x);
 
     euler_angles.pitch = Lerp (euler_angles.pitch, target_euler_angles.pitch, rotation_smoothing);
@@ -101,7 +101,7 @@ UpdateFirstPersonCamera :: (using camera : *Camera, player : Player, delta_time 
     rotation_delta := mouse_delta * Player_Rotation_Speed * Fixed_Delta_Time;
 
     target_euler_angles.pitch += ToRadians (rotation_delta.y);
-    target_euler_angles.pitch = Clamp (target_euler_angles.pitch, ToRadians (-80.0), ToRadians (80.0));
+    target_euler_angles.pitch = Clamp (target_euler_angles.pitch, ToRadians (-90.0), ToRadians (90.0));
 
     euler_angles.pitch = Lerp (euler_angles.pitch, target_euler_angles.pitch, Player_Rotation_Smoothing);
     euler_angles.yaw = player.orientation;
