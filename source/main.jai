@@ -494,9 +494,9 @@ main :: ()
             case .First_Person;
                 UpdateFirstPersonCamera (*g_camera, g_player, delta_time);
             case .Third_Person_Back;
-                UpdateThirdPersonCamera (*g_camera, g_player, delta_time);
+                UpdateThirdPersonCamera (*g_world, *g_camera, g_player, delta_time);
             case .Third_Person_Front;
-                UpdateThirdPersonCamera (*g_camera, g_player, delta_time, true);
+                UpdateThirdPersonCamera (*g_world, *g_camera, g_player, delta_time, true);
             }
 
             if g_camera_mode != .Free_Camera

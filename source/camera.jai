@@ -111,7 +111,7 @@ UpdateFirstPersonCamera :: (using camera : *Camera, player : Player, delta_time 
     rotation = QuatfFromEulerAngles (euler_angles);
 }
 
-UpdateThirdPersonCamera :: (using camera : *Camera, player : Player, delta_time : float, front := false)
+UpdateThirdPersonCamera :: (world : *World, using camera : *Camera, player : Player, delta_time : float, front := false)
 {
     defer CalculateCameraMatrices (camera);
 
@@ -136,6 +136,22 @@ UpdateThirdPersonCamera :: (using camera : *Camera, player : Player, delta_time 
     position = player.position + RightVector (rotation) * look_at_offset.x
         + .{0, look_at_offset.y, 0}
         - ForwardVector (rotation) * distance_to_target;
+
+    // Look for obstacles between the player and the camera
+    camera_aabb := AABB.{
+        player.position + .{0, look_at_offset.y, 0} - .{0.1,0.1,0.1},
+        player.position + .{0, look_at_offset.y, 0} + .{0.1,0.1,0.1},
+    };
+
+    hit_result := SweptAABBIntersectsWorld (
+        world,
+        camera_aabb,
+        -ForwardVector (rotation),
+        distance_to_target
+    );
+
+    if hit_result.hit
+        position = hit_result.position;
 }
 
 CalculateCameraMatrices :: inline (using cam : *Camera)
