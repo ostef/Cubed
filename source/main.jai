@@ -539,7 +539,7 @@ main :: ()
         UseFramebuffer (*g_framebuffers.main);
 
         glViewport (0, 0, xx window_w, xx window_h);
-        glClearColor (0.1, 0.1, 0.1, 1);
+        glClearColor (0.2, 0.3, 0.6, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if g_camera_mode != .First_Person
