@@ -7,6 +7,6 @@ obj/
 *.pdb
 *.exe
 .vscode/
-minecraft
+Cubed
 imgui.ini
 data/faithless/

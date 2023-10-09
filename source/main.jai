@@ -639,5 +639,5 @@ main :: ()
 #run {
     #import "Compiler";
 
-    set_build_options_dc (.{output_executable_name="minecraft", output_path="../"});
+    set_build_options_dc (.{output_executable_name="cubed", output_path="../"});
 }
