@@ -6,6 +6,11 @@ g_shader : u32;
 
 #scope_export
 
+GetDefaultShader :: inline () -> ShaderHandle #must
+{
+    return cast (ShaderHandle) g_shader;
+}
+
 GL_Vertex_Shader :: #string GLSL
 #version 330 core
 
@@ -45,6 +50,23 @@ void main ()
         Frag_Color = Color;
 }
 GLSL
+
+SetShaderParam :: inline (param : ShaderParam)
+{
+    if #complete param.data_type ==
+    {
+    case .Int; glUniform1i (param.location, param.xi);
+    case .Int2; glUniform2i (param.location, param.xi, param.yi);
+    case .Int3; glUniform3i (param.location, param.xi, param.yi, param.zi);
+    case .Int4; glUniform4i (param.location, param.xi, param.yi, param.zi, param.wi);
+    case .Float; glUniform1f (param.location, param.x);
+    case .Float2; glUniform2f (param.location, param.x, param.y);
+    case .Float3; glUniform3f (param.location, param.x, param.y, param.z);
+    case .Float4; glUniform4f (param.location, param.x, param.y, param.z, param.w);
+    case .Mat3; glUniformMatrix3fv (param.location, 1, GL_TRUE, *param.mat3.r0c0);
+    case .Mat4; glUniformMatrix4fv (param.location, 1, GL_TRUE, *param.mat4.r0c0);
+    }
+}
 
 GLRenderDrawLists :: (width : s32, height : s32)
 {
@@ -99,17 +121,10 @@ GLRenderDrawLists :: (width : s32, height : s32)
 
     glActiveTexture (GL_TEXTURE0);
 
-    glUseProgram (g_shader);
+    prev_shader : GLuint = 0;
+    loc_view_proj, loc_texture, loc_use_texture : GLint;
 
     view_projection_matrix := mat4f_orthographic_projection (0, xx width, 0, xx height, 0, 1);
-
-    loc_view_proj := glGetUniformLocation (g_shader, "u_View_Projection_Matrix");
-    glUniformMatrix4fv (loc_view_proj, 1, GL_TRUE, *view_projection_matrix.r0c0);
-
-    loc_texture := glGetUniformLocation (g_shader, "u_Texture");
-    glUniform1i (loc_texture, 0);
-
-    loc_use_texture := glGetUniformLocation (g_shader, "u_Use_Texture");
 
     list := g_first_draw_list;
     while list
@@ -124,6 +139,28 @@ GLRenderDrawLists :: (width : s32, height : s32)
 
             if cmd.vertex_count == 0
                 continue;
+
+            if !cmd.shader
+                continue;
+
+            if cmd.shader != prev_shader
+            {
+                glUseProgram (cmd.shader);
+
+                loc_view_proj = glGetUniformLocation (cmd.shader, "u_View_Projection_Matrix");
+                loc_texture = glGetUniformLocation (cmd.shader, "u_Texture");
+                loc_use_texture = glGetUniformLocation (cmd.shader, "u_Use_Texture");
+
+                glUniformMatrix4fv (loc_view_proj, 1, GL_TRUE, *view_projection_matrix.r0c0);
+                glUniform1i (loc_texture, 0);
+
+                prev_shader = cmd.shader;
+            }
+
+            for i : 0..cmd.shader_param_count - 1
+            {
+                SetShaderParam (cmd.shader_params[i]);
+            }
 
             glUniform1i (loc_use_texture, cast (s32) (cmd.texture != 0));
             glBindTexture (GL_TEXTURE_2D, cmd.texture);
