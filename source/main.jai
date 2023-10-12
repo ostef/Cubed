@@ -295,7 +295,7 @@ main :: ()
 
     x, y : s32 = SDL_WINDOWPOS_UNDEFINED;
     w, h : s32 = 1280, 720;
-    g_window = SDL_CreateWindow ("Minecraft", x, y, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
+    g_window = SDL_CreateWindow ("Cubed", x, y, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
     if !g_window
     {
         LogError ("Could not create window: %", MakeString (SDL_GetError ()));
