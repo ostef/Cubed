@@ -167,6 +167,42 @@ ShaderParam4f :: inline (location : s32, x : float, y : float, z : float, w : fl
     return result;
 }
 
+ShaderParam2f :: inline (location : s32, vec : Vec2f) -> ShaderParam #must
+{
+    result : ShaderParam = ---;
+    result.location = location;
+    result.x = vec.x;
+    result.y = vec.y;
+    result.data_type = .Float2;
+
+    return result;
+}
+
+ShaderParam3f :: inline (location : s32, vec : Vec3f) -> ShaderParam #must
+{
+    result : ShaderParam = ---;
+    result.location = location;
+    result.x = vec.x;
+    result.y = vec.y;
+    result.z = vec.z;
+    result.data_type = .Float3;
+
+    return result;
+}
+
+ShaderParam4f :: inline (location : s32, vec : Vec4f) -> ShaderParam #must
+{
+    result : ShaderParam = ---;
+    result.location = location;
+    result.x = vec.x;
+    result.y = vec.y;
+    result.z = vec.z;
+    result.w = vec.w;
+    result.data_type = .Float4;
+
+    return result;
+}
+
 ShaderParamMat3 :: inline (location : s32, mat : Mat3) -> ShaderParam #must
 {
     result : ShaderParam = ---;
