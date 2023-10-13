@@ -852,7 +852,7 @@ DrawWorld :: (world : *World, camera : Camera)
     GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D_ARRAY, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D_ARRAY, prev);});
     GL_Utils.StateBlock (GL_CURRENT_PROGRAM, (prev : GLuint) {glUseProgram (prev);});
 
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
     glFrontFace (GL_CW);
 
     glActiveTexture (GL_TEXTURE0);
@@ -953,7 +953,7 @@ DrawBlockOutline :: (position : Vec3f, min : Vec3f, max : Vec3f, color : Vec4f, 
     GL_Utils.DisableBlock (GL_CULL_FACE);
     GL_Utils.StateBlock (GL_CURRENT_PROGRAM, (prev : GLuint) {glUseProgram (prev);});
 
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 
     glUseProgram (g_static_mesh_shader);
 
