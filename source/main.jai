@@ -92,6 +92,7 @@ g_physics_step : bool;
 g_prev_keyboard_state : [SDL_NUM_SCANCODES]bool;
 g_prev_mouse_state : u32;
 g_day_night_time : float;
+g_day_length := 60.0 * 20;
 
 Fixed_Delta_Time :: 1 / 60.0;
 
@@ -590,12 +591,11 @@ main :: ()
         glClearColor (0, 0, 0, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        g_day_night_time += delta_time * 0.01;
-
+        g_day_night_time += delta_time / g_day_length;
         Stylo.SetShader (g_sky_shader,
             Stylo.ShaderParam1f (
                 glGetUniformLocation (g_sky_shader, "u_Day_Night_Time"),
-                g_day_night_time
+                Math.fmod_cycling (g_day_night_time, 1.0)
             ),
             Stylo.ShaderParamMat4 (
                 glGetUniformLocation (g_sky_shader, "u_World_View"),

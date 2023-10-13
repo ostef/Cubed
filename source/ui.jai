@@ -597,7 +597,8 @@ UIShowGameMetricsWindow :: (opened : *bool)
     ImGui.LabelText ("Loaded Chunks", "%lld", g_world.all_loaded_chunks.count);
     ImGui.LabelText ("Chunks Being Generated", "%lld", g_world.chunks_being_generated.count);
     ImGui.Checkbox ("Generate New chunks", *g_settings.generate_new_chunks);
-    ImGui.SliderFloat ("Day Night Time", *g_day_night_time, 0, 10, "%.3f");
+    ImGui.SliderFloat ("Day Night Time", *g_day_night_time, 0, 1, "%.3f");
+    ImGui.SliderFloat ("Day Length", *g_day_length, 0, 3600, "%.0f sec");
 
     ImGui.SeparatorText ("Player");
     ImGui.SliderFloat ("Movement Speed Multiplier", *g_settings.player_speed_mult, 1, 1000.0);

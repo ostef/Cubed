@@ -13,7 +13,7 @@ out vec3 Sun_Direction;
 uniform float u_Day_Night_Time;
 uniform mat4 u_World_View;
 uniform mat4 u_World_Projection;
-uniform mat4 u_View_Projection_Matrix;
+uniform mat4 u_View_Projection_Matrix;  // This is a 2d orthographic matrix, since we're rendering the sky on a 2d quad the size of the screen
 
 void main ()
 {
@@ -31,39 +31,71 @@ out vec4 Frag_Color;
 
 uniform sampler2D u_Texture;
 uniform vec2 u_Viewport_Size;
+uniform float u_Day_Night_Time;
 
-const float Br = 0.0005;
-const float Bm = 0.0003;
-const float g =  0.9200;
-const vec3 nitrogen = vec3(0.650, 0.570, 0.475);
-const vec3 Kr = Br / pow(nitrogen, vec3(4.0));
-const vec3 Km = Bm / pow(nitrogen, vec3(0.84));
+const vec3 Sun_Color = vec3 (1.0, 0.6, 0.05);
+const vec3 Sunset_Color = vec3 (1.0, 0.3, 0.0);
+const vec3 Day_Sky_Color = vec3 (0.3, 0.4, 0.8);
+const vec3 Night_Sky_Color = vec3 (0, 0.004, 0.05);
+
+vec3 ComputeSkyColor (vec3 sun_dir, vec3 view_dir)
+{
+    const float Atmosphere_Pow = 10.0;  // Increase to make day sky color more present
+    const float Scatter_Pow = 1 / 4.0; // Decrease divisor to make the sunset color last longer
+
+    float sun_y = asin (sun_dir.y) / (Pi * 0.5);
+    float view_y = asin (view_dir.y) / (Pi * 0.5);
+
+    float atmosphere = sqrt (pow (1.0 - view_y, Atmosphere_Pow));
+    float scatter = pow (sun_y, Scatter_Pow);
+    scatter = 1.0 - clamp (scatter, 0.0, 1.0);
+
+    const vec3 Unscattered_Color = vec3 (
+        pow (Day_Sky_Color.r, 1 / 2.0),
+        pow (Day_Sky_Color.g, 1 / 2.0),
+        pow (Day_Sky_Color.b, 1 / 2.0)
+    );
+
+    vec3 scatter_color = mix (Unscattered_Color, Sunset_Color * 1.5, scatter);
+
+    atmosphere = clamp (atmosphere / 1.3, 0.0, 1.0);
+
+    return mix (Day_Sky_Color, scatter_color, atmosphere);
+}
+
+vec3 ComputeSunColor (vec3 sun_dir, vec3 view_dir)
+{
+    float horizon_attenuation = asin (view_dir.y) / (Pi * 0.5);
+    horizon_attenuation *= 4.0;
+    horizon_attenuation = clamp (horizon_attenuation, 0.0, 1.0);
+
+    float sun = dot (sun_dir, view_dir);
+    float glow = sun;
+
+    sun = clamp (sun, 0.0, 1.0);
+    sun = pow (sun, 1000.0);
+    sun *= 10.0;
+    sun = clamp (sun, 0.0, 1.0);
+
+    glow = pow (glow, 60.0) * 0.5;
+    glow = pow (glow, horizon_attenuation);
+    glow = clamp (glow, 0.0, 1.0);
+
+    sun *= pow (horizon_attenuation * horizon_attenuation, 1.0 / 1.65);
+    glow *= pow (horizon_attenuation * horizon_attenuation, 1.0 / 2.0);
+
+    sun += glow;
+
+    return Sun_Color * sun;
+}
 
 void main ()
 {
     vec3 dir = normalize (Frag_Direction);
     vec3 sun = normalize (Sun_Direction);
+    vec2 dir_uv = CartesianToSphericalUV (dir);
+    vec2 sun_uv = CartesianToSphericalUV (sun);
 
-    /*
-    if (dir.y < 0)
-        discard;
-
-    // Atmospheric scattering
-    float mu = dot (dir, sun);
-    float rayleigh = 3.0 / (8.0 * 3.14) * (1.0 + mu * mu);
-    vec3 mie = (Kr + Km * (1.0 - g * g) / (2.0 + g * g) / pow (1.0 + g * g - 2.0 * g * mu, 1.5)) / (Br + Bm);
-
-    vec3 day_extinction = exp (-exp (-((dir.y + sun.y * 4.0) * (exp (-dir.y * 16.0) + 0.1) / 80.0) / Br)
-        * (exp (-dir.y * 16.0) + 0.1) * Kr / Br) * exp (-dir.y * exp (-dir.y * 8.0) * 4.0) * exp (-dir.y * 2.0) * 4.0;
-    vec3 night_extinction = vec3 (1.0 - exp (sun.y)) * 0.2;
-    vec3 extinction = mix (day_extinction, night_extinction, -sun.y * 0.2 + 0.5);
-
-    Frag_Color.rgb = rayleigh * mie * extinction;
-    */
-
-    vec2 uv = CartesianToSphericalUV (dir);
-
-    Frag_Color.rgb = texture (u_Texture, uv).rgb;
-
+    Frag_Color.rgb = ComputeSkyColor (sun, dir) + ComputeSunColor (sun, dir);
     Frag_Color.a = 1.0;
 }
