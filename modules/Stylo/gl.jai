@@ -122,7 +122,7 @@ GLRenderDrawLists :: (width : s32, height : s32)
     glActiveTexture (GL_TEXTURE0);
 
     prev_shader : GLuint = 0;
-    loc_view_proj, loc_texture, loc_use_texture : GLint;
+    loc_use_texture : GLint;
 
     view_projection_matrix := mat4f_orthographic_projection (0, xx width, 0, xx height, 0, 1);
 
@@ -147,11 +147,13 @@ GLRenderDrawLists :: (width : s32, height : s32)
             {
                 glUseProgram (cmd.shader);
 
-                loc_view_proj = glGetUniformLocation (cmd.shader, "u_View_Projection_Matrix");
-                loc_texture = glGetUniformLocation (cmd.shader, "u_Texture");
+                loc_view_proj := glGetUniformLocation (cmd.shader, "u_View_Projection_Matrix");
+                loc_viewport_size := glGetUniformLocation (cmd.shader, "u_Viewport_Size");
+                loc_texture := glGetUniformLocation (cmd.shader, "u_Texture");
                 loc_use_texture = glGetUniformLocation (cmd.shader, "u_Use_Texture");
 
                 glUniformMatrix4fv (loc_view_proj, 1, GL_TRUE, *view_projection_matrix.r0c0);
+                glUniform2f (loc_viewport_size, cast (float) width, cast (float) height);
                 glUniform1i (loc_texture, 0);
 
                 prev_shader = cmd.shader;
