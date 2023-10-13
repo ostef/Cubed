@@ -73,7 +73,7 @@ vec3 ComputeSunColor (vec3 sun_dir, vec3 view_dir)
     float glow = sun;
 
     sun = clamp (sun, 0.0, 1.0);
-    sun = pow (sun, 1000.0);
+    sun = pow (sun, 1500.0);
     sun *= 10.0;
     sun = clamp (sun, 0.0, 1.0);
 
