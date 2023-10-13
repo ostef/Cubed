@@ -2,6 +2,8 @@
 
 #program_import "Block_Definitions"
 
+#include "common.glsl"
+
 #type_vertex
 
 layout (location = 0) in vec3 a_Position;
@@ -21,14 +23,6 @@ out vec3 Grass_Color;
 
 uniform mat4 u_View_Projection_Matrix;
 uniform sampler2DArray u_Texture_Atlases;
-
-vec3 BilinearMix (vec3 a, vec3 b, vec3 c, vec3 d, float s, float t)
-{
-    vec3 x = mix (a, b, s);
-    vec3 y = mix (c, d, s);
-
-    return mix (x, y, t);
-}
 
 void main ()
 {

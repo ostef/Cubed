@@ -2,6 +2,7 @@ g_block_shader : GLuint;
 g_foliage_shader : GLuint;
 g_skinned_mesh_shader : GLuint;
 g_static_mesh_shader : GLuint;
+g_sky_shader : GLuint;
 
 // We use a texture array of 6 textures to store our texture atlas for each side
 // of the blocks. Atlas[BlockFace] is the texture atlas for a given block face
@@ -14,6 +15,7 @@ g_all_texture_atlases : [6]GLuint; // We also have separate textures for each fa
 
 g_grass_overlay_texture : GLuint;
 g_destroy_stages_texture : GLuint;
+g_skybox_texture : GLuint;
 
 g_block_shader_attribs : struct
 {
@@ -115,6 +117,8 @@ GLSL
 
 ReloadShaders :: () -> bool
 {
+    Print_Shader_On_Error :: true;
+
     GetAttribLocation :: inline (shader : GLuint, $name : string, location := #caller_location) -> GLint
     {
         loc := glGetAttribLocation (shader, name);
@@ -162,7 +166,7 @@ ReloadShaders :: () -> bool
         if !ok
             return false;
 
-        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = false);
+        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = Print_Shader_On_Error);
         if !new_shader
             return false;
 
@@ -189,7 +193,7 @@ ReloadShaders :: () -> bool
         if !ok
             return false;
 
-        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = false);
+        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = Print_Shader_On_Error);
         if !new_shader
             return false;
 
@@ -215,7 +219,7 @@ ReloadShaders :: () -> bool
         if !ok
             return false;
 
-        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = false);
+        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = Print_Shader_On_Error);
         if !new_shader
             return false;
 
@@ -243,12 +247,29 @@ ReloadShaders :: () -> bool
         if !ok
             return false;
 
-        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = false);
+        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = Print_Shader_On_Error);
         if !new_shader
             return false;
 
         glDeleteProgram (g_static_mesh_shader);
         g_static_mesh_shader = new_shader;
+    }
+
+    {
+        TemporaryStorageScope ();
+
+        pp : ShaderPreprocessor;
+        InitShaderPreprocessor (*pp, "shaders/sky.glsl", shader_exports);
+        ok, vertex_source, geometry_source, fragment_source := PreprocessShaderSource (*pp);
+        if !ok
+            return false;
+
+        new_shader := GL_Utils.CreateShaderProgram (vertex_source, fragment_source, geometry_source, print_shader_on_error = Print_Shader_On_Error);
+        if !new_shader
+            return false;
+
+        glDeleteProgram (g_sky_shader);
+        g_sky_shader = new_shader;
     }
 
     return true;
@@ -267,6 +288,14 @@ DrawInit :: (textures_directory : string, width : s32, height : s32) -> bool
     if !g_steve_texture
     {
         LogError ("Could not load texture steve.png");
+        return false;
+    }
+
+    skybox_filename := FormatToCString ("%/skybox.jpg", textures_directory);
+    g_skybox_texture = LoadSingleTexture (skybox_filename);
+    if !g_skybox_texture
+    {
+        LogError ("Could not load texture skybox.jpg");
         return false;
     }
 

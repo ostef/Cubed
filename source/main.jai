@@ -91,6 +91,7 @@ g_physics_breakpoint_hit : bool;
 g_physics_step : bool;
 g_prev_keyboard_state : [SDL_NUM_SCANCODES]bool;
 g_prev_mouse_state : u32;
+g_day_night_time : float;
 
 Fixed_Delta_Time :: 1 / 60.0;
 
@@ -539,7 +540,7 @@ main :: ()
         UseFramebuffer (*g_framebuffers.main);
 
         glViewport (0, 0, xx window_w, xx window_h);
-        glClearColor (0.2, 0.3, 0.6, 1);
+        glClearColor (0, 0, 0, 0);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if g_camera_mode != .First_Person
@@ -588,6 +589,31 @@ main :: ()
         glViewport (0, 0, xx window_w, xx window_h);
         glClearColor (0, 0, 0, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        g_day_night_time += delta_time * 0.01;
+
+        Stylo.SetShader (g_sky_shader,
+            Stylo.ShaderParam1f (
+                glGetUniformLocation (g_sky_shader, "u_Day_Night_Time"),
+                g_day_night_time
+            ),
+            Stylo.ShaderParamMat4 (
+                glGetUniformLocation (g_sky_shader, "u_World_View"),
+                g_camera.view_matrix
+            ),
+            Stylo.ShaderParamMat4 (
+                glGetUniformLocation (g_sky_shader, "u_World_Projection"),
+                g_camera.projection_matrix
+            )
+        );
+
+        prev := Stylo.GetTexture ();
+        Stylo.SetTexture (g_skybox_texture);
+
+        Stylo.PushRect (.{0, 0}, .{xx window_w, xx window_h});
+
+        Stylo.SetTexture (prev);
+        Stylo.SetDefaultShader ();
 
         RenderFramebuffer (g_framebuffers.main);
         if g_camera_mode == .First_Person
