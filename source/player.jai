@@ -209,7 +209,7 @@ UpdatePlayer :: (world : *World, using player : *Player, delta_time : float, all
     anim_data.is_underwater = is_underwater;
     anim_data.smooth_movement_input = Linalg.lerp (anim_data.smooth_movement_input, movement_input, 0.3);
 
-    movement_t := Length (movement_input);
+    movement_t := Length (Vec2f.{movement_input.x, movement_input.z});
     if !is_on_ground || is_flying || is_underwater
         movement_t = 0;
 
