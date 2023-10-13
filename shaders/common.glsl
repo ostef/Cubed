@@ -1,4 +1,6 @@
 const float Pi = 3.1415927;
+const float To_Rads = Pi / 180.0;
+const float To_Degs = 180.0 / Pi;
 
 vec3 BilinearMix (vec3 a, vec3 b, vec3 c, vec3 d, float s, float t)
 {
@@ -11,8 +13,8 @@ vec3 BilinearMix (vec3 a, vec3 b, vec3 c, vec3 d, float s, float t)
 vec3 CartesianToSpherical (vec3 point)
 {
     float radius = length (point);
-    float polar = acos (point.y / radius);
     float azimuth = sign (point.z) * acos (point.x / length (point.xz));
+    float polar = acos (point.y / radius);
 
     return vec3 (radius, azimuth, polar);
 }
