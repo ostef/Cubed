@@ -117,7 +117,7 @@ void main ()
     {
         vec4 grass_overlay_sample = texture (u_Grass_Overlay, Block_Tex_Coords);
         grass_overlay_sample.rgb *= Grass_Color;
-        Frag_Color = mix (Frag_Color, grass_overlay_sample, grass_overlay_sample.a);
+        Frag_Color.rgb = mix (Frag_Color.rgb, grass_overlay_sample.rgb, grass_overlay_sample.a);
     }
 
     Frag_Color.rgb *= max (dot (Normal, light_direction), 0.25);
