@@ -164,3 +164,29 @@ InverseLerp :: (a : float, b : float, t : float) -> float #must #expand
 {
     return (t - a) / (b - a);
 }
+
+Round :: (value : float) -> float #must #expand
+{
+    return cast (float) (cast (int) (value + Sign (value) * 0.5));
+}
+
+SnapDown :: (value : float, grid_size : float) -> float #must #expand
+{
+    Math :: #import "Math";
+
+    return Math.floor (value / grid_size) * grid_size;
+}
+
+Snap :: (value : float, grid_size : float) -> float #must #expand
+{
+    Math :: #import "Math";
+
+    return Math.round (value / grid_size) * grid_size;
+}
+
+SnapUp :: (value : float, grid_size : float) -> float #must #expand
+{
+    Math :: #import "Math";
+
+    return Math.ceil (value / grid_size) * grid_size;
+}
