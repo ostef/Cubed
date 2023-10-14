@@ -9,7 +9,18 @@
 #import "Common";
 #import "Linalg";
 
+#scope_file
+
+Math :: #import "Math";
+
+#scope_export
+
 #load "gl.jai";
+
+Rect :: struct
+{
+    x, y, w, h : float;
+}
 
 Vertex :: struct
 {
@@ -389,6 +400,44 @@ PushVertices :: (count : s32) -> *Vertex #must
     return vtx;
 }
 
+PushTriangle :: (
+    p0 : Vec2f,
+    p1 : Vec2f,
+    p2 : Vec2f,
+    color : Vec4f,
+    uv0 : Vec2f,
+    uv1 : Vec2f,
+    uv2 : Vec2f
+)
+{
+    v := PushVertices (3);
+
+    v.position = p0;
+    v.tex_coords = uv0;
+    v.color = color;
+
+    v += 1;
+
+    v.position = p1;
+    v.tex_coords = uv1;
+    v.color = color;
+
+    v += 1;
+
+    v.position = p2;
+    v.tex_coords = uv2;
+    v.color = color;
+}
+
+PushRect :: inline (rect : Rect, color := Vec4f.{1,1,1,1}, uv_rect := Rect.{0, 0, 1, 1})
+{
+    PushRect (
+        .{rect.x, rect.y}, .{rect.x + rect.w, rect.y + rect.h},
+        color,
+        .{uv_rect.x, uv_rect.y}, .{uv_rect.x + uv_rect.w, uv_rect.y + uv_rect.h}
+    );
+}
+
 PushRect :: (min : Vec2f, max : Vec2f, color := Vec4f.{1,1,1,1}, uv_min := Vec2f.{0,0}, uv_max := Vec2f.{1,1})
 {
     v := PushVertices (6);
@@ -426,4 +475,61 @@ PushRect :: (min : Vec2f, max : Vec2f, color := Vec4f.{1,1,1,1}, uv_min := Vec2f
     v.position = max;
     v.tex_coords = uv_max;
     v.color = color;
+}
+
+PushSemiCircle :: (
+    center : Vec2f,
+    radius : float,
+    start_angle : float,
+    angle : float,
+    color := Vec4f.{1,1,1,1},
+    resolution := 0,
+    uv_center := Vec2f.{ 0.5, 0.5 },
+    uv_radius :=  0.5
+)
+{
+    if radius <= 0
+        return;
+
+    if resolution <= 0
+        resolution = Max (cast (int) radius, 20);
+
+    theta := -angle / cast (float) resolution;
+    tan_factor := Math.tan (theta);
+    rad_factor := Math.cos (theta);
+    p := Vec2f.{ Math.cos (-start_angle), Math.sin (-start_angle) };
+
+    for 0..resolution - 1
+    {
+        p1 := p;
+
+        t := Vec2f.{-p.y, p.x};
+
+        p += t * tan_factor;
+        p *= rad_factor;
+
+        p2 := p;
+
+        PushTriangle (
+            center,
+            center + p1 * radius,
+            center + p2 * radius,
+            color,
+            uv0 = uv_center,
+            uv1 = uv_center + p1 * uv_radius,
+            uv2 = uv_center + p2 * uv_radius,
+        );
+    }
+}
+
+PushCircle :: (
+    center : Vec2f,
+    radius : float,
+    color := Vec4f.{1,1,1,1},
+    resolution := 0,
+    uv_center := Vec2f.{0.5, 0.5},
+    uv_radius := 0.5
+)
+{
+    PushSemiCircle (center, radius, 0, 2 * Math.PI, color, resolution, uv_center, uv_radius);
 }
