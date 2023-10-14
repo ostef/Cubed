@@ -22,6 +22,9 @@ Math :: #import "Math";
 Rect :: struct
 {
     x, y, w, h : float;
+
+    #place x;
+    position, size : Vec2f;
 }
 
 Vertex :: struct
