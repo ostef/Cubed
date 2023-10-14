@@ -53,18 +53,25 @@ OverflowBehavior :: enum
     Wrap;
 }
 
-// @Todo
-Anchor :: enum
+Anchor :: enum_flags
 {
-    Top_Left;
-    Top_Center;
-    Top_Right;
-    Center_Left;
-    Center;
-    Center_Right;
-    Bottom_Left;
-    Bottom_Center;
-    Bottom_Right;
+    Top :: 0;
+    Left :: 0;
+
+    X_Center :: 0x01;
+    Y_Center :: 0x02;
+    Right    :: 0x04;
+    Bottom   :: 0x08;
+
+    Top_Left   :: Top | Left;
+    Top_Center :: Top | X_Center;
+    Top_Right  :: Top | Right;
+    Center_Left  :: Y_Center | Left;
+    Center       :: Y_Center | X_Center;
+    Center_Right :: Y_Center | Right;
+    Bottom_Left   :: Bottom | Left;
+    Bottom_Center :: Bottom | X_Center;
+    Bottom_Right  :: Bottom | Right;
 }
 
 #add_context stylo_font : *Font;
@@ -321,6 +328,7 @@ PushFormattedText :: (
     height : u32,
     rect : Rect,
     color := Vec4f.{1,1,1,1},
+    anchor := Anchor.Top_Left,
     overflow := OverflowBehavior.None,
     font : *Font = null
 ) -> Rect
@@ -335,6 +343,17 @@ PushFormattedText :: (
     pen := Vec2f.{0, cast (float) page.ascent};
     width : float;
     size := CalculateTextExtents (text, rect, overflow, page);
+    offset : Vec2f;
+
+    if anchor & .Y_Center
+        offset.y = -size.y * 0.5;
+    else if anchor & .Bottom
+        offset.y = -size.y;
+
+    if anchor & .X_Center
+        offset.x = -size.x * 0.5;
+    else if anchor & .Right
+        offset.x = -size.x;
 
     for codepoint, i : MakeUtf8String (text)
     {
@@ -369,8 +388,8 @@ PushFormattedText :: (
             #if Origin_Top_Left
             {
                 glyph_rect := Rect.{
-                    Round (rect.x) + pen.x + glyph.bitmap_left,
-                    Round (rect.y) + pen.y - glyph.bitmap_top,
+                    Round (rect.x + offset.x) + pen.x + glyph.bitmap_left,
+                    Round (rect.y + offset.y) + pen.y - glyph.bitmap_top,
                     xx glyph.bitmap_width,
                     xx glyph.bitmap_height
                 };
@@ -378,8 +397,8 @@ PushFormattedText :: (
             else
             {
                 glyph_rect := Rect.{
-                    Round (rect.x) + pen.x + glyph.bitmap_left,
-                    Round (rect.y + rect.h) - pen.y + glyph.bitmap_top - glyph.bitmap_height,
+                    Round (rect.x + offset.x) + pen.x + glyph.bitmap_left,
+                    Round (rect.y + rect.h - offset.y) - pen.y + glyph.bitmap_top - glyph.bitmap_height,
                     xx glyph.bitmap_width,
                     xx glyph.bitmap_height
                 };
@@ -402,7 +421,7 @@ PushFormattedText :: (
     }
 
     #if Origin_Top_Left
-        return .{Round (rect.x), Round (rect.y), size.x, size.y};
+        return .{Round (rect.x + offset.x), Round (rect.y + offset.y), size.x, size.y};
     else
-        return .{Round (rect.x), Round (rect.y + rect.h - size.y), size.x, size.y};
+        return .{Round (rect.x + offset.x), Round (rect.y + rect.h - size.y - offset.y), size.x, size.y};
 }
