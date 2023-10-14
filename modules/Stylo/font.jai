@@ -330,8 +330,7 @@ PushFormattedText :: (
     height : u32,
     rect : Rect,
     color := Vec4f.{1,1,1,1},
-    align := Align.Top_Left,
-    anchor := Anchor.Top_Left,
+    align := Vec2f.{0,0},
     overflow := OverflowBehavior.None,
     font : *Font = null
 ) -> Rect
@@ -346,27 +345,10 @@ PushFormattedText :: (
     pen := Vec2f.{0, cast (float) page.ascent};
     width : float;
     size := CalculateTextExtents (text, rect, overflow, page);
-    offset : Vec2f;
-
-    if anchor & .Y_Center
-        offset.y -= size.y * 0.5;
-    else if anchor & .Bottom
-        offset.y -= size.y;
-
-    if anchor & .X_Center
-        offset.x -= size.x * 0.5;
-    else if anchor & .Right
-        offset.x -= size.x;
-
-    if align & .Y_Center
-        offset.y += rect.h * 0.5;
-    else if align & .Bottom
-        offset.y += rect.h;
-
-    if align & .X_Center
-        offset.x += rect.w * 0.5;
-    else if align & .Right
-        offset.x += rect.w;
+    offset := Vec2f.{
+        rect.w * align.x - size.x * align.x,
+        rect.h * align.y - size.y * align.y
+    };
 
     for codepoint, i : MakeUtf8String (text)
     {
