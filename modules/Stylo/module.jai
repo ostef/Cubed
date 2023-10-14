@@ -16,6 +16,7 @@ Math :: #import "Math";
 
 #scope_export
 
+#load "font.jai";
 #load "gl.jai";
 
 Rect :: struct
