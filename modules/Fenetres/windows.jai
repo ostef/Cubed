@@ -236,6 +236,9 @@ CreateWindow :: (
     if flags & .Topmost
         ex_style |= Win32.WS_EX_TOPMOST;
 
+    if flags & .No_Resize
+        style ^= Win32.WS_THICKFRAME | Win32.WS_MAXIMIZEBOX;
+
     rect : Win32.RECT;
     if x != Win32.CW_USEDEFAULT
         rect.left = x;

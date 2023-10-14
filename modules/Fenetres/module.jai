@@ -11,6 +11,7 @@ WindowFlags :: enum_flags
     Borderless;
     No_Taskbar_Icon;
     Topmost;
+    No_Resize;
 }
 
 SystemCursor :: enum
