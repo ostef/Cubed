@@ -71,7 +71,6 @@ SetShaderParam :: inline (param : ShaderParam)
 GLRenderDrawLists :: (width : s32, height : s32)
 {
     #import "GL";
-
     GL_Utils :: #import "GL_Utils";
 
     GL_Utils.StateBlock (GL_VERTEX_ARRAY_BINDING, (prev : GLuint) {glBindVertexArray (prev);});
@@ -124,7 +123,10 @@ GLRenderDrawLists :: (width : s32, height : s32)
     prev_shader : GLuint = 0;
     loc_use_texture : GLint;
 
-    view_projection_matrix := mat4f_orthographic_projection (0, xx width, 0, xx height, 0, 1);
+    #if Origin_Top_Left
+        view_projection_matrix := mat4f_orthographic_projection (0, xx width, xx height, 0, 0, 1);
+    else
+        view_projection_matrix := mat4f_orthographic_projection (0, xx width, 0, xx height, 0, 1);
 
     list := g_first_draw_list;
     while list
