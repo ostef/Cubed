@@ -177,3 +177,47 @@ GLRenderDrawLists :: (width : s32, height : s32)
     g_first_draw_list = null;
     g_current_draw_list = null;
 }
+
+CreateTexture :: (width : u32, height : u32, data : *void) -> TextureHandle #must
+{
+    #import "GL";
+    GL_Utils :: #import "GL_Utils";
+
+    GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D, prev);});
+
+    result : GLuint;
+    glGenTextures (1, *result);
+    glBindTexture (GL_TEXTURE_2D, result);
+
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, xx width, xx height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+    return cast (TextureHandle) result;
+}
+
+BlitToTexture :: (texture : TextureHandle, x : s32, y : s32, width : u32, height : u32, data : *void)
+{
+    #import "GL";
+    GL_Utils :: #import "GL_Utils";
+
+    GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D, prev);});
+
+    glBindTexture (GL_TEXTURE_2D, texture);
+    glTexSubImage2D (GL_TEXTURE_2D, 0, x, y, xx width, xx height, GL_RGBA, GL_UNSIGNED_BYTE, data);
+}
+
+#scope_module
+
+UseTexture :: inline (texture : TextureHandle)
+{
+    #import "GL";
+    GL_Utils :: #import "GL_Utils";
+
+    glBindTexture (GL_TEXTURE_2D, texture);
+}
+
+#scope_export
