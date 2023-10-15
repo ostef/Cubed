@@ -324,6 +324,20 @@ GetDrawCommand :: () -> *DrawCommand #must
     return *list.commands[list.command_count - 1];
 }
 
+LoadTexture :: (filename : string) -> TextureHandle #must
+{
+    #import "stb_image";
+
+    w, h : s32;
+    data := stbi_load (StringCloneToCString (filename, Temp), *w, *h, null, 4);
+    if !data
+        return 0;
+
+    defer stbi_image_free (data);
+
+    return CreateTexture (xx w, xx h, data);
+}
+
 GetTexture :: inline () -> TextureHandle #must
 {
     return GetDrawCommand ().texture;
