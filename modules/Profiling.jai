@@ -1,6 +1,26 @@
-Enable_Profiling :: true;
+#module_parameters (Enable_Profiling := true);
 
+#import "Common";
+#import "String_Builder";
+#import "Hash_Map";
+#import "Array";
+
+#scope_file
+
+Basic :: #import "Basic";
+using, only (.["+", "-", "*", "/"]) Basic;
+
+Threads :: #import "Thread";
 Hash :: #import "Hash";
+
+operator== :: inline (a : Source_Code_Location, b : Source_Code_Location) -> bool
+{
+    return a.fully_pathed_filename == b.fully_pathed_filename
+        && a.line_number == b.line_number
+        && a.character_number == b.character_number;
+}
+
+#scope_export
 
 ProfilingEntriesMap :: HashMap (
     ProfilingKey, ProfilingData,
