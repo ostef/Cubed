@@ -1,5 +1,5 @@
 #import "Linalg";
-#import "Math";
+Math :: #import "Math";
 #import "SDL";
 
 ImplData :: struct
@@ -73,7 +73,7 @@ NewFrame :: (fov : float, mouse_pos : Vec2f, camera_transform : Mat4f, projectio
     }
     else
     {
-        app.projScaleY = 2 * tan ((fov * PI / 180.0) * 0.5);
+        app.projScaleY = 2 * Math.tan ((fov * Math.PI / 180.0) * 0.5);
 
         app.cursorRayOrigin = app.viewOrigin;
 
