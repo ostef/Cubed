@@ -51,14 +51,20 @@ Assert :: (assertion : bool, fmt_str := "", args : ..Any, location := #caller_lo
     }
 }
 
+#add_context panicking := false;
+
 Panic :: (fmt_str := "", args : ..Any, location := #caller_location) #expand
 {
     if context.handling_assertion_failure
         return;
 
     context.handling_assertion_failure = true;
+    context.panicking = true;
+
     message := FormatString (fmt_str, ..args);
     context.assertion_failed (location, message);
+
+    context.panicking = false;
     context.handling_assertion_failure = false;
 }
 
