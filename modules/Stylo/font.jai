@@ -13,6 +13,8 @@ Font :: struct
     pages : HashMap (u32, FontPage);
 }
 
+// @Todo: optimize for ASCII/Latin
+
 FontPage :: struct
 {
     font : *Font;
@@ -51,30 +53,8 @@ OverflowBehavior :: enum
     None;
     Clip;   // @Todo
     Wrap;
+    Wrap_Word; // @Todo
 }
-
-Anchor :: enum_flags
-{
-    Top :: 0;
-    Left :: 0;
-
-    X_Center :: 0x01;
-    Y_Center :: 0x02;
-    Right    :: 0x04;
-    Bottom   :: 0x08;
-
-    Top_Left   :: Top | Left;
-    Top_Center :: Top | X_Center;
-    Top_Right  :: Top | Right;
-    Center_Left  :: Y_Center | Left;
-    Center       :: Y_Center | X_Center;
-    Center_Right :: Y_Center | Right;
-    Bottom_Left   :: Bottom | Left;
-    Bottom_Center :: Bottom | X_Center;
-    Bottom_Right  :: Bottom | Right;
-}
-
-Align :: Anchor;
 
 #add_context stylo_font : *Font;
 
