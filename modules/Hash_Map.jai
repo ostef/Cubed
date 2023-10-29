@@ -1,3 +1,5 @@
+// @Cleanup: factor the code that is common from Hash_Map and Hash_Set
+
 #import "Common";
 #import "Hash";
 
@@ -37,9 +39,9 @@ HashMap :: struct (
 }
 
 Hash_Map_Min_Capacity :: 32;
-Hash_Never_Occupied :: 0;
-Hash_Removed        :: 1;
-Hash_First_Occupied :: 2;
+Hash_Map_Never_Occupied_Hash :: 0;
+Hash_Map_Removed_Hash        :: 1;
+Hash_Map_First_Occupied_Hash :: 2;
 
 HashMapGetMinCapacityForElementCount :: inline (load_factor : s64, count : s64) -> s64 #must
 {
@@ -71,7 +73,7 @@ HashMapInit :: inline (map : *HashMap, capacity : s64, allocator := context.allo
     map.entries = Alloc (map.Entry, capacity, allocator);
 
     for i : 0..map.allocated - 1
-        map.entries[i].hash = Hash_Never_Occupied;
+        map.entries[i].hash = Hash_Map_Never_Occupied_Hash;
 }
 
 HashMapInitFromPreallocatedMemory :: inline (map : *HashMap, data : *void, capacity : s64, allocator : Allocator)
@@ -83,7 +85,7 @@ HashMapInitFromPreallocatedMemory :: inline (map : *HashMap, data : *void, capac
     map.entries = data;
 
     for i : 0..map.allocated - 1
-        map.entries[i].hash = Hash_Never_Occupied;
+        map.entries[i].hash = Hash_Map_Never_Occupied_Hash;
 }
 
 HashMapFree :: inline (using map : *HashMap)
@@ -101,7 +103,7 @@ HashMapClear :: inline (using map : *HashMap)
     occupied = 0;
 
     for i : 0..allocated - 1
-        entries[i].hash = Hash_Never_Occupied;
+        entries[i].hash = Hash_Map_Never_Occupied_Hash;
 }
 
 HashMapGrow :: (map : *HashMap)
@@ -123,11 +125,11 @@ HashMapGrow :: (map : *HashMap)
     map.allocated = new_capacity;
 
     for i : 0..map.allocated - 1
-        map.entries[i].hash = Hash_Never_Occupied;
+        map.entries[i].hash = Hash_Map_Never_Occupied_Hash;
 
     for entry : old_entries
     {
-        if entry.hash >= Hash_First_Occupied
+        if entry.hash >= Hash_Map_First_Occupied_Hash
             HashMapInsert (map, entry.key, entry.value);
     }
 }
@@ -136,12 +138,12 @@ HashMapProbe :: (map : HashMap, key : map.Key) -> h : map.HashType, index : s64,
 {
     mask := cast, trunc (map.HashType) (map.allocated - 1);
     hash := map.HashKey (key);
-    if hash < Hash_First_Occupied
-        hash += Hash_First_Occupied;
+    if hash < Hash_Map_First_Occupied_Hash
+        hash += Hash_Map_First_Occupied_Hash;
 
     index := hash & mask;
     increment := 1 + (hash >> 27);
-    while map.entries[index].hash != Hash_Never_Occupied
+    while map.entries[index].hash != Hash_Map_Never_Occupied_Hash
     {
         entry := *map.entries[index];
 
@@ -194,7 +196,7 @@ HashMapRemove :: inline (map : *HashMap, key : map.Key) -> found : bool, removed
         return false, DefaultValue (map.Value);
 
     entry := *map.entries[index];
-    entry.hash = Hash_Removed;
+    entry.hash = Hash_Map_Removed_Hash;
     map.count -= 1;
 
     return true, entry.value;
@@ -245,7 +247,7 @@ for_expansion :: (map : *HashMap, body : Code, flags : For_Flags) #expand
 
     for * <=((flags & .REVERSE) != 0) entry, i : entries
     {
-        if entry.hash < Hash_First_Occupied
+        if entry.hash < Hash_Map_First_Occupied_Hash
             continue;
 
         `it_index := entry.key;
@@ -254,6 +256,6 @@ for_expansion :: (map : *HashMap, body : Code, flags : For_Flags) #expand
         else
             `it := entry.value;
 
-        #insert (remove = { entry.hash = Hash_Removed; map.count -= 1; }) body;
+        #insert (remove = { entry.hash = Hash_Map_Removed_Hash; map.count -= 1; }) body;
     }
 }
