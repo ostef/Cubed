@@ -12,6 +12,7 @@ GL_Utils :: #import "GL_Utils";
 #import "Random64"; // @Todo: remove this and use the one from the compiler
 #import "Binary_Reader";
 #import "File";
+#import "Profiling";
 
 Threads :: #import "Thread";
 System :: #import "System";
@@ -50,7 +51,6 @@ Ceil :: Math.ceil;
 #load "player.jai";
 #load "biomes.jai";
 #load "noise_simd.jai";
-#load "profiling.jai";
 #load "mesh.jai";
 #load "anim.jai";
 #load "anim_state.jai";
