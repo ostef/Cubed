@@ -27,6 +27,40 @@ Rect :: struct
     position, size : Vec2f;
 }
 
+MakeRectMinMax :: inline (min : Vec2f, max : Vec2f) -> Rect #must
+{
+    return .{min.x, min.y, max.x - min.x, max.y - min.y};
+}
+
+MakeRectMinMax :: inline (min_x : float, min_y : float, max_x : float, max_y : float) -> Rect #must
+{
+    return .{min_x, min_y, max_x - min_x, max_y - min_y};
+}
+
+RectMinMax :: inline (using rect : Rect) -> min : Vec2f, max : Vec2f
+{
+    return .{x, y}, .{x + w, y + h};
+}
+
+TruncateRect :: inline (rect : *Rect, left : float, top : float, right : float, bottom : float)
+{
+    rect.x += left;
+    rect.w -= left;
+    rect.w -= right;
+
+    rect.y += top;
+    rect.h -= top;
+    rect.h -= bottom;
+}
+
+TruncateRect :: inline (rect : Rect, left : float, top : float, right : float, bottom : float) -> Rect #must
+{
+    result := rect;
+    TruncateRect (*result, left, top, right, bottom);
+
+    return result;
+}
+
 Vertex :: struct
 {
     position : Vec2f;
