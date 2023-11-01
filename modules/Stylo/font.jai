@@ -1,7 +1,6 @@
 #import "Array";
 #import "Hash_Map";
 #import "freetype-2.12.1";
-#import "Unicode_Strings";
 
 Default_Glyph_Atlas_Width  :: 1024;
 Default_Glyph_Atlas_Height :: 1024;
