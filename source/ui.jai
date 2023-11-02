@@ -13,8 +13,8 @@ GenerateNoiseTexture :: (tex : *GLuint,
     octaves := Clamp (params.octaves, 1, Perlin_Fractal_Max_Octaves);
     offsets := MakeArray (octaves, static_offsets.data);
 
-    rng : RNG;
-    RandomSeed (*rng, seed);
+    rng : Random_State;
+    random_seed (*rng, seed);
     PerlinGenerateOffsets (*rng, offsets);
 
     buffer := Alloc (u32, width * height, Temp);
@@ -181,7 +181,7 @@ UIShowPerlinTestWindow :: (opened : *bool)
 
     if ImGui.Button ("Randomize") || !texture_handle
     {
-        seed = RandomGetU64 (*context.random_number_generator);
+        seed = random_get ();
         should_generate = true;
     }
 
@@ -503,10 +503,10 @@ UIShowTerrainGeneratorWindow :: (opened : *bool)
 
     if ImGui.Button ("Randomize")
     {
-        rng : RNG;
-        RandomSeed (*rng, Basic.current_time_monotonic ().low);
+        rng : Random_State;
+        random_seed (*rng, Basic.current_time_monotonic ().low);
 
-        generator.seed = RandomGetU64 (*rng);
+        generator.seed = random_get (*rng);
         should_generate = true;
     }
 

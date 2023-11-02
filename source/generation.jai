@@ -589,8 +589,8 @@ CalculateSplineRange :: (using spline : Spline) -> Vec2f
 
 GenerateNoiseOffsets :: (using generator : *Generator)
 {
-    rng : RNG;
-    RandomSeed (*rng, seed);
+    rng : Random_State;
+    random_seed (*rng, seed);
 
     for noise_offsets
     {

@@ -247,21 +247,21 @@ PerlinFractalNoise :: (using params : NoiseParams, offsets : []Vec3f, x : float,
     return result / max_amplitude;
 }
 
-PerlinGenerateOffsets :: inline (rng : *RNG, offsets : []Vec2f)
+PerlinGenerateOffsets :: inline (rng : *Random_State, offsets : []Vec2f)
 {
     for * offsets
     {
-        it.x = RandomRangeFloat (rng, -10000, 10000);
-        it.y = RandomRangeFloat (rng, -10000, 10000);
+        it.x = random_get_within_range (rng, -10000, 10000);
+        it.y = random_get_within_range (rng, -10000, 10000);
     }
 }
 
-PerlinGenerateOffsets :: inline (rng : *RNG, offsets : []Vec3f)
+PerlinGenerateOffsets :: inline (rng : *Random_State, offsets : []Vec3f)
 {
     for * offsets
     {
-        it.x = RandomRangeFloat (rng, -10000, 10000);
-        it.y = RandomRangeFloat (rng, -10000, 10000);
-        it.z = RandomRangeFloat (rng, -10000, 10000);
+        it.x = random_get_within_range (rng, -10000, 10000);
+        it.y = random_get_within_range (rng, -10000, 10000);
+        it.z = random_get_within_range (rng, -10000, 10000);
     }
 }

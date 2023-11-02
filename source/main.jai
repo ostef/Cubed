@@ -8,7 +8,7 @@ using, only (.["+", "-", "*", "/"]) Basic;
 #import "SDL";
 #import "GL";
 GL_Utils :: #import "GL_Utils";
-#import "Random64"; // @Todo: remove this and use the one from the compiler
+#import "Random";
 #import "Binary_Reader";
 #import "File";
 #import "Profiling";

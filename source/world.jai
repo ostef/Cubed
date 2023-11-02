@@ -369,11 +369,11 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
 
     ProfileBlock ();
 
-    surface_thickness_rng : RNG;
-    RandomSeed (*surface_thickness_rng, world.seed + 57483593 + HashS64 (chunk.x) + HashS64 (chunk.z));
+    surface_thickness_rng : Random_State;
+    random_seed (*surface_thickness_rng, world.seed + 57483593 + HashS64 (chunk.x) + HashS64 (chunk.z));
 
-    grass_rng : RNG;
-    RandomSeed (*grass_rng, world.seed + 67649503 + HashS64 (chunk.x) + HashS64 (chunk.z));
+    grass_rng : Random_State;
+    random_seed (*grass_rng, world.seed + 67649503 + HashS64 (chunk.x) + HashS64 (chunk.z));
 
     surface_height_map : [Chunk_Size * Chunk_Size]float = ---;
     surface_thickness_map : [Chunk_Size * Chunk_Size]float = ---;
@@ -396,7 +396,7 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
                 biome := *Biomes[chunk.biome_values[index].biome_id];
 
                 surface_height_map[index] = terrain_params[TerrainParam.Surface_Height];
-                surface_thickness_map[index] = biome.surface_layer_thickness + RandomRangeFloat (*surface_thickness_rng, -biome.surface_layer_fluctuation, biome.surface_layer_fluctuation);
+                surface_thickness_map[index] = biome.surface_layer_thickness + random_get_within_range (*surface_thickness_rng, -biome.surface_layer_fluctuation, biome.surface_layer_fluctuation);
             }
         }
     }
@@ -426,7 +426,7 @@ ChunkGenerate :: (world : World, chunk : *Chunk)
                         if y <= world.surface_params.water_level
                             chunk.blocks[index].id = biome.fluid_block;
                         else if y == cast (int) surface_height + 1
-                            chunk.blocks[index].id = ifx RandomChance (*grass_rng, 0.2) then .Grass_Foliage else .Air;
+                            chunk.blocks[index].id = ifx random_get_zero_to_one_new (*grass_rng) < 0.2 then .Grass_Foliage else .Air;
                         else
                             chunk.blocks[index].id = .Air;
                     }
