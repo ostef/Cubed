@@ -1,19 +1,64 @@
 #module_parameters () (Enable_Asserts := true);
 
-#scope_module
+Formatter :: Basic.Formatter;
+FormatInt :: Basic.FormatInt;
+FormatFloat :: Basic.FormatFloat;
+FormatStruct :: Basic.FormatStruct;
+FormatArray :: Basic.FormatArray;
 
-Fmt :: #import "Fmt";
+FormatString :: (format_string : string, args : ..Any) -> string #must
+{
+    builder : StringBuilder;
+    builder.allocator = context.allocator;
+    StringBuilderAppend (*builder, format_string, ..args);
 
-#scope_export
+    return StringBuilderBuild (*builder);
+}
+@PrintLike
 
-FormatString :: Fmt.format;
-FormatToCString :: Fmt.format_to_cstring;
-Print :: Fmt.print;
-Println :: Fmt.println;
+FormatString :: (allocator : Allocator, format_string : string, args : ..Any) -> string #must
+{
+    builder : StringBuilder;
+    builder.allocator = allocator;
+    StringBuilderAppend (*builder, format_string, ..args);
+
+    return StringBuilderBuild (*builder, allocator = allocator);
+}
+@PrintLike
+
+FormatToCString :: (format_string : string, args : ..Any) -> *u8 #must
+{
+    builder : StringBuilder;
+    builder.allocator = context.allocator;
+    StringBuilderAppend (*builder, format_string, ..args);
+
+    return StringBuilderBuildCstr (*builder);
+}
+@PrintLike
+
+FormatToCString :: (allocator : Allocator, format_string : string, args : ..Any) -> *u8 #must
+{
+    builder : StringBuilder;
+    builder.allocator = allocator;
+    StringBuilderAppend (*builder, format_string, ..args);
+
+    return StringBuilderBuildCstr (*builder, allocator = allocator);
+}
+@PrintLike
+
+Print :: Basic.print;
+
+Println :: inline (format_string : string, args : ..Any, to_standard_error := false) -> s64
+{
+    return Print (format_string, ..args, to_standard_error = to_standard_error)
+        + Print ("\n", to_standard_error = to_standard_error);
+}
+@PrintLike
 
 #load "memory.jai";
 #load "array.jai";
 #load "string.jai";
+#load "string_builder.jai";
 #load "logging.jai";
 
 #if Basic.MEMORY_DEBUGGER
@@ -28,7 +73,7 @@ Println :: Fmt.println;
         .{"StringJoin", "Common"},
         .{"FormatString", "Common"},
         .{"FormatToCString", "Common"},
-        .{"ArrayReserve", "Array"},
+        .{"ArrayReserve", "Common"},
         .{"HashMapInit", "Hash_Map"},
         .{"HashMapGrow", "Hash_Map"},
     ];

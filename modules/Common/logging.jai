@@ -1,5 +1,3 @@
-#import "String_Builder";
-
 SetContextLogger :: inline (data : *void, proc : Logger)
 {
     context.logger_data = data;
@@ -31,11 +29,7 @@ ConsoleLoggerProc :: (message : string, data : *void, info : Log_Info)
     if message[message.count - 1] != #char "\n"
         StringBuilderAppend (*builder, "\n");
 
-    str : string = ---;
-    if StringBuilderIsContiguous (*builder)
-        str = MakeString (builder.count, builder.base_page.data.data);
-    else
-        str = StringBuilderBuild (*builder, allocator = Temp);
+    str := StringBuilderBuild (*builder, allocator = Temp);
 
     write_string (str, to_standard_error = (info.common_flags | .ERROR) != 0);
 }

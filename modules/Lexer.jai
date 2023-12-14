@@ -129,8 +129,6 @@ LexerSkipWhitespacesAndComments :: inline (using lexer : *Lexer)
 
 LexerScanQuotedString :: (using lexer : *Lexer, allowed_quotes := "\"", allocator := context.allocator) -> string, bool
 {
-    #import "String_Builder";
-
     if LexerIsAtEnd (lexer)
         return "", false;
 

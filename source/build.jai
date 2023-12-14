@@ -11,6 +11,7 @@ build :: ()
     options.output_executable_name = "cubed";
     options.import_path = get_build_options ().import_path;
     options.Commonly_Propagated = get_build_options ().Commonly_Propagated;
+    // options.enable_bytecode_inliner = false;
     options.stack_trace = true;
 
     set_build_options (options, ws);

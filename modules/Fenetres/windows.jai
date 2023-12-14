@@ -594,11 +594,9 @@ VKToKeyCode :: (vk : s32) -> KeyCode #must #no_context
 {
     #insert -> string
     {
-        #import "String_Builder";
-
         builder : StringBuilder;
 
-        StringBuilderAppendLine (*builder, "if vk ==\n{{");
+        StringBuilderAppendLine (*builder, "if vk ==\n{");
         for i : 0..256
         {
             for VK_To_Key_Code_Map
@@ -622,11 +620,9 @@ KeyCodeToVK :: (key_code : KeyCode) -> s32 #must #no_context
 {
     #insert -> string
     {
-        #import "String_Builder";
-
         builder : StringBuilder;
 
-        StringBuilderAppendLine (*builder, "if key_code ==\n{{");
+        StringBuilderAppendLine (*builder, "if key_code ==\n{");
         for i : 0..256
         {
             for VK_To_Key_Code_Map

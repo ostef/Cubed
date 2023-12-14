@@ -5,8 +5,6 @@
 
 MakeShaderStringWithLineNumbers :: (shader : string) -> string #must
 {
-    #import "String_Builder";
-
     line_count := 1;
     for i : 0..shader.count - 1
     {
@@ -43,7 +41,11 @@ MakeShaderStringWithLineNumbers :: (shader : string) -> string #must
             line_str.count += 1;
         }
 
-        StringBuilderAppend (*builder, " {:*} | %", line_count_len, line, line_str);
+        line_value : FormatInt;
+        line_value.value = line;
+        line_value.minimum_digits = line_count_len;
+        line_value.padding = #char " ";
+        StringBuilderAppend (*builder, " % | %", line_value, line_str);
 
         line_str.data += line_str.count;
     }

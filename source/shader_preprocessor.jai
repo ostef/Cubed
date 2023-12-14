@@ -142,7 +142,7 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
             LexerAdvance (pp, "#type_vertex".count);
 
             current_builder = *vertex_builder;
-            StringBuilderAppend (current_builder, header_builder);
+            StringBuilderAppendBuilder (current_builder, *header_builder);
             StringBuilderAppend (current_builder, "#line %", current_lexer.line + 1);
         }
         else if LexerEqualsAlphaNumeric (pp, "#type_geometry")
@@ -158,7 +158,7 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
             LexerAdvance (pp, "#type_geometry".count);
 
             current_builder = *geometry_builder;
-            StringBuilderAppend (current_builder, header_builder);
+            StringBuilderAppendBuilder (current_builder, *header_builder);
             StringBuilderAppend (current_builder, "#line %", current_lexer.line + 1);
         }
         else if LexerEqualsAlphaNumeric (pp, "#type_fragment")
@@ -174,7 +174,7 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
             LexerAdvance (pp, "#type_fragment".count);
 
             current_builder = *fragment_builder;
-            StringBuilderAppend (current_builder, header_builder);
+            StringBuilderAppendBuilder (current_builder, *header_builder);
             StringBuilderAppend (current_builder, "#line %", current_lexer.line + 1);
         }
         else if LexerMatchAlphaNumeric (pp, "#include")
@@ -185,7 +185,7 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
             if !ok
                 Error (pp, "Expected a string for #include filename");
 
-            filename = FormatString (Temp, "{}{}", String.path_strip_filename (current_lexer.name), filename);
+            filename = FormatString (Temp, "%0%", String.path_strip_filename (current_lexer.name), filename);
             filename = get_absolute_path (filename);
 
             file_contents:, ok = read_entire_file (filename, log_errors = false);
@@ -220,7 +220,7 @@ PreprocessShaderSource :: (using pp : *ShaderPreprocessor, source_allocator := c
             if !export
                 Error (pp, "The program does not export '%'", import_name);
 
-            StringBuilderAppend (current_builder, export.code);
+            StringBuilderAppendString (current_builder, export.code);
         }
         else
         {

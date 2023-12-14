@@ -1,7 +1,6 @@
 #module_parameters (Enable_Profiling := true);
 
 #import "Common";
-#import "String_Builder";
 #import "Hash_Map";
 
 #scope_file
@@ -138,18 +137,29 @@ PrintProfilingData :: (builder : *StringBuilder, using data : ProfilingData)
 
     avg_time_secs := Basic.to_float64_seconds (total_time / number_of_times_profiled);
 
+    avg_time_fmt : FormatFloat;
+    avg_time_fmt.value = avg_time_secs;
+    avg_time_fmt.trailing_width = 3;
+    unit := " s";
+
     if avg_time_secs < 1 / (1000.0 * 1000.0)
-        StringBuilderAppendLine (builder, "{:.3f} ns, profiled % times",
-            avg_time_secs * 1000.0 * 1000.0 * 1000.0, number_of_times_profiled);
+    {
+        avg_time_fmt.value = avg_time_secs * 1000.0 * 1000.0 * 1000.0;
+        unit = "ns";
+    }
     else if avg_time_secs < 1 / 1000.0
-        StringBuilderAppendLine (builder, "{:.3f} μs, profiled % times",
-            avg_time_secs * 1000.0 * 1000.0, number_of_times_profiled);
+    {
+        avg_time_fmt.value = avg_time_secs * 1000.0 * 1000.0;
+        unit = "μs";
+    }
     else if avg_time_secs < 1
-        StringBuilderAppendLine (builder, "{:.3f} ms, profiled % times",
-            avg_time_secs * 1000.0, number_of_times_profiled);
-    else
-        StringBuilderAppendLine (builder, "{:.3f}  s, profiled % times",
-            avg_time_secs, number_of_times_profiled);
+    {
+        avg_time_fmt.value = avg_time_secs * 1000.0;
+        unit = "ms";
+    }
+
+    StringBuilderAppendLine (builder, "% m%, profiled % times",
+            avg_time_fmt, unit, number_of_times_profiled);
 }
 
 PrintProfilingData :: (builder : *StringBuilder, entries : ProfilingEntriesMap)

@@ -272,10 +272,8 @@ Biomes :: Biome.[
 
 #insert -> string
 {
-    #import "String_Builder";
-
     builder : StringBuilder;
-    StringBuilderAppendLine (*builder, "BiomeID :: enum u8\n{{");
+    StringBuilderAppendLine (*builder, "BiomeID :: enum u8\n{");
 
     for Biomes
     {
