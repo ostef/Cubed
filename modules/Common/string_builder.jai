@@ -48,37 +48,71 @@ StringBuilderWrite :: inline (builder : *StringBuilder, do_reset := true, to_sta
     return Basic.write_builder (builder, do_reset, to_standard_error);
 }
 
-StringBuilderAppend :: inline (builder : *StringBuilder, format_string : string, args : ..Any)
+StringBuilderAppend :: inline (builder : *StringBuilder, format_string : string, args : ..Any) -> s64
 {
+    start_length := StringBuilderLength (builder);
+
     Basic.print_to_builder (builder, format_string, ..args);
+
+    return StringBuilderLength (builder) - start_length;
 }
 @PrintLike
 
-StringBuilderAppendLine :: inline (builder : *StringBuilder, format_string : string, args : ..Any)
+StringBuilderAppendLine :: inline (builder : *StringBuilder, format_string : string, args : ..Any) -> s64
 {
-    Basic.print_to_builder (builder, format_string, ..args);
-    Basic.append (builder, "\n");
+    return StringBuilderAppend (builder, format_string, ..args) + StringBuilderAppendByte (builder, #char "\n");
 }
 @PrintLike
 
-StringBuilderAppendString :: inline (builder : *StringBuilder, str : string)
+StringBuilderAppendString :: inline (builder : *StringBuilder, str : string) -> s64
 {
     Basic.append (builder, str);
+
+    return str.count;
 }
 
-StringBuilderAppendByte :: inline (builder : *StringBuilder, byte : u8)
+StringBuilderAppendStringLiteral :: inline (builder : *StringBuilder, str : string, quotes := "\"") -> s64
+{
+    count := 0;
+
+    count += StringBuilderAppend (builder, quotes);
+
+    for i : 0..str.count - 1
+    #no_abc
+    {
+        if str[i] ==
+        {
+        case #char "\\"; count += StringBuilderAppendString (builder, "\\\\");
+        case #char "\t"; count += StringBuilderAppendString (builder, "\\t");
+        case #char "\r"; count += StringBuilderAppendString (builder, "\\r");
+        case #char "\n"; count += StringBuilderAppendString (builder, "\\n");
+        case;            count += StringBuilderAppendByte (builder, str[i]);
+        }
+    }
+
+    count += StringBuilderAppend (builder, quotes);
+
+    return count;
+}
+
+StringBuilderAppendByte :: inline (builder : *StringBuilder, byte : u8) -> s64
 {
     Basic.append (builder, byte);
+
+    return 1;
 }
 
-StringBuilderAppendBuilder :: (builder : *StringBuilder, other : *StringBuilder)
+StringBuilderAppendBuilder :: (builder : *StringBuilder, other : *StringBuilder) -> s64
 {
+    count : s64;
     buffer := Basic.get_base_buffer (other);
     while buffer
     {
         str := MakeString (buffer.count, Basic.get_buffer_data (buffer));
-        StringBuilderAppendString (builder, str);
+        count += StringBuilderAppendString (builder, str);
 
         buffer = buffer.next;
     }
+
+    return count;
 }

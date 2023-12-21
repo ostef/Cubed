@@ -121,6 +121,7 @@ ProfileBlock :: (name := "", divide_by := 0, location := #caller_location) #expa
                 data.total_time += (end_time - start_time) / divide_by;
             else
                 data.total_time += end_time - start_time;
+
             data.number_of_times_profiled += 1;
         };
     }
@@ -140,6 +141,7 @@ PrintProfilingData :: (builder : *StringBuilder, using data : ProfilingData)
     avg_time_fmt : FormatFloat;
     avg_time_fmt.value = avg_time_secs;
     avg_time_fmt.trailing_width = 3;
+    avg_time_fmt.zero_removal = .NO;
     unit := " s";
 
     if avg_time_secs < 1 / (1000.0 * 1000.0)
@@ -158,7 +160,7 @@ PrintProfilingData :: (builder : *StringBuilder, using data : ProfilingData)
         unit = "ms";
     }
 
-    StringBuilderAppendLine (builder, "% m%, profiled % times",
+    StringBuilderAppendLine (builder, "% %, profiled % times",
             avg_time_fmt, unit, number_of_times_profiled);
 }
 

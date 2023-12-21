@@ -79,39 +79,26 @@ Println :: inline (format_string : string, args : ..Any, to_standard_error := fa
     ];
 }
 
-Assert :: (assertion : bool, fmt_str := "", args : ..Any, location := #caller_location) #expand
+Assert :: (assertion : bool, format_string := "", args : ..Any, location := #caller_location) #expand
 {
     #if Enable_Asserts
     {
-        if !assertion
-        {
-            if context.handling_assertion_failure
-                return;
-
-            context.handling_assertion_failure = true;
-            message := FormatString (fmt_str, ..args);
-            context.assertion_failed (location, message);
-            context.handling_assertion_failure = false;
-        }
+        if !assertion && Basic.assert_helper (format_string, ..args, location)
+            debug_break ();
     }
 }
+@PrintLike
 
 #add_context panicking := false;
 
-Panic :: (fmt_str := "", args : ..Any, location := #caller_location) #expand
+Panic :: (format_string := "", args : ..Any, location := #caller_location) #expand
 {
-    if context.handling_assertion_failure
-        return;
-
-    context.handling_assertion_failure = true;
     context.panicking = true;
+    defer context.panicking = false;
 
-    message := FormatString (fmt_str, ..args);
-    context.assertion_failed (location, message);
-
-    context.panicking = false;
-    context.handling_assertion_failure = false;
+    Assert (false, format_string, ..args, location = location);
 }
+@PrintLike
 
 Initialize :: inline (item : *$T)
 {
